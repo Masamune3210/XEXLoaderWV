@@ -6,7 +6,6 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import ghidra.app.cmd.disassemble.DisassembleCommand;
 import ghidra.app.cmd.function.CreateFunctionCmd;
@@ -93,7 +92,8 @@ public class XEXHeader {
 		loaderInfo = new XEXLoaderInfo(data, offsetSecuInfo);
 		loaderInfo.isDevKit = isDevKit;
 		// Preserve raw imported bytes unless the analysis-time veneer option is enabled.
-		useImportAnalysisVeneers = list.size() > 4 && Boolean.TRUE.equals(list.get(4).getValue());
+		useImportAnalysisVeneers = XEXLoaderWVLoader.getBooleanOption(
+			list, XEXLoaderWVLoader.THUNK_VENEERS_OPTION, false);
 		DecryptFileKey();
 		Msg.info(this, "XEX Loader: Loading section info");
 		int sectionCount = b.readInt(offsetSecuInfo + 0x180);
@@ -407,8 +407,8 @@ public class XEXHeader {
 		{
 			ImportLibrary lib = new ImportLibrary();
 			pos += 0x24;
-			short nameIdx = b.readShort(pos);
-			short count = b.readShort(pos + 2);
+			int nameIdx = Short.toUnsignedInt(b.readShort(pos));
+			int count = Short.toUnsignedInt(b.readShort(pos + 2));
 			pos += 4;
 			lib.name = stringTable.get(nameIdx);
 			for(int j = 0; j < count; j++)
@@ -516,13 +516,19 @@ public class XEXHeader {
 	public void ProcessPData(byte[] data, Program program, TaskMonitor monitor) throws Exception	
 	{
 		BinaryReader b = new BinaryReader(new ByteArrayProvider(data), false);
+		if (data.length % 8 != 0)
+			throw new java.io.IOException("Malformed .pdata: function table size is not a multiple of eight");
 		int created = 0;
 		for(int i = 0; i < data.length; i += 8)
 		{
+			if ((i & 0xFFF) == 0) monitor.checkCancelled();
 			int address = b.readInt(i);
 			Address addr = MakeAddress(address & 0xFFFFFFFFL);
 			if(addr != null)
 			{
+				// Preserve import thunk names already established from XEX descriptors.
+				if (program.getFunctionManager().getFunctionAt(addr) != null)
+					continue;
 				SymbolUtilities.createPreferredLabelOrFunctionSymbol(program, addr, null, "Function_" + String.format("%08X", address), SourceType.ANALYSIS);
 				if(EnsureFunction(addr, program, monitor))
 					created++;
@@ -543,10 +549,15 @@ public class XEXHeader {
 			address += imageBaseAddress;
 			int size = sec.PhysicalAddressOrVirtualSize;
 			Msg.info(this, "XEX Loader: Loading section " + sec.Name + " at 0x" + String.format("%08X", address) + " size = 0x" + String.format("%08X", size));			
-			byte[] data = new byte[size];
-			if( sec.VirtualAddress + size <= peImage.length)
-				for(int i = 0; i < size; i++)
-					data[i] = peImage[sec.VirtualAddress + i];
+			if (sec.VirtualAddress < 0 || size <= 0 ||
+				(long) sec.VirtualAddress + size > peImage.length) {
+				throw new java.io.IOException("Invalid XEX PE section extent: " + sec.Name +
+					" RVA=" + Integer.toHexString(sec.VirtualAddress) +
+					" length=" + Integer.toHexString(size) +
+					" imageLength=" + Integer.toHexString(peImage.length));
+			}
+			byte[] data = java.util.Arrays.copyOfRange(peImage,
+				sec.VirtualAddress, sec.VirtualAddress + size);
 			InputStream ds = new ByteArrayInputStream(data);		
 			String perm = ""; 
 			perm += ((sec.Characteristics & 0x40000000) != 0) ? "1" : "0";
@@ -569,22 +580,22 @@ public class XEXHeader {
 		}
 	}
 	
-	public void MakeBlock(Program program, String name, String desc, long address, InputStream s, int size, String perm, Structure struc, MessageLog log, TaskMonitor monitor)
+	public void MakeBlock(Program program, String name, String desc, long address, InputStream s,
+		int size, String perm, Structure struc, MessageLog log, TaskMonitor monitor) throws Exception
 	{
-		try
-		{
-			byte[] bf = perm.getBytes();
-			Address addr = program.getAddressFactory().getDefaultAddressSpace().getAddress(address);
-			MemoryBlock block = MemoryBlockUtils.createInitializedBlock(program, false, name, addr, s, size, desc, null, bf[0] == '1', bf[1] == '1', bf[2] == '1', log, monitor);
-			blocks.add(block);
-			if(struc != null)
-				DataUtilities.createData(program, block.getStart(), struc, -1, false, ClearDataMode.CLEAR_ALL_UNDEFINED_CONFLICT_DATA);
+		byte[] bf = perm.getBytes();
+		Address addr = program.getAddressFactory().getDefaultAddressSpace().getAddress(address);
+		MemoryBlock block = MemoryBlockUtils.createInitializedBlock(program, false, name,
+			addr, s, size, desc, null, bf[0] == '1', bf[1] == '1', bf[2] == '1', log, monitor);
+		if (block == null) {
+			throw new java.io.IOException("Failed to map XEX PE section " + name + " at " + addr);
 		}
-		catch (Exception e) {
-			Msg.error(this, ExceptionUtils.getStackTrace(e));
-		}
+		blocks.add(block);
+		if(struc != null)
+			DataUtilities.createData(program, block.getStart(), struc, -1, false,
+				ClearDataMode.CLEAR_ALL_UNDEFINED_CONFLICT_DATA);
 	}
-	
+
 	public Address MakeAddress(long address)
 	{
 	    for(MemoryBlock block : blocks)
