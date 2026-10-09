@@ -133,8 +133,33 @@ public class XEXLoaderWVLoader extends AbstractLibrarySupportLoader {
 			image = ApplyPatch(image, patchPath, options, isDevKit);
 		}
 		XEXHeader header = new XEXHeader(image, options, isDevKit);
-		if (header.peImage == null || header.peImage.length == 0) {
+		if (header.peImage == null || header.peImage.length < 0x100) {
 			throw new IOException("XEX is not a usable base image (possibly an unapplied XEXP patch)");
+		}
+		// A wrong retail/devkit key can produce a nonempty image buffer full of
+		// garbage. Check the decompressed PE signature before selecting a key,
+		// so the alternative key is tried BEFORE any memory blocks are created.
+		byte[] pe = header.peImage;
+		if (pe[0] != 'M' || pe[1] != 'Z') {
+			throw new IOException("Decoded XEX image lacks an MZ header");
+		}
+		long ntOffset = ((long) (pe[0x3C] & 0xFF)) |
+			((long) (pe[0x3D] & 0xFF) << 8) |
+			((long) (pe[0x3E] & 0xFF) << 16) |
+			((long) (pe[0x3F] & 0xFF) << 24);
+		if (ntOffset < 0x40 || ntOffset > pe.length - 0x18L ||
+			pe[(int) ntOffset] != 'P' || pe[(int) ntOffset + 1] != 'E' ||
+			pe[(int) ntOffset + 2] != 0 || pe[(int) ntOffset + 3] != 0) {
+			throw new IOException("Decoded XEX image has an invalid PE signature");
+		}
+		int sectionCount = (pe[(int) ntOffset + 6] & 0xFF) |
+			((pe[(int) ntOffset + 7] & 0xFF) << 8);
+		int optionalSize = (pe[(int) ntOffset + 20] & 0xFF) |
+			((pe[(int) ntOffset + 21] & 0xFF) << 8);
+		if (sectionCount <= 0 || sectionCount > 96 ||
+			optionalSize < 0x60 ||
+			ntOffset + 24L + optionalSize + (long) sectionCount * 40 > pe.length) {
+			throw new IOException("Decoded XEX PE section directory is invalid");
 		}
 		return header;
 	}
