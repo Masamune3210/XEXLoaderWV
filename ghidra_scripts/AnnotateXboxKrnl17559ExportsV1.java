@@ -949,7 +949,7 @@ public class AnnotateXboxKrnl17559ExportsV1 extends GhidraScript {
 
             String name = ordinal < KNOWN.length ? KNOWN[ordinal] : null;
             if (name == null) {
-                name = String.format("xboxkrnl_ordinal_%03d", ordinal);
+                name = String.format("xboxkrnl.exe_ord_%d", ordinal);
                 unknownNames++;
             }
             if (hasLabel(symbols, dest, name)) { alreadyNamed++; continue; }
