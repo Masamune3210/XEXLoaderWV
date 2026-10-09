@@ -216,7 +216,7 @@ public class XEXLoaderWVLoader extends AbstractLibrarySupportLoader {
 		list.add(new Option("Load PDB File", false));
 		list.add(new Option("use experimental PDB loader", false));
 		list.add(new Option("Path to xexp", ""));
-		list.add(new Option("Resolve native XEX thunks for Ghidra analysis (mapped image only)", true));
+		list.add(new Option("EXPERIMENTAL: rewrite XEX import thunk bytes in mapped analysis image", false));
 		return list;
 	}
 }
