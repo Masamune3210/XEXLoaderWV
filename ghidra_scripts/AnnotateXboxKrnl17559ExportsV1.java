@@ -957,6 +957,7 @@ public class AnnotateXboxKrnl17559ExportsV1 extends GhidraScript {
             try {
                 Function function = currentProgram.getFunctionManager().getFunctionAt(dest);
                 if (function != null && block.isExecute() &&
+                    (function.getSymbol().getSource() != SourceType.USER_DEFINED) &&
                     (function.getSymbol().getSource() == SourceType.DEFAULT ||
                      function.getName().startsWith("FUN_") ||
                      function.getName().startsWith("Ordinal_"))) {
