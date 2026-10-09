@@ -89,7 +89,6 @@ public class XEXLoaderWVLoader extends AbstractLibrarySupportLoader {
 			if (h.blocks.isEmpty()) {
 				throw new IOException("XEX image imported without any memory blocks");
 			}
-			h.ProcessImportLibraries(program, monitor);
 			if ((boolean) options.get(1).getValue())
 				LoadPDB(program, monitor, (boolean) options.get(2).getValue(), h);
 		} catch (Exception e) {
