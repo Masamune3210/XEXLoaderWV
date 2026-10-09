@@ -43,3 +43,12 @@ Token words are no longer declared as data when the veneer option is ON, elimina
 ### Verification
 
 Build/reinstall this branch, import `$flash_xam.xex` under a new test program name, complete auto-analysis twice, and run `AuditXamLoadercheckThunksV2.java` from the Ghidra Script Manager. Expect 443 linked thunks, 443 relocation veneers, no defined data on first two words, and zero live Bad Instruction bookmarks at token +0/+4. Inspect the original-token plate comments and confirm the source XEX SHA256 has not changed. Then test a different XEX with imports. If the veneer body or external linkage is lost, do not merge.
+## Design correction: fidelity first
+
+User questioned whether synthetic zero-target PPC veneers could distort decompilation and whether importing/linking the actual xboxkrnl program would be better. This concern is valid: a `lis/ori r11,0; mtctr; bctr` placeholder is not the original XEX or a known runtime-resolved destination, and may mislead control-flow or p-code recovery if Ghidra interprets its instructions instead of the external thunk metadata.
+
+**The analysis-veneer loader option now defaults OFF** (commit f7b9e81). The source XEX and mapped Ghidra memory stay byte-exact by default. Actual Ghidra thunk functions and external references remain the primary import representation. The optional veneer is explicitly labeled EXPERIMENTAL and should not be enabled in the authoritative reverse-engineering database without deliberate validation. With veneers off, invalid-instruction diagnostics at native import tokens may recur, and this does not by itself mean import function linkage is broken.
+
+Recommended direction: import a matching xboxkrnl kernel as its own Program in the same Ghidra project, map the existing `xboxkrnl.exe` external namespace to it, verify ordinals and function names, and propagate reliable function signatures/types. This improves cross-program navigation and call recovery but does not itself rewrite XEX import tokens or eliminate native placeholder disassembly diagnostics. Separate XAM and kernel programs are preferable to merging images into one address space.
+
+Do not merge the experimental veneer approach as a permanent fix to analyzer errors. Preserve known import descriptors and classify their expected instruction-constructor errors instead of substituting ungrounded runtime addresses. A future import-aware Ghidra analyzer is worth investigating, but has not been implemented or verified.
