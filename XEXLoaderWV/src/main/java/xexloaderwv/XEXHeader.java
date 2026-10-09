@@ -548,6 +548,10 @@ public class XEXHeader {
 			int address = sec.VirtualAddress;
 			address += imageBaseAddress;
 			int size = sec.PhysicalAddressOrVirtualSize;
+			if (size == 0) {
+				Msg.info(this, "XEX Loader: Skipping empty section " + sec.Name);
+				continue;
+			}
 			Msg.info(this, "XEX Loader: Loading section " + sec.Name + " at 0x" + String.format("%08X", address) + " size = 0x" + String.format("%08X", size));			
 			if (sec.VirtualAddress < 0 || size <= 0 ||
 				(long) sec.VirtualAddress + size > peImage.length) {
