@@ -152,6 +152,12 @@ public class XEXLoaderWVLoader extends AbstractLibrarySupportLoader {
 			pe[(int) ntOffset + 2] != 0 || pe[(int) ntOffset + 3] != 0) {
 			throw new IOException("Decoded XEX image has an invalid PE signature");
 		}
+		int machine = (pe[(int) ntOffset + 4] & 0xFF) |
+			((pe[(int) ntOffset + 5] & 0xFF) << 8);
+		if (machine != 0x01F2) {
+			throw new IOException("Decoded XEX PE is not an Xbox 360 PowerPC image: machine=0x" +
+				Integer.toHexString(machine));
+		}
 		int sectionCount = (pe[(int) ntOffset + 6] & 0xFF) |
 			((pe[(int) ntOffset + 7] & 0xFF) << 8);
 		int optionalSize = (pe[(int) ntOffset + 20] & 0xFF) |
