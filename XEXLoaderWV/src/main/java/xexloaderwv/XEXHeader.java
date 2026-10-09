@@ -42,6 +42,7 @@ public class XEXHeader {
 	public byte[] peImage;
 	public int imageBaseAddress;
 	public int entryPointAddress;
+	public boolean useImportAnalysisVeneers;
 	public ArrayList<String> stringTable;
 	public ArrayList<ImportLibrary> importLibs;
 	public ArrayList<MemoryBlock> blocks = new ArrayList<MemoryBlock>();
@@ -91,6 +92,8 @@ public class XEXHeader {
 		Msg.info(this, "XEX Loader: Loading loader info");
 		loaderInfo = new XEXLoaderInfo(data, offsetSecuInfo);
 		loaderInfo.isDevKit = isDevKit;
+		// Preserve raw imported bytes unless the analysis-time veneer option is enabled.
+		useImportAnalysisVeneers = list.size() > 4 && Boolean.TRUE.equals(list.get(4).getValue());
 		DecryptFileKey();
 		Msg.info(this, "XEX Loader: Loading section info");
 		int sectionCount = b.readInt(offsetSecuInfo + 0x180);
@@ -211,9 +214,9 @@ public class XEXHeader {
 	
 	/**
 	 * Model XEX import records before .pdata disassembly can interpret the
-	 * import-token words as PowerPC instructions.  The PE image and mapped bytes
-	 * are deliberately not patched; the first two words of each canonical thunk
-	 * are import metadata, not executable instructions.
+	 * import-token words as PowerPC instructions. If opted in, patch the mapped
+	 * Ghidra image with placeholder PPC relocation instructions, retaining the
+	 * original token values as a plate comment and in the source XEX.
 	 */
 	public void ProcessImportLibraries(Program program, TaskMonitor monitor) throws Exception
 	{
@@ -308,8 +311,14 @@ public class XEXHeader {
 					unsupported++;
 					continue;
 				}
-				// The native XEX thunk is 16 bytes: two import tokens, mtctr r11, bctr.
-				// Ghidra's thunk function entry remains the original first token address.
+				// Imported Xbox 360 thunks are *linker inputs*. At runtime the
+				// kernel replaces the two descriptor words with PPC instructions
+				// loading the target address into r11 (Xenia models this too).
+				// A function whose first byte is typed data causes Ghidra's
+				// disassembler to generate persistent "conflicting data" errors.
+				// For analysis we use a zero-valued relocation placeholder; the
+				// genuine external function relationship supplies the destination.
+				// The source XEX and peImage remain unmodified.
 				ghidra.program.model.address.AddressSet body =
 					new ghidra.program.model.address.AddressSet(entry, entry.add(15));
 				ghidra.program.model.listing.Function thunk =
@@ -319,14 +328,29 @@ public class XEXHeader {
 					unsupported++;
 					continue;
 				}
-				// Defining both tokens as data prevents subsequent auto-analysis passes
-				// from attempting to decode 0x01/0x02 import metadata as instructions.
-				DataUtilities.createData(program, entry,
-					ghidra.program.model.data.DWordDataType.dataType, -1, false,
-					ClearDataMode.CLEAR_ALL_UNDEFINED_CONFLICT_DATA);
-				DataUtilities.createData(program, entry.add(4),
-					ghidra.program.model.data.DWordDataType.dataType, -1, false,
-					ClearDataMode.CLEAR_ALL_UNDEFINED_CONFLICT_DATA);
+				if (useImportAnalysisVeneers) {
+					// lis r11, 0 ; ori r11, r11, 0
+					// mtctr r11 ; bctr remain the ORIGINAL image instructions.
+					byte[] veneer = new byte[] {
+						(byte) 0x3D, (byte) 0x60, 0, 0,
+						(byte) 0x61, (byte) 0x6B, 0, 0
+					};
+					program.getMemory().setBytes(entry, veneer);
+					int original0 = image.readInt(Integer.toUnsignedLong(imp.thunk) -
+						Integer.toUnsignedLong(imageBaseAddress));
+					int original1 = image.readInt(Integer.toUnsignedLong(imp.thunk) -
+						Integer.toUnsignedLong(imageBaseAddress) + 4);
+					program.getListing().setComment(entry,
+						ghidra.program.model.listing.CommentType.PLATE,
+						String.format(
+							"XEX import thunk: %s ordinal 0x%04X\\n" +
+							"Original XEX token words: %08X %08X\\n" +
+							"Source XEX bytes unchanged; Ghidra maps an analysis-only " +
+							"zero-address PPC relocation veneer (lis/ori r11) " +
+							"so the native external thunk can be disassembled. " +
+							"Runtime linker substitutes the actual destination.",
+							library, imp.ordinal, original0, original1));
+				}
 				thunks++;
 			}
 		}
