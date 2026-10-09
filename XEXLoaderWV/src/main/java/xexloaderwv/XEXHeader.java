@@ -209,65 +209,146 @@ public class XEXHeader {
 		}
 	}
 	
+	/**
+	 * Model XEX import records before .pdata disassembly can interpret the
+	 * import-token words as PowerPC instructions.  The PE image and mapped bytes
+	 * are deliberately not patched; the first two words of each canonical thunk
+	 * are import metadata, not executable instructions.
+	 */
 	public void ProcessImportLibraries(Program program, TaskMonitor monitor) throws Exception
 	{
-		BinaryReader b = new BinaryReader(new ByteArrayProvider(peImage), false);
-		for(ImportLibrary lib : importLibs)
+		if (importLibs == null || importLibs.isEmpty())
+			return;
+		BinaryReader image = new BinaryReader(new ByteArrayProvider(peImage), false);
+		ghidra.program.model.symbol.ExternalManager externals = program.getExternalManager();
+		ghidra.program.model.listing.FunctionManager functions = program.getFunctionManager();
+		int references = 0;
+		int thunks = 0;
+		int dataOnly = 0;
+		int unsupported = 0;
+		for (ImportLibrary lib : importLibs)
 		{
-			for(int i = 0; i < lib.records.size(); i++)
+			monitor.checkCancelled();
+			lib.functions.clear();
+			ImportFunction last = null;
+			for (int record : lib.records)
 			{
-				int address = lib.records.get(i) - imageBaseAddress;
-				int value = b.readInt(address);
-				int ordinal = value & 0xFFFF;
-				int type = value >> 24;
-				ImportFunction ipf;
-				switch(type)
-				{
-					case 0:
-						ipf = new ImportFunction();
-						ipf.address = lib.records.get(i);
-						ipf.ordinal = ordinal;
-						ipf.thunk = 0;
-						lib.functions.add(ipf);
-						break;
-					case 1:
-						ipf = lib.functions.get(lib.functions.size() - 1);
-						ipf.thunk =  lib.records.get(i);
-						break;
+				long off = Integer.toUnsignedLong(record) - Integer.toUnsignedLong(imageBaseAddress);
+				if (off < 0 || off + 4 > peImage.length) {
+					Msg.warn(this, "XEX Loader: Import record outside image: 0x" + Integer.toHexString(record));
+					unsupported++;
+					continue;
+				}
+				int token = image.readInt(off);
+				int ordinal = token & 0xFFFF;
+				int type = token >>> 24;
+				if (type == 0) {
+					last = new ImportFunction();
+					last.address = record;
+					last.ordinal = ordinal;
+					last.thunk = 0;
+					lib.functions.add(last);
+				}
+				else if (type == 1 && last != null && last.thunk == 0 &&
+						last.ordinal == ordinal) {
+					last.thunk = record;
+				}
+				else {
+					Msg.warn(this, "XEX Loader: Unexpected import record type/ordinal at 0x" +
+						Integer.toHexString(record));
+					unsupported++;
 				}
 			}
-		}
-		int countImpl = 0;
-		int countThunk = 0;
-		for(ImportLibrary lib : importLibs)
-		{
-			for(ImportFunction fun : lib.functions)
+			String library = lib.name.strip();
+			for (ImportFunction imp : lib.functions)
 			{
-				Address addr = MakeAddress(fun.address & 0xFFFFFFFFL);
-				if(addr != null)
-				{
-					SymbolUtilities.createPreferredLabelOrFunctionSymbol(program, addr, null, "__imp__" + ImportRenamer.Rename(lib.name.strip(), fun.ordinal) , SourceType.IMPORTED);
-					countImpl++;
+				monitor.checkCancelled();
+				Address slot = MakeAddress(Integer.toUnsignedLong(imp.address));
+				if (slot == null) {
+					unsupported++;
+					continue;
 				}
-				if(fun.thunk != 0)
-				{
-					int pos = fun.thunk - imageBaseAddress;
-					peImage[pos] = 0x38;
-					peImage[pos + 1] = 0x60;
-					peImage[pos + 4] = 0x38;
-					peImage[pos + 5] = (byte)0x80;
-					addr = MakeAddress(fun.thunk & 0xFFFFFFFFL);
-					if(addr != null)
-					{
-						SymbolUtilities.createPreferredLabelOrFunctionSymbol(program, addr, null, ImportRenamer.Rename(lib.name.strip(), fun.ordinal) , SourceType.ANALYSIS);
-						countThunk++;
-					}
+				String name = ImportRenamer.Rename(library, imp.ordinal);
+				SymbolUtilities.createPreferredLabelOrFunctionSymbol(program, slot,
+					null, "__imp__" + name, SourceType.IMPORTED);
+				boolean canonicalThunk = imp.thunk != 0 && IsCanonicalImportThunk(image, imp);
+				ghidra.program.model.symbol.ExternalLocation external =
+					externals.getUniqueExternalLocation(library, name);
+				if (external == null) {
+					external = canonicalThunk
+						? externals.addExtFunction(library, name, null, SourceType.IMPORTED)
+						: externals.addExtLocation(library, name, null, SourceType.IMPORTED);
 				}
+				if (canonicalThunk && !external.isFunction())
+					external.createFunction();
+				program.getReferenceManager().addExternalReference(slot,
+					ghidra.program.model.symbol.Reference.MNEMONIC, external,
+					SourceType.IMPORTED, ghidra.program.model.symbol.RefType.DATA);
+				references++;
+				if (imp.thunk == 0) {
+					dataOnly++;
+					continue;
+				}
+				Address entry = MakeAddress(Integer.toUnsignedLong(imp.thunk));
+				if (!canonicalThunk || entry == null) {
+					Msg.warn(this, "XEX Loader: Noncanonical import thunk at 0x" +
+						Integer.toHexString(imp.thunk) + "; leaving bytes and code undefined");
+					unsupported++;
+					continue;
+				}
+				if (functions.getFunctionContaining(entry) != null ||
+						program.getListing().getInstructionContaining(entry) != null ||
+						program.getListing().getInstructionContaining(entry.add(4)) != null) {
+					Msg.warn(this, "XEX Loader: Existing code/function overlaps thunk " + entry);
+					unsupported++;
+					continue;
+				}
+				ghidra.program.model.listing.Function externalFunction = external.getFunction();
+				if (externalFunction == null) {
+					unsupported++;
+					continue;
+				}
+				// The native XEX thunk is 16 bytes: two import tokens, mtctr r11, bctr.
+				// Ghidra's thunk function entry remains the original first token address.
+				ghidra.program.model.address.AddressSet body =
+					new ghidra.program.model.address.AddressSet(entry, entry.add(15));
+				ghidra.program.model.listing.Function thunk =
+					functions.createThunkFunction(name, program.getGlobalNamespace(),
+						entry, body, externalFunction, SourceType.IMPORTED);
+				if (thunk == null) {
+					unsupported++;
+					continue;
+				}
+				// Defining both tokens as data prevents subsequent auto-analysis passes
+				// from attempting to decode 0x01/0x02 import metadata as instructions.
+				DataUtilities.createData(program, entry,
+					ghidra.program.model.data.DWordDataType.dataType, -1, false,
+					ClearDataMode.CLEAR_ALL_UNDEFINED_CONFLICT_DATA);
+				DataUtilities.createData(program, entry.add(4),
+					ghidra.program.model.data.DWordDataType.dataType, -1, false,
+					ClearDataMode.CLEAR_ALL_UNDEFINED_CONFLICT_DATA);
+				thunks++;
 			}
 		}
-		Msg.info(this, "XEX Loader: Added import symbols(" + countImpl + " References, " + countThunk + " Thunks)");
+		Msg.info(this, "XEX Loader: Linked " + references + " external import slots, " +
+			thunks + " native thunk functions, " + dataOnly +
+			" unclassified data-only imports, " + unsupported + " unsupported entries");
 	}
-	
+
+	private boolean IsCanonicalImportThunk(BinaryReader image, ImportFunction imp) throws Exception
+	{
+		long off = Integer.toUnsignedLong(imp.thunk) - Integer.toUnsignedLong(imageBaseAddress);
+		if (off < 0 || off + 16 > peImage.length)
+			return false;
+		int token1 = image.readInt(off);
+		int token2 = image.readInt(off + 4);
+		return (token1 >>> 16) == 0x0100 && (token1 & 0xFFFF) == imp.ordinal &&
+			(token2 >>> 16) == 0x0200 && (token2 & 0xFFFF) == imp.ordinal &&
+			image.readInt(off + 8) == 0x7D6903A6 &&
+			image.readInt(off + 12) == 0x4E800420 &&
+			MakeAddress(Integer.toUnsignedLong(imp.thunk) + 15) != null;
+	}
+
 	public void ReadStringTable(byte[] data, int start, int len) throws Exception
 	{
 		stringTable = new ArrayList<String>();
@@ -452,6 +533,8 @@ public class XEXHeader {
 			if(sec.Name.equals(".pdata"))
 				pdata = data;
 		}
+		// Imports must be typed/linked before .pdata-driven code discovery.
+		ProcessImportLibraries(program, monitor);
 		if(pdata != null && ProcessPData)
 			ProcessPData(pdata, program, monitor);
 		Address addr = MakeAddress(entryPointAddress & 0xFFFFFFFFL);
