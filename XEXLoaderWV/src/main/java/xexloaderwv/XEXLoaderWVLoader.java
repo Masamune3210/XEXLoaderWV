@@ -14,7 +14,6 @@ import ghidra.app.plugin.core.analysis.AutoAnalysisManager;
 import ghidra.app.services.DataTypeManagerService;
 import ghidra.app.util.Option;
 import ghidra.app.util.bin.BinaryReader;
-import ghidra.app.util.bin.ByteArrayProvider;
 import ghidra.app.util.bin.ByteProvider;
 import ghidra.app.util.importer.MessageLog;
 import ghidra.app.util.opinion.AbstractLibrarySupportLoader;
@@ -33,6 +32,31 @@ import pdb.symbolserver.ui.LoadPdbDialog.LoadPdbResults;
 
 public class XEXLoaderWVLoader extends AbstractLibrarySupportLoader {
 
+	public static final String PROCESS_PDATA_OPTION = "Process .pdata";
+	public static final String LOAD_PDB_OPTION = "Load PDB File";
+	public static final String EXPERIMENTAL_PDB_OPTION = "use experimental PDB loader";
+	public static final String XEXP_PATH_OPTION = "Path to xexp";
+	public static final String THUNK_VENEERS_OPTION =
+		"EXPERIMENTAL: rewrite XEX import thunk bytes in mapped analysis image";
+
+	public static boolean getBooleanOption(List<Option> options, String name, boolean defaultValue) {
+		for (Option option : options) {
+			if (name.equals(option.getName())) {
+				return Boolean.TRUE.equals(option.getValue());
+			}
+		}
+		return defaultValue;
+	}
+
+	private static String getStringOption(List<Option> options, String name, String defaultValue) {
+		for (Option option : options) {
+			if (name.equals(option.getName())) {
+				return (String) option.getValue();
+			}
+		}
+		return defaultValue;
+	}
+
 	@Override
 	public Collection<LoadSpec> findSupportedLoadSpecs(ByteProvider provider) throws IOException {
 		List<LoadSpec> loadSpecs = new ArrayList<>();
@@ -49,53 +73,70 @@ public class XEXLoaderWVLoader extends AbstractLibrarySupportLoader {
 		return "XEX Loader by Warranty Voider";
 	}
 
+
 	@Override
 	protected void load(Program program, ImporterSettings settings) throws CancelledException, IOException {
-		this.load(settings.provider(), settings.loadSpec(), settings.options(), program, settings.monitor(), settings.log());		
-	}	
-	
-	
+		load(settings.provider(), settings.loadSpec(), settings.options(), program, settings.monitor(), settings.log());
+	}
+
 	protected void load(ByteProvider provider, LoadSpec loadSpec, List<Option> options, Program program,
-			TaskMonitor monitor, MessageLog log) throws IOException {
+			TaskMonitor monitor, MessageLog log) throws CancelledException, IOException {
 		try {
-			Msg.info(this, "XEX Loader: Trying to load as retail...");
-			LoadXEX(provider, loadSpec, options, program, monitor, log, false);
-		} catch (Exception e) {
-			Msg.error(this, "XEX Loader: Retail import failed", e);
+			byte[] original = provider.getInputStream(0).readAllBytes();
+			String patchPath = getStringOption(options, XEXP_PATH_OPTION, "");
+			XEXHeader header;
 			try {
-				Msg.info(this, "XEX Loader: Trying to load as dev kit...");
-				LoadXEX(provider, loadSpec, options, program, monitor, log, true);
-			} catch (Exception e2) {
-				Msg.error(this, "XEX Loader: Devkit import failed", e2);
-				IOException failure = new IOException("XEX import failed for both retail and devkit keys", e2);
-				failure.addSuppressed(e);
-				throw failure;
+				Msg.info(this, "XEX Loader: Trying to load as retail...");
+				header = prepareXEX(original, options, patchPath, false);
+			} catch (Exception retailFailure) {
+				monitor.checkCancelled();
+				Msg.warn(this, "XEX Loader: Retail decode failed; attempting devkit decode", retailFailure);
+				try {
+					header = prepareXEX(original, options, patchPath, true);
+				} catch (Exception devkitFailure) {
+					IOException failure = new IOException(
+						"XEX decode failed for both retail and devkit keys", devkitFailure);
+					failure.addSuppressed(retailFailure);
+					throw failure;
+				}
 			}
+
+			// Both decryption attempts are entirely in memory. From here on, errors
+			// must fail the import; retrying with the other key would corrupt the
+			// partially mapped Program and hide the real import failure.
+			program.setImageBase(program.getAddressFactory().getDefaultAddressSpace()
+				.getAddress(Integer.toUnsignedLong(header.imageBaseAddress)), true);
+			boolean processPData = getBooleanOption(options, PROCESS_PDATA_OPTION, true);
+			header.ProcessPEImage(program, monitor, log, processPData);
+			if (header.blocks.isEmpty()) {
+				throw new IOException("XEX image imported without any memory blocks");
+			}
+			if (getBooleanOption(options, LOAD_PDB_OPTION, false)) {
+				LoadPDB(program, monitor,
+					getBooleanOption(options, EXPERIMENTAL_PDB_OPTION, false), header);
+			}
+		} catch (CancelledException e) {
+			throw e;
+		} catch (IOException e) {
+			throw e;
+		} catch (Exception e) {
+			throw new IOException("XEX image import failed after decoding", e);
 		}
 	}
 
-	public void LoadXEX(ByteProvider provider, LoadSpec loadSpec, List<Option> options, Program program,
-			TaskMonitor monitor, MessageLog log, boolean isDevKit) throws Exception {
-		byte[] buffROM = provider.getInputStream(0).readAllBytes();
-		String patchPath = (String) options.get(3).getValue();
-		if (!patchPath.equals(""))
-			buffROM = ApplyPatch(buffROM, patchPath, options, isDevKit);
-		ByteArrayProvider bapROM = new ByteArrayProvider(buffROM);
-		Msg.info(this, "XEX Loader: Loading header");
-		try {
-			XEXHeader h = new XEXHeader(buffROM, options, isDevKit);
-			boolean processPData = (boolean) options.get(0).getValue();
-			h.ProcessPEImage(program, monitor, log, processPData);
-			if (h.blocks.isEmpty()) {
-				throw new IOException("XEX image imported without any memory blocks");
-			}
-			if ((boolean) options.get(1).getValue())
-				LoadPDB(program, monitor, (boolean) options.get(2).getValue(), h);
-		} catch (Exception e) {
-			bapROM.close();
-			throw new Exception(e);
+	private XEXHeader prepareXEX(byte[] original, List<Option> options,
+			String patchPath, boolean isDevKit) throws Exception {
+		// XEXP may mutate its input; each decryption attempt must start from
+		// independent original bytes, and neither may touch the Ghidra Program.
+		byte[] image = original.clone();
+		if (!patchPath.isEmpty()) {
+			image = ApplyPatch(image, patchPath, options, isDevKit);
 		}
-		bapROM.close();
+		XEXHeader header = new XEXHeader(image, options, isDevKit);
+		if (header.peImage == null || header.peImage.length == 0) {
+			throw new IOException("XEX is not a usable base image (possibly an unapplied XEXP patch)");
+		}
+		return header;
 	}
 
 	public void LoadPDB(Program program, TaskMonitor monitor, boolean useExperimental, XEXHeader h) throws Exception {
@@ -211,12 +252,14 @@ public class XEXLoaderWVLoader extends AbstractLibrarySupportLoader {
 
 	@Override
 	public List<Option> getDefaultOptions(ByteProvider provider, LoadSpec loadSpec,	DomainObject domainObject, boolean loadIntoProgram, boolean mirrorFsLayout) {
-		List<Option> list = new ArrayList<Option>();
-		list.add(new Option("Process .pdata", true));
-		list.add(new Option("Load PDB File", false));
-		list.add(new Option("use experimental PDB loader", false));
-		list.add(new Option("Path to xexp", ""));
-		list.add(new Option("EXPERIMENTAL: rewrite XEX import thunk bytes in mapped analysis image", false));
+		// Preserve Ghidra's standard options for linking already imported libraries.
+		List<Option> list = new ArrayList<>(super.getDefaultOptions(
+			provider, loadSpec, domainObject, loadIntoProgram, mirrorFsLayout));
+		list.add(new Option(PROCESS_PDATA_OPTION, true));
+		list.add(new Option(LOAD_PDB_OPTION, false));
+		list.add(new Option(EXPERIMENTAL_PDB_OPTION, false));
+		list.add(new Option(XEXP_PATH_OPTION, ""));
+		list.add(new Option(THUNK_VENEERS_OPTION, false));
 		return list;
 	}
 }
