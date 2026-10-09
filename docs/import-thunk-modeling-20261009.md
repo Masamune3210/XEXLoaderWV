@@ -52,3 +52,14 @@ User questioned whether synthetic zero-target PPC veneers could distort decompil
 Recommended direction: import a matching xboxkrnl kernel as its own Program in the same Ghidra project, map the existing `xboxkrnl.exe` external namespace to it, verify ordinals and function names, and propagate reliable function signatures/types. This improves cross-program navigation and call recovery but does not itself rewrite XEX import tokens or eliminate native placeholder disassembly diagnostics. Separate XAM and kernel programs are preferable to merging images into one address space.
 
 Do not merge the experimental veneer approach as a permanent fix to analyzer errors. Preserve known import descriptors and classify their expected instruction-constructor errors instead of substituting ungrounded runtime addresses. A future import-aware Ghidra analyzer is worth investigating, but has not been implemented or verified.
+## Xbox 360 retail 17559 kernel acquisition (2026-10-09)
+
+- Recovered genuine CE 1888 from user's Trinity NAND, after validating `CB_A 9231 -> CB_B 9231 -> CD 9231 -> CE 1888`; successfully decrypted using `cb-b-v2` key derivation.
+- Successfully decompressed all 36 LZX blocks to the raw 0x120000-byte combined HV+PE kernel image; SHA256 `26f65a4c5c664d308714efacdb55aee833873c87a682cab0c2a4a9a764254c39`.
+- Verified the raw 1888 image's SHA1 `95e2a946f4ce4a3d1edb48fc9e4787d0f064a112` **exactly matches** the original-image hash stored in the decrypted *official 17559 CG update*. Thus the extracted base is the exact expected retail starting point.
+- The original update `xboxupd.bin` is present in the prior official PIRS extraction as `pirs-extracted/xboxupd.bin` in `17559-system-update-complete-v2.zip`, 507872 bytes, SHA256 `2f85e912775b12f0740dd86ab518d303c7ba6fe837a05cad7d951c433376d537`. CF base=1888, target=17559.
+- The CG update expects a target raw HV+kernel image of **0x1F0000 bytes**, SHA1 `f1b66f2aa794f0117a8a2d565c9fec0b601fed83`.
+- Standalone `xboxkrnl.1888.recovered_v1.exe` extracted at offset 0x40000 from HV+kernel, 917504 bytes; PE `MZ/PE`, machine 0x01F2, SHA256 `1b24c5acee32590e90c85d7080d68af79a0605f62d14fb27eb0cfb0ce10fb376`.
+- The self-contained conversation artifact `xbox360_17559_kernel_reconstruction_inputs_20261009_v1.zip` contains recovered 1888 HV+kernel, official xboxupd.bin, verification/split script and README.
+- **Remaining:** apply CF/CG delta with xenon-bltool `xboxupd`, verify output exactly matches CG target SHA1, then import the split 17559 kernel as a separate Ghidra program for external linkage. This patch step has NOT yet been completed or validated.
+- No changes to original XAM or NAND; the kernel recovery is an offline, read-only provenance workflow.
