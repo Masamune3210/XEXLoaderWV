@@ -11,7 +11,7 @@
 @define EATRUNC "ea"
 @define CTR_OFFSET "32"
 
-@include "$(PowerPC)/data/languages/ppc_common.sinc"
+# Generated from installed PPC common and embedded sources, omitting only\n# the colliding embedded dcbzl alias. Stock PowerPC remains untouched.\n@include "xenon_ppc_common.sinc"
 # Variant-local restrictions for conflicting generic PPC/A2 encodings.
 @include "xenon_ppc_isa.sinc"
 @include "$(PowerPC)/data/languages/ppc_a2.sinc"
