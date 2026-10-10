@@ -4,3 +4,7 @@
 #
 # IMPORTANT: The -a option should NOT be specified
 #
+# Compile the independent Xenon language against Ghidra's installed,
+# version-matched stock PowerPC .sinc files without duplicating entire ISA.
+# Requires PowerPC module available in the Ghidra install used by Gradle/Ant.
+-dPowerPC
