@@ -494,29 +494,88 @@ xenonA: "xv127" is vrAR=31 & MBH=1 & OE=1 { export xv127; }
 # The fixed instruction selector occupies bits 6..9 and bit 4.
 # BITS_6_10 includes bit 10, and BITS_4_5 includes bit 5, so the
 # four high-A combinations need disjoint SLEIGH pattern alternatives.
-define pcodeop xenonVmulfp128;
 define pcodeop xenonVmsum4fp128;
 define pcodeop xenonVpermwi128;
 define pcodeop xenonVrlimi128;
 :vmulfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=2 & BITS_4_5=1
 {
-    out:16 = xenonVmulfp128(xenonA, xenonB);
-    xenonD = out;
+    a0:4 = xenonA(0);
+    b0:4 = xenonB(0);
+    r0:4 = a0 f* b0;
+    a1:4 = xenonA(4);
+    b1:4 = xenonB(4);
+    r1:4 = a1 f* b1;
+    a2:4 = xenonA(8);
+    b2:4 = xenonB(8);
+    r2:4 = a2 f* b2;
+    a3:4 = xenonA(12);
+    b3:4 = xenonB(12);
+    r3:4 = a3 f* b3;
+    wide0:16 = zext(r0);
+    wide1:16 = zext(r1) << 32;
+    wide2:16 = zext(r2) << 64;
+    wide3:16 = zext(r3) << 96;
+    xenonD = wide3 | wide2 | wide1 | wide0;
 }
 :vmulfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=2 & BITS_4_5=3
 {
-    out:16 = xenonVmulfp128(xenonA, xenonB);
-    xenonD = out;
+    a0:4 = xenonA(0);
+    b0:4 = xenonB(0);
+    r0:4 = a0 f* b0;
+    a1:4 = xenonA(4);
+    b1:4 = xenonB(4);
+    r1:4 = a1 f* b1;
+    a2:4 = xenonA(8);
+    b2:4 = xenonB(8);
+    r2:4 = a2 f* b2;
+    a3:4 = xenonA(12);
+    b3:4 = xenonB(12);
+    r3:4 = a3 f* b3;
+    wide0:16 = zext(r0);
+    wide1:16 = zext(r1) << 32;
+    wide2:16 = zext(r2) << 64;
+    wide3:16 = zext(r3) << 96;
+    xenonD = wide3 | wide2 | wide1 | wide0;
 }
 :vmulfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=18 & BITS_4_5=1
 {
-    out:16 = xenonVmulfp128(xenonA, xenonB);
-    xenonD = out;
+    a0:4 = xenonA(0);
+    b0:4 = xenonB(0);
+    r0:4 = a0 f* b0;
+    a1:4 = xenonA(4);
+    b1:4 = xenonB(4);
+    r1:4 = a1 f* b1;
+    a2:4 = xenonA(8);
+    b2:4 = xenonB(8);
+    r2:4 = a2 f* b2;
+    a3:4 = xenonA(12);
+    b3:4 = xenonB(12);
+    r3:4 = a3 f* b3;
+    wide0:16 = zext(r0);
+    wide1:16 = zext(r1) << 32;
+    wide2:16 = zext(r2) << 64;
+    wide3:16 = zext(r3) << 96;
+    xenonD = wide3 | wide2 | wide1 | wide0;
 }
 :vmulfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=18 & BITS_4_5=3
 {
-    out:16 = xenonVmulfp128(xenonA, xenonB);
-    xenonD = out;
+    a0:4 = xenonA(0);
+    b0:4 = xenonB(0);
+    r0:4 = a0 f* b0;
+    a1:4 = xenonA(4);
+    b1:4 = xenonB(4);
+    r1:4 = a1 f* b1;
+    a2:4 = xenonA(8);
+    b2:4 = xenonB(8);
+    r2:4 = a2 f* b2;
+    a3:4 = xenonA(12);
+    b3:4 = xenonB(12);
+    r3:4 = a3 f* b3;
+    wide0:16 = zext(r0);
+    wide1:16 = zext(r1) << 32;
+    wide2:16 = zext(r2) << 64;
+    wide3:16 = zext(r3) << 96;
+    xenonD = wide3 | wide2 | wide1 | wide0;
 }
 :vmsum4fp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=7 & BITS_4_5=1
 {
