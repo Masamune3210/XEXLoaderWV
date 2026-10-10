@@ -16,6 +16,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 INVENTORY = ROOT / "tools/data/xenia_vmx128_opcode_inventory_20261009.tsv"
 EXTRA_INVENTORY = ROOT / "tools/data/xenia_xform_vector_opcode_inventory_20261009.tsv"
+CORRECTION_INVENTORY = ROOT / "tools/data/xenon_vmx128_unpack_corrections_20261010.tsv"
 EXTRA_NAMES = frozenset(("lvlx", "lvrx", "stvlx", "stvrx",
                          "lvlxl", "lvrxl", "stvlxl", "stvrxl"))
 SLEIGH = ROOT / "data/languages/xenon_vector_v1.sinc"
@@ -128,7 +129,8 @@ def parse_sleigh(source: str) -> tuple[dict[str, str], list[str]]:
 
 
 def write_results(rows: list[dict], sleigh_path: Path, inventory_path: Path,
-                  output: Path, extra_inventory_path: Path = EXTRA_INVENTORY) -> None:
+                  output: Path, extra_inventory_path: Path = EXTRA_INVENTORY,
+                  correction_inventory_path: Path = CORRECTION_INVENTORY) -> None:
     source = read_sleigh_source(sleigh_path)
     implemented, custom_ops = parse_sleigh(source)
     output.mkdir(parents=True, exist_ok=True)
@@ -143,8 +145,14 @@ def write_results(rows: list[dict], sleigh_path: Path, inventory_path: Path,
         annotated.append({**r, "status": status})
         for variant, fill in FILLS:
             word = value | (fill & (~mask & 0xFFFFFFFF))
-            hits = [x["mnemonic"] for x in rows
-                    if (word & x["mask"]) == x["value"]]
+            # Xenia's broad byte-unpack masks overlap the independent
+            # halfword-unpack aliases. Match the most specific selector;
+            # SLEIGH constructors explicitly split VA==0x60 from VA!=0x60.
+            matching = [x for x in rows
+                        if (word & x["mask"]) == x["value"]]
+            specificity = max(x["mask"].bit_count() for x in matching)
+            hits = [x["mnemonic"] for x in matching
+                    if x["mask"].bit_count() == specificity]
             if hits != [name]:
                 raise ValueError(f"Fixture ambiguity: {word:08X} -> {hits}")
             samples.append((f"0x{len(binary):08X}", f"{word:08X}",
@@ -186,6 +194,8 @@ def write_results(rows: list[dict], sleigh_path: Path, inventory_path: Path,
         ).hexdigest() + tick,
         "Extra inventory SHA-256: " + tick + hashlib.sha256(
             extra_inventory_path.read_bytes()).hexdigest() + tick,
+        "Unpack correction inventory SHA-256: " + tick + hashlib.sha256(
+            correction_inventory_path.read_bytes()).hexdigest() + tick,
         "Generator SHA-256: " + tick + hashlib.sha256(
             Path(__file__).read_bytes()).hexdigest() + tick,
         "",
@@ -201,7 +211,9 @@ def write_results(rows: list[dict], sleigh_path: Path, inventory_path: Path,
         "",
         "This is source coverage only, NOT verified runtime decoding, and",
         "native SLEIGH p-code does not necessarily mean correct semantics.",
-        "These include 76 *128 families plus eight opcode-31 X-form variants.",
+        "These include 76 pinned Xenia *128 families, eight opcode-31",
+        "X-form variants, and two independently documented unpack",
+        "halfword aliases missing from Xenia's generated decoder.",
         "Stock AltiVec/PowerPC coverage is outside scope. The inherited",
         "Ghidra PPC language may already decode additional X-form cases.",
         "The implemented opcode-31 lvlx and lvrx are NOT opcode-4",
@@ -239,17 +251,23 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--inventory", type=Path, default=INVENTORY)
     ap.add_argument("--extra-inventory", type=Path, default=EXTRA_INVENTORY)
+    ap.add_argument("--correction-inventory", type=Path,
+                    default=CORRECTION_INVENTORY)
     ap.add_argument("--sleigh", type=Path, default=SLEIGH)
     ap.add_argument("--out-dir", type=Path, default=OUTPUT)
     ap.add_argument("--xenia-lookup", type=Path,
                     help="Optional local Xenia decoder source to recheck "
                          "every pinned opcode selector")
     args = ap.parse_args()
-    rows = read_inventory(args.inventory) + read_inventory(args.extra_inventory)
+    pinned_rows = (read_inventory(args.inventory) +
+                   read_inventory(args.extra_inventory))
+    # Corrections are NOT in Xenia's pinned generated decoder. Keep them
+    # separate from the optional exact Xenia lookup comparison.
+    rows = pinned_rows + read_inventory(args.correction_inventory)
     if args.xenia_lookup:
         actual = parse_xenia_lookup(args.xenia_lookup.read_text(encoding="utf-8"))
         expected = {r["mnemonic"]: (r["primary"], r["mask"], r["value"])
-                    for r in rows}
+                    for r in pinned_rows}
         if actual != expected:
             missing = sorted(expected.keys() - actual.keys())
             added = sorted(actual.keys() - expected.keys())
@@ -260,7 +278,7 @@ def main() -> None:
                              " changed=" + str(changed))
         print("Verified against Xenia source: " + str(len(actual)) + " selectors")
     write_results(rows, args.sleigh, args.inventory, args.out_dir,
-                  args.extra_inventory)
+                  args.extra_inventory, args.correction_inventory)
 
 
 if __name__ == "__main__":
