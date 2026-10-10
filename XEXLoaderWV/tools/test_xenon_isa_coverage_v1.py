@@ -131,9 +131,14 @@ class XenonIsaInventoryTests(unittest.TestCase):
             gradle)
         self.assertIn("src = src.replace(stockVsxInclude, resolvedVsxInclude)",
                       gradle)
-        sleigh = audit.SLEIGH.read_text(encoding="utf-8")
-        self.assertNotIn("0:16", sleigh,
-                         "SLEIGH integer constants cannot be 16 bytes wide")
+        sleigh = audit.read_sleigh_source(audit.SLEIGH)
+        # Only a standalone integer literal like 0:16 is illegal.
+        # Sized variables such as part0:16 and wide0:16 are valid SLEIGH.
+        invalid_constant = r"(?<![A-Za-z0-9_])0:16\b"
+        self.assertNotRegex(sleigh, invalid_constant,
+                            "SLEIGH integer constants cannot be 16 bytes wide")
+        self.assertRegex("value = 0:16;", invalid_constant)
+        self.assertNotRegex("part0:16 = zext(octet0);", invalid_constant)
         self.assertIn("zeroVec:16 = zext(0:8);", sleigh)
 
     def test_embedded_dcbzl_collision_filter_wiring(self):
