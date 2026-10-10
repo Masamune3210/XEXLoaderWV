@@ -7,7 +7,7 @@ define pcodeop xenonVperm128;
 define pcodeop xenonVmaddfp128;
 define pcodeop xenonVmaddcfp128;
 define pcodeop xenonVnmsubfp128;
-define pcodeop xenonVmsum3fp128;
+
 define pcodeop xenonVpkshss128;
 define pcodeop xenonVpkshus128;
 define pcodeop xenonVpkswss128;
@@ -336,26 +336,86 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 # vmsum3fp128: opaque; Xenia mask/value fc0003d0/14000190
 :vmsum3fp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=6 & BITS_4_5=1
 {
-    result:16 = xenonVmsum3fp128(xenonA, xenonB);
-    xenonD = result;
+    lhs0:4 = xenonA(12);
+    rhs0:4 = xenonB(12);
+    product0:4 = lhs0 f* rhs0;
+    lhs1:4 = xenonA(8);
+    rhs1:4 = xenonB(8);
+    product1:4 = lhs1 f* rhs1;
+    lhs2:4 = xenonA(4);
+    rhs2:4 = xenonB(4);
+    product2:4 = lhs2 f* rhs2;
+    dotSum1:4 = product0 f+ product1;
+    dotSum2:4 = dotSum1 f+ product2;
+    dot:4 = dotSum2;
+    dotLane0:16 = zext(dot);
+    dotLane1:16 = zext(dot) << 32;
+    dotLane2:16 = zext(dot) << 64;
+    dotLane3:16 = zext(dot) << 96;
+    xenonD = dotLane3 | dotLane2 | dotLane1 | dotLane0;
 }
 
 :vmsum3fp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=6 & BITS_4_5=3
 {
-    result:16 = xenonVmsum3fp128(xenonA, xenonB);
-    xenonD = result;
+    lhs0:4 = xenonA(12);
+    rhs0:4 = xenonB(12);
+    product0:4 = lhs0 f* rhs0;
+    lhs1:4 = xenonA(8);
+    rhs1:4 = xenonB(8);
+    product1:4 = lhs1 f* rhs1;
+    lhs2:4 = xenonA(4);
+    rhs2:4 = xenonB(4);
+    product2:4 = lhs2 f* rhs2;
+    dotSum1:4 = product0 f+ product1;
+    dotSum2:4 = dotSum1 f+ product2;
+    dot:4 = dotSum2;
+    dotLane0:16 = zext(dot);
+    dotLane1:16 = zext(dot) << 32;
+    dotLane2:16 = zext(dot) << 64;
+    dotLane3:16 = zext(dot) << 96;
+    xenonD = dotLane3 | dotLane2 | dotLane1 | dotLane0;
 }
 
 :vmsum3fp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=22 & BITS_4_5=1
 {
-    result:16 = xenonVmsum3fp128(xenonA, xenonB);
-    xenonD = result;
+    lhs0:4 = xenonA(12);
+    rhs0:4 = xenonB(12);
+    product0:4 = lhs0 f* rhs0;
+    lhs1:4 = xenonA(8);
+    rhs1:4 = xenonB(8);
+    product1:4 = lhs1 f* rhs1;
+    lhs2:4 = xenonA(4);
+    rhs2:4 = xenonB(4);
+    product2:4 = lhs2 f* rhs2;
+    dotSum1:4 = product0 f+ product1;
+    dotSum2:4 = dotSum1 f+ product2;
+    dot:4 = dotSum2;
+    dotLane0:16 = zext(dot);
+    dotLane1:16 = zext(dot) << 32;
+    dotLane2:16 = zext(dot) << 64;
+    dotLane3:16 = zext(dot) << 96;
+    xenonD = dotLane3 | dotLane2 | dotLane1 | dotLane0;
 }
 
 :vmsum3fp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=22 & BITS_4_5=3
 {
-    result:16 = xenonVmsum3fp128(xenonA, xenonB);
-    xenonD = result;
+    lhs0:4 = xenonA(12);
+    rhs0:4 = xenonB(12);
+    product0:4 = lhs0 f* rhs0;
+    lhs1:4 = xenonA(8);
+    rhs1:4 = xenonB(8);
+    product1:4 = lhs1 f* rhs1;
+    lhs2:4 = xenonA(4);
+    rhs2:4 = xenonB(4);
+    product2:4 = lhs2 f* rhs2;
+    dotSum1:4 = product0 f+ product1;
+    dotSum2:4 = dotSum1 f+ product2;
+    dot:4 = dotSum2;
+    dotLane0:16 = zext(dot);
+    dotLane1:16 = zext(dot) << 32;
+    dotLane2:16 = zext(dot) << 64;
+    dotLane3:16 = zext(dot) << 96;
+    xenonD = dotLane3 | dotLane2 | dotLane1 | dotLane0;
 }
 
 # vpkshss128: opaque; Xenia mask/value fc0003d0/14000200
