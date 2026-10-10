@@ -101,10 +101,23 @@ public class Xbox360RetailKernelPdataAnalyzer extends AbstractAnalyzer {
         }
         String format = program.getExecutableFormat();
         String hash = program.getExecutableSHA256();
-        return (Xbox360RetailKernelMemoryPeLoader.LOADER_NAME.equals(format) &&
+        boolean loaderMatches =
+            (Xbox360RetailKernelMemoryPeLoader.LOADER_NAME.equals(format) &&
                 MEMORY_IMAGE_SHA256.equalsIgnoreCase(hash)) ||
             ("Portable Executable (PE)".equals(format) &&
                 NORMALIZED_PE_SHA256.equalsIgnoreCase(hash));
+        if (!loaderMatches) return false;
+
+        // Refuse even a recognized input if its .text block is still mapped
+        // using the wrong COFF raw pointer. Both entrypoints must decode as
+        // the known big-endian PowerPC mflr r12 opcode from the source image.
+        try {
+            return program.getMemory().getInt(at(program, 0x80061010L)) == 0x7D8802A6 &&
+                program.getMemory().getInt(at(program, 0x80089EB0L)) == 0x7D8802A6;
+        }
+        catch (Exception ex) {
+            return false;
+        }
     }
 
     private static Address at(Program program, long value) {
