@@ -1,0 +1,410 @@
+// Execute representative native VMX128 saturating packs and verify VSCR.SAT.
+// @category Xbox360
+//
+// Import build/xenon-isa-audit/xenon_isa_fixture_v1.bin into a disposable
+// PowerPC:BE:64:XENON-32addr Program. Run this script, then select the sibling
+// xenon_isa_fixture_v1.tsv manifest. The script does not edit a Ghidra database
+// except for bounded disassembly of selected fixture instruction sites.
+// V3 resolves SLEIGH subtable display operands if getOpObjects() omits them.
+// For patterned cases, an independent-register instruction is written only
+// to EmulatorHelper's private memory state. Program bytes remain unchanged.
+//
+// Unlike AuditXenonIsaFixtureV1, this script executes native p-code and checks
+// numerical results. It is NOT an assertion of full Xenon hardware equivalence
+// or of unrelated IEEE floating-point behavior.
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+import ghidra.app.emulator.EmulatorHelper;
+import ghidra.app.script.GhidraScript;
+import ghidra.program.model.address.Address;
+import ghidra.program.model.lang.Register;
+import ghidra.program.model.listing.Instruction;
+
+public class AuditXenonSaturatingPackV3 extends GhidraScript {
+    private static final String LANGUAGE = "PowerPC:BE:64:XENON-32addr";
+    private static final BigInteger MASK128 =
+        BigInteger.ONE.shiftLeft(128).subtract(BigInteger.ONE);
+
+    private static class Pack {
+        final String name;
+        final int inputBits;
+        final int outputBits;
+        final long positiveInput;
+        final long positiveResult;
+        final long negativeInput;
+        final long negativeResult;
+
+        Pack(String name, int inputBits, int outputBits,
+             long positiveInput, long positiveResult,
+             long negativeInput, long negativeResult) {
+            this.name = name;
+            this.inputBits = inputBits;
+            this.outputBits = outputBits;
+            this.positiveInput = positiveInput;
+            this.positiveResult = positiveResult;
+            this.negativeInput = negativeInput;
+            this.negativeResult = negativeResult;
+        }
+    }
+
+    private static final Pack[] CASES = {
+        new Pack("vpkshss128", 16, 8, 0x0100, 0x7f, 0xfe00, 0x80),
+        new Pack("vpkshus128", 16, 8, 0x0100, 0xff, 0xffff, 0x00),
+        new Pack("vpkswss128", 32, 16, 0x00010000, 0x7fff,
+                 0xfffe0000L, 0x8000),
+        new Pack("vpkswus128", 32, 16, 0x00010000, 0xffff,
+                 0xffffffffL, 0x0000),
+        new Pack("vpkuhus128", 16, 8, 0x0100, 0xff, 0xffff, 0xff),
+        new Pack("vpkuwus128", 32, 16, 0x00010000, 0xffff,
+                 0xffffffffL, 0xffff),
+    };
+
+    private static BigInteger repeated(long lane, int laneBits) {
+        BigInteger value = BigInteger.ZERO;
+        BigInteger mask = BigInteger.ONE.shiftLeft(laneBits)
+            .subtract(BigInteger.ONE);
+        BigInteger unit = BigInteger.valueOf(lane).and(mask);
+        for (int k = 0; k < 128 / laneBits; k++)
+            value = value.shiftLeft(laneBits).or(unit);
+        return value;
+    }
+
+    // Xenon SLEIGH subtable operands display as vsNN/xvNN but Ghidra's
+    // getOpObjects() does not necessarily expose their exported Registers.
+    // Resolve only exact, existing 128-bit register names from the decoded
+    // operand representation. Never infer a register from an opcode field.
+    private Register operand(Instruction instruction, int index) {
+        if (index < 0 || index >= instruction.getNumOperands())
+            return null;
+        for (Object object : instruction.getOpObjects(index)) {
+            if (object instanceof Register) {
+                Register register = (Register) object;
+                if (register.getBitLength() == 128)
+                    return register;
+            }
+        }
+        String rendered = instruction.getDefaultOperandRepresentation(index);
+        if (rendered == null)
+            return null;
+        rendered = rendered.trim();
+        if (!rendered.matches("(?:vs|xv)[0-9]{1,3}"))
+            return null;
+        Register register = currentProgram.getRegister(rendered);
+        return register != null && register.getBitLength() == 128
+            ? register : null;
+    }
+
+    private Register requireVectorRegister(String name) {
+        Register register = currentProgram.getRegister(name);
+        if (register == null || register.getBitLength() != 128)
+            throw new IllegalArgumentException(
+                "Missing 128-bit Xenon register " + name);
+        return register;
+    }
+
+    private static byte[] beWord(long word) {
+        return new byte[] {
+            (byte) (word >>> 24), (byte) (word >>> 16),
+            (byte) (word >>> 8), (byte) word,
+        };
+    }
+
+    // All four mnemonic-only fixture fills alias VD=VA=VB. Preserve those
+    // proven decoder samples and encode a distinct-register numerical probe
+    // in the emulator's PRIVATE memory, never the Program's memory.
+    // The six pack selectors have mask fc0003d0; VD=1, VA=2, VB=3
+    // with extension bits zero decode as vs33,vs34,vs35.
+    private static long independentPackWord(long original) {
+        return (original & 0xfc0003d0L) |
+            (1L << 21) | (2L << 16) | (3L << 11);
+    }
+
+    private String execute(Pack pack, Instruction instruction,
+                           long sourceUnit, long expectedUnit,
+                           long initialVSCR, boolean expectSAT)
+            throws Exception {
+        Register destination = operand(instruction, 0);
+        Register left = operand(instruction, 1);
+        Register right = operand(instruction, 2);
+        if (destination == null || left == null || right == null) {
+            return pack.name + ": unresolved 128-bit operand(s) in "
+                + instruction + " [0=" +
+                instruction.getDefaultOperandRepresentation(0) +
+                ", 1=" + instruction.getDefaultOperandRepresentation(1) +
+                ", 2=" + instruction.getDefaultOperandRepresentation(2) +
+                "]; getOpObjects() may omit SLEIGH subtable exports";
+        }
+
+        EmulatorHelper emulator = new EmulatorHelper(currentProgram);
+        try {
+            BigInteger input = repeated(sourceUnit, pack.inputBits);
+            emulator.writeRegister(left, input);
+            emulator.writeRegister(right, input);
+            emulator.writeRegister("xenonVSCR", initialVSCR);
+            emulator.writeRegister(currentProgram.getLanguage().getProgramCounter(),
+                                   instruction.getAddress().getOffset());
+
+            if (!emulator.step(monitor))
+                return pack.name + ": p-code execution failed at "
+                    + instruction.getAddress() + ": "
+                    + emulator.getLastError();
+
+            BigInteger actual = emulator.readRegister(destination).and(MASK128);
+            BigInteger expected = repeated(expectedUnit, pack.outputBits);
+            long vscr = emulator.readRegister("xenonVSCR").longValue()
+                        & 0xffffffffL;
+            long expectedVSCR = initialVSCR | (expectSAT ? 1L : 0L);
+            if (!actual.equals(expected) || vscr != expectedVSCR) {
+                return pack.name + " at " + instruction.getAddress()
+                    + ": expected vector=" + expected.toString(16)
+                    + " vscr=" + Long.toHexString(expectedVSCR)
+                    + ", actual vector=" + actual.toString(16)
+                    + " vscr=" + Long.toHexString(vscr);
+            }
+        }
+        finally {
+            emulator.dispose();
+        }
+        return null;
+    }
+
+    private static BigInteger laneVector(long[] values, int bits) {
+        BigInteger mask = BigInteger.ONE.shiftLeft(bits).subtract(BigInteger.ONE);
+        BigInteger vector = BigInteger.ZERO;
+        for (long value : values)
+            vector = vector.shiftLeft(bits).or(BigInteger.valueOf(value).and(mask));
+        return vector;
+    }
+
+    // Tests the VA and VB halves independently. Identical repeated operands
+    // cannot expose lane permutation or accidental duplicate-source reads.
+    private String executePattern(Pack pack, Address address,
+                                  long sourceWord, boolean saturating)
+            throws Exception {
+        Register destination = requireVectorRegister("vs33");
+        Register va = requireVectorRegister("vs34");
+        Register vb = requireVectorRegister("vs35");
+        long syntheticWord = independentPackWord(sourceWord);
+        if ((syntheticWord & 0xfc0003d0L) != (sourceWord & 0xfc0003d0L))
+            return pack.name + ": numerical opcode selector mismatch";
+
+        int half = 128 / pack.inputBits;
+        long[] a = new long[half];
+        long[] b = new long[half];
+        long[] output = new long[2 * half];
+        for (int i = 0; i < half; i++) {
+            a[i] = i + 1;
+            b[i] = i + 11;
+            output[i] = a[i];
+            output[half + i] = b[i];
+        }
+        if (saturating) {
+            a[0] = pack.positiveInput;
+            a[1] = pack.negativeInput;
+            b[half - 1] = pack.positiveInput;
+            output[0] = pack.positiveResult;
+            output[1] = pack.negativeResult;
+            output[2 * half - 1] = pack.positiveResult;
+        }
+        BigInteger expected = laneVector(output, pack.outputBits);
+        long initialVSCR = 0x10000L;
+        long expectedVSCR = initialVSCR | (saturating ? 1 : 0);
+        EmulatorHelper emulator = new EmulatorHelper(currentProgram);
+        try {
+            byte[] syntheticBytes = beWord(syntheticWord);
+            emulator.writeMemory(address, syntheticBytes);
+            if (!java.util.Arrays.equals(
+                    syntheticBytes, emulator.readMemory(address, 4)))
+                return pack.name + ": emulator-private opcode injection failed "
+                    + Long.toHexString(syntheticWord);
+            emulator.writeRegister(destination, MASK128);
+            emulator.writeRegister(va, laneVector(a, pack.inputBits));
+            emulator.writeRegister(vb, laneVector(b, pack.inputBits));
+            emulator.writeRegister("xenonVSCR", initialVSCR);
+            emulator.writeRegister(currentProgram.getLanguage().getProgramCounter(),
+                                   address.getOffset());
+            if (!emulator.step(monitor))
+                return pack.name + ": patterned p-code execution failed at "
+                    + address + " (emulated word "
+                    + Long.toHexString(syntheticWord) + "): "
+                    + emulator.getLastError();
+            BigInteger actual = emulator.readRegister(destination).and(MASK128);
+            long vscr = emulator.readRegister("xenonVSCR").longValue()
+                & 0xffffffffL;
+            if (!expected.equals(actual) || vscr != expectedVSCR)
+                return pack.name + " (" + (saturating ? "mixed SAT" : "in-range")
+                    + ") at " + address + " word="
+                    + Long.toHexString(syntheticWord)
+                    + ": expected vector=" + expected.toString(16)
+                    + " vscr=" + Long.toHexString(expectedVSCR)
+                    + ", actual vector=" + actual.toString(16)
+                    + " vscr=" + Long.toHexString(vscr);
+        }
+        finally {
+            emulator.dispose();
+        }
+        return null;
+    }
+
+    // Refuse to execute stale or mismatched fixture manifests. All four
+    // instruction bytes must match the word selected by the TSV.
+    private boolean fixtureWordMatches(Address address, Long word)
+            throws Exception {
+        if (address == null || word == null) return false;
+        byte[] actual = new byte[4];
+        if (currentProgram.getMemory().getBytes(address, actual) != 4)
+            return false;
+        long decoded = 0;
+        for (byte b : actual)
+            decoded = (decoded << 8) | (b & 0xffL);
+        return decoded == word.longValue();
+    }
+
+    @Override
+    protected void run() throws Exception {
+        String actualLanguage =
+            currentProgram.getLanguage().getLanguageID().getIdAsString();
+        if (!LANGUAGE.equals(actualLanguage)) {
+            printerr("Expected language " + LANGUAGE + ", got " + actualLanguage);
+            return;
+        }
+        if (currentProgram.getRegister("xenonVSCR") == null) {
+            printerr("Installed language lacks xenonVSCR. Rebuild/reinstall "
+                + "the current extension; do not interpret this as numeric failure.");
+            return;
+        }
+
+        File manifest = askFile("Select xenon_isa_fixture_v1.tsv", "Open");
+        Map<String, Address> addresses = new LinkedHashMap<>();
+        Map<String, Address> patternAddresses = new LinkedHashMap<>();
+        Map<Address, Long> fixtureWords = new LinkedHashMap<>();
+        Address base = currentProgram.getMinAddress();
+        try (BufferedReader reader = Files.newBufferedReader(
+                manifest.toPath(), StandardCharsets.UTF_8)) {
+            String heading = reader.readLine();
+            if (heading == null ||
+                !heading.startsWith("offset\tword_be\texpected_mnemonic\t")) {
+                printerr("Incorrect fixture manifest: " + manifest);
+                return;
+            }
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] columns = line.split("\t", -1);
+                if (columns.length != 6 || !"decode".equals(columns[5]))
+                    continue;
+                long offset = Long.parseUnsignedLong(
+                    columns[0].replaceFirst("^0x", ""), 16);
+                Address site = base.add(offset);
+                fixtureWords.put(site, Long.parseUnsignedLong(columns[1], 16));
+                addresses.putIfAbsent(columns[2], site);
+                if ("55".equals(columns[4]))
+                    patternAddresses.putIfAbsent(columns[2], site);
+            }
+        }
+
+        int passed = 0;
+        int failed = 0;
+        java.util.List<String> problems = new java.util.ArrayList<>();
+        for (Pack pack : CASES) {
+            monitor.checkCancelled();
+            Address address = addresses.get(pack.name);
+            if (address == null || !fixtureWordMatches(address, fixtureWords.get(address))) {
+                problems.add(pack.name + ": missing/byte-mismatched decode fixture entry");
+                failed += 5;
+                continue;
+            }
+            Instruction instruction = getInstructionAt(address);
+            if (instruction == null) {
+                disassemble(address);
+                instruction = getInstructionAt(address);
+            }
+            if (instruction == null ||
+                !pack.name.equalsIgnoreCase(instruction.getMnemonicString())) {
+                problems.add(pack.name + ": fixture decoded incorrectly at " + address);
+                failed += 5;
+                continue;
+            }
+            // Positive and negative saturation both set SAT while retaining NJ.
+            // An in-range pack never clears a preexisting sticky SAT.
+            long[][] values = {
+                {pack.positiveInput, pack.positiveResult, 0x10000, 1},
+                {pack.negativeInput, pack.negativeResult, 0, 1},
+                {1, 1, 1, 0},
+            };
+            for (long[] test : values) {
+                monitor.checkCancelled();
+                try {
+                    String error = execute(pack, instruction,
+                        test[0], test[1], test[2], test[3] != 0);
+                    if (error != null) {
+                        problems.add(error);
+                        failed++;
+                    }
+                    else {
+                        passed++;
+                    }
+                }
+                catch (Exception error) {
+                    problems.add(pack.name + " at " + address + ": " + error);
+                    failed++;
+                }
+            }
+            Address patternAddress = patternAddresses.get(pack.name);
+            Instruction patterned = patternAddress == null
+                ? null : getInstructionAt(patternAddress);
+            if (patterned == null && patternAddress != null) {
+                disassemble(patternAddress);
+                patterned = getInstructionAt(patternAddress);
+            }
+            if (!fixtureWordMatches(patternAddress, fixtureWords.get(patternAddress)) ||
+                patterned == null ||
+                !pack.name.equalsIgnoreCase(patterned.getMnemonicString())) {
+                problems.add(pack.name + ": missing patterned fixture at "
+                    + patternAddress);
+                failed += 2;
+                continue;
+            }
+            for (boolean saturating : new boolean[] {false, true}) {
+                monitor.checkCancelled();
+                try {
+                    String error = executePattern(pack, patternAddress,
+                        fixtureWords.get(patternAddress), saturating);
+                    if (error == null) passed++;
+                    else {
+                        problems.add(error);
+                        failed++;
+                    }
+                }
+                catch (Exception error) {
+                    problems.add(pack.name + " at " + patternAddress
+                        + " (patterned): " + error);
+                    failed++;
+                }
+            }
+        }
+
+        println("");
+        println("============================================================");
+        println("XENON NATIVE PACK NUMERICAL P-CODE AUDIT");
+        println("============================================================");
+        println("Language: " + actualLanguage);
+        println("Cases: " + (passed + failed) + "; passed: " + passed
+            + "; failed: " + failed);
+        println("Checked: 128-bit clipping, independent VA/VB lane order, "
+            + "and sticky VSCR SAT / NJ (only passed cases are verified).");
+        println("Pattern probes patch emulator-private instruction bytes only; "
+            + "the Program fixture bytes are unchanged.");
+        println("Numerical instruction cases only, not Xenon hardware equivalence.");
+        println("");
+        println("UNRESOLVED / INCORRECT STATES (" + problems.size() + ")");
+        if (problems.isEmpty()) println("None");
+        for (String problem : problems) println(problem);
+    }
+}
