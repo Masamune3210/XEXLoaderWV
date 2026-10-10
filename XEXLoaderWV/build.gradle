@@ -217,7 +217,8 @@ tasks.register("generateXenonIsaFixture", Exec) {
         file("tools/data/xenia_vmx128_opcode_inventory_20261009.tsv"),
         file("tools/data/xenia_xform_vector_opcode_inventory_20261009.tsv"),
         file("data/languages/xenon_vector_v1.sinc"),
-        file("data/languages/xenon_vector_remaining_v1.sinc"))
+        file("data/languages/xenon_vector_remaining_v1.sinc"),
+        file("data/languages/xenon_64_be.slaspec"))
     // Intentionally no output cache/up-to-date declaration: always regenerate.
 }
 
