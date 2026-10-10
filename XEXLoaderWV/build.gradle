@@ -272,6 +272,30 @@ tasks.register("verifyXenonSleigh", Exec) {
     inputs.file(file("data/sleighArgs.txt"))
     outputs.file(file("data/languages/xenon_64_be.sla"))
 }
+// Opt-in diagnostic compile. Keep the packaged .sla untouched and enumerate
+// constructor-level warnings using Ghidra's own -n, -u and -t reports.
+// No warning is suppressed, and diagnostics aren't required for normal builds.
+tasks.register("diagnoseXenonSleigh", Exec) {
+    dependsOn tasks.named("generateXenonIsaFixture")
+    dependsOn tasks.named("prepareXenonLegacyAltivec"),
+              tasks.named("prepareXenonIsa"), tasks.named("prepareXenonCommon")
+    group = "verification"
+    description = "List Xenon SLEIGH NOP constructors, redundant casts, and unused temporaries"
+    workingDir file("data")
+    def windows = System.getProperty("os.name").toLowerCase(java.util.Locale.ROOT).contains("windows")
+    def compiler = new File(ghidraInstallDir, windows ? "support/sleigh.bat" : "support/sleigh")
+    if (!compiler.isFile()) {
+        throw new GradleException("Ghidra Sleigh compiler launch script not found: " + compiler)
+    }
+    commandLine compiler.absolutePath, "-n", "-u", "-t", "-i", "sleighArgs.txt",
+        "languages/xenon_64_be.slaspec",
+        "../build/xenon-isa-audit/xenon_64_be_diagnostics.sla"
+    inputs.files(fileTree("data/languages") { include("*.sinc", "*.slaspec") })
+    inputs.file(file("data/sleighArgs.txt"))
+    // Separate destination avoids confusing the real extension build stamp.
+    outputs.file(file("build/xenon-isa-audit/xenon_64_be_diagnostics.sla"))
+}
+
 // Attach to standard Ghidra extension build entrypoints if present, without
 // relying on one particular support/buildExtension.gradle task name.
 tasks.matching { it.name in ["build", "buildExtension", "assemble"] }.configureEach {
