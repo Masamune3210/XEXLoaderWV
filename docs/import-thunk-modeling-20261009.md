@@ -1,3 +1,9 @@
+## Numerical VMX128 pack runtime audit PASSED (2026-10-10)
+
+- User ran `AuditXenonSaturatingPackV3.java` in Ghidra 12.1.3 using `PowerPC:BE:64:XENON-32addr`. Exact report: **Cases: 30; passed: 30; failed: 0**, `UNRESOLVED / INCORRECT STATES (0): None`. Covers six native saturating pack families, 128-bit clipping, separately encoded VA/VB source-order patterns, and sticky `xenonVSCR.SAT` / non-SAT-bit preservation in exercised inputs. The emulator-private modified opcode execution works in this environment. No SLEIGH semantics changes were needed. These results validate the tested numerical cases, **not all operand values, hardware equivalence, or the remaining vector ISA**.
+- The old V2 0/30 were wholly pre-execution harness errors and are superseded by V3. Do not rerun V2 or the already-passing 344-word decoder fixture for this task.
+- Current next priority: create and execute an independent **native `vupkd3d128` numeric p-code audit** for unpack formats 0 (D3DCOLOR), 1 (SHORT_2), 2 (2_10_10_10), and 4 (SHORT_4), using the same validated Ghidra emulator-private instruction technique, exact output bit oracles, sign/overflow sentinels, and distinct destination/source registers. Maintain userop fallback for remaining unsupported formats. After unpack runtime validation, test finite-exact guarded FP multiply/add/sub paths.
+
 ## Numerical pack audit harness corrected after 0/30 pre-execution failures (2026-10-10)
 
 - User executed `AuditXenonSaturatingPackV2.java` on the already-passing Xenon Ghidra 12.1.3 decoder fixture: **0 passed / 30 failed**, with `missing decoded vector operand(s)` (18 cases) and `patterned fixture must use distinct VA/VB` (12 cases). Every failure occurs **before emulator execution**; these are harness/fixture shortcomings, **not numerical p-code failures**.
