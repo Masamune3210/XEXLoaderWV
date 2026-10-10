@@ -827,6 +827,10 @@ class XenonIsaInventoryTests(unittest.TestCase):
             encoding="utf-8")
         self.assertEqual(script.count("protected void run()"), 1)
         self.assertIn("XENON NUMERICAL P-CODE COMBINED RESULT", script)
+        self.assertEqual(script.count("UNRESOLVED / INCORRECT STATES"), 1)
+        self.assertIn(
+            'println("Unresolved details follow in the combined result below.");',
+            script)
         self.assertIn("recordSuite(\"PACK\", passed, failed, problems)", script)
         self.assertIn("recordSuite(\"D3D\", passed, failed, problems)", script)
         self.assertIn("recordSuite(\"GUARDED-FP\", passed, failed, problems)", script)
