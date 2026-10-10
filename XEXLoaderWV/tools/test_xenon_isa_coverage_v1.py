@@ -834,6 +834,12 @@ class XenonIsaInventoryTests(unittest.TestCase):
         self.assertIn("private void runShuffles(File manifest, Address base)",
                       script)
         self.assertIn("runShuffles(manifest, base);", script)
+        self.assertIn("import ghidra.app.emulator.DefaultEmulator;", script)
+        self.assertIn('pattern == 0 && selector == 0;', script)
+        self.assertIn("((DefaultEmulator) emulator.getEmulator())", script)
+        self.assertIn(".disassemble(1)", script)
+        self.assertIn("emulatorDecoded=[", script)
+        self.assertIn("alternativeDestRegisters=", script)
         self.assertIn('recordSuite("SHUFFLE", passed, failed, problems);',
                       script)
         self.assertIn("emulator.writeMemory(address, opcode);", script)
