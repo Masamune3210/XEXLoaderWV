@@ -74,8 +74,8 @@ class XenonIsaInventoryTests(unittest.TestCase):
                 r"(?m)^:" + re.escape(row["mnemonic"]) +
                 r" [^\n]+ is ([^\n]+)", source)
             if row["mnemonic"] not in constructors:
-                # The inventory intentionally includes still-unimplemented
-                # instructions such as vsldoi128 and vperm128.
+                # A selector absent from the current SLEIGH source is a
+                # regression now that all 84 pinned families have constructors.
                 self.assertFalse(rules, row["mnemonic"])
                 continue
             self.assertTrue(rules, row["mnemonic"])
