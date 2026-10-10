@@ -819,6 +819,97 @@ class XenonIsaInventoryTests(unittest.TestCase):
                 self.assertEqual(tuple(handle.readline().strip().split("\t")),
                                  expected)
 
+    def test_native_shuffle_numeric_selectors_and_oracles(self):
+        # Four extended-VA banks and independent VC register selectors.
+        # Run the fixed scalar oracle over the complete 128 shift matrix.
+        script = (audit.ROOT.parent / "ghidra_scripts" /
+                  "AuditXenonNumericalPcode.java").read_text(
+                      encoding="utf-8")
+        remaining = audit.ADDITIONAL_SLEIGH.read_text(
+            encoding="utf-8")
+        registers = audit.SLEIGH.read_text(encoding="utf-8")
+
+        self.assertEqual(remaining.count(":vsldoi128 xenonD,"), 2)
+        self.assertEqual(remaining.count(":vperm128 xenonD,"), 2)
+        self.assertIn("private void runShuffles(File manifest, Address base)",
+                      script)
+        self.assertIn("runShuffles(manifest, base);", script)
+        self.assertIn('recordSuite("SHUFFLE", passed, failed, problems);',
+                      script)
+        self.assertIn("emulator.writeMemory(address, opcode);", script)
+        self.assertIn("emulator.readMemory(address, 4)", script)
+        self.assertIn('vectorRegister("vs36")', script)
+        self.assertIn('vectorRegister(guardedFpSourceAName(variant))',
+                      script)
+        self.assertIn("!fixtureMatches(address, original)", script)
+        self.assertNotIn("currentProgram.getMemory().setBytes(", script)
+        self.assertIn('if (pattern == 0)', script.replace(
+            "int start = pattern == 0 ?", "if (pattern == 0)"))
+
+        va_names = ("vs34", "xv34", "xv66", "xv98")
+        for variant, va in enumerate(va_names):
+            mbh, oe = variant & 1, (variant >> 1) & 1
+            definition = (f'xenonA: "{va}" is vrAR=2 & '
+                          f'MBH={mbh} & OE={oe} {{ export {va}; }}')
+            self.assertIn(definition, registers)
+
+            for shift in range(16):
+                word = (0x10000010 | (1 << 21) | (2 << 16) |
+                        (3 << 11) | (shift << 6) |
+                        (mbh << 5) | (oe << 10))
+                self.assertEqual(word & 0xfc000010, 0x10000010)
+                self.assertEqual((word >> 6) & 15, shift)
+                self.assertEqual((word >> 5) & 1, mbh)
+                self.assertEqual((word >> 10) & 1, oe)
+            word = (0x14000000 | (1 << 21) | (2 << 16) |
+                    (3 << 11) | (4 << 6) |
+                    (mbh << 5) | (oe << 10))
+            self.assertEqual(word & 0xfc000210, 0x14000000)
+            self.assertEqual((word >> 6) & 7, 4)
+            self.assertEqual((word >> 9) & 1, 0)
+            self.assertIn(
+                f'xenonC: "vs36" is BITS_6_10={4 + (oe << 4)}',
+                remaining)
+
+        mask = (1 << 128) - 1
+        for input_variant in (0, 1):
+            aa = bytes((0x10 + i if input_variant == 0 else 0x80 + 7*i)
+                       & 255 for i in range(16))
+            bb = bytes((0xa0 - i if input_variant == 0 else 0x05 + 11*i)
+                       & 255 for i in range(16))
+            a_bits, b_bits = int.from_bytes(aa, "big"), int.from_bytes(
+                bb, "big")
+            for shift in range(16):
+                expected = int.from_bytes(aa[shift:] + bb[:shift],
+                                          "big")
+                actual = ((a_bits << (shift * 8)) |
+                          (b_bits >> (128 - shift * 8))) & mask
+                self.assertEqual(actual, expected)
+
+        # Control values select by bit4 (A/B) and low nibble (octet).
+        a = bytes(range(16))
+        b = bytes(range(0x80, 0x90))
+        controls = [
+            bytes(range(16)),
+            bytes(0x10 | i for i in range(16)),
+            bytes(0x20 | ((i & 1) << 4) | (15-i) for i in range(16)),
+            bytes(0xf0 | (15-i) for i in range(16)),
+            bytes(0x80 | (0x10 if i % 3 == 0 else 0) |
+                  ((i * 7 + 3) & 15) for i in range(16)),
+            bytes(0x40 | ((i & 1) << 4) for i in range(16)),
+            bytes([0x6f] * 16),
+            bytes([0x9f] * 16),
+        ]
+        self.assertEqual(len(controls), 8)
+        for c in controls:
+            expected = bytes((b if v & 16 else a)[v & 15] for v in c)
+            self.assertEqual(len(expected), 16)
+            # High selector bits [5..7] must not modify the chosen byte.
+            augmented = bytes(v ^ 0xe0 for v in c)
+            self.assertEqual(
+                bytes((b if v & 16 else a)[v & 15] for v in augmented),
+                expected)
+
     def test_unified_numerical_script_is_only_entrypoint(self):
         from pathlib import Path
 
@@ -836,6 +927,8 @@ class XenonIsaInventoryTests(unittest.TestCase):
         self.assertIn("recordSuite(\"GUARDED-FP\", passed, failed, problems)", script)
         self.assertIn("runSaturatingPacks(manifest, base);", script)
         self.assertIn("runGuardedFp(manifest, base);", script)
+        self.assertIn("runShuffles(manifest, base);", script)
+        self.assertIn("XENON BYTE SHUFFLE NATIVE NUMERICAL P-CODE AUDIT", script)
         self.assertIn("XENON D3D UNPACK NATIVE NUMERICAL P-CODE AUDIT", script)
         self.assertIn("XENON NATIVE PACK NUMERICAL P-CODE AUDIT", script)
         self.assertIn("XENON GUARDED FP NATIVE NUMERICAL P-CODE AUDIT", script)
