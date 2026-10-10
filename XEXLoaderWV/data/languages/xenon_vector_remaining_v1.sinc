@@ -6356,16 +6356,16 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 {
     valueA0:4 = xenonA(0);
     valueB0:4 = xenonB(0);
-    ambiguous0:1 = nan(valueA0) | nan(valueB0) | (valueA0 f== valueB0);
+    ambiguous0:1 = nan(valueA0) | nan(valueB0) | ((valueA0 f== valueB0) & (valueA0 != valueB0));
     valueA1:4 = xenonA(4);
     valueB1:4 = xenonB(4);
-    ambiguous1:1 = nan(valueA1) | nan(valueB1) | (valueA1 f== valueB1);
+    ambiguous1:1 = nan(valueA1) | nan(valueB1) | ((valueA1 f== valueB1) & (valueA1 != valueB1));
     valueA2:4 = xenonA(8);
     valueB2:4 = xenonB(8);
-    ambiguous2:1 = nan(valueA2) | nan(valueB2) | (valueA2 f== valueB2);
+    ambiguous2:1 = nan(valueA2) | nan(valueB2) | ((valueA2 f== valueB2) & (valueA2 != valueB2));
     valueA3:4 = xenonA(12);
     valueB3:4 = xenonB(12);
-    ambiguous3:1 = nan(valueA3) | nan(valueB3) | (valueA3 f== valueB3);
+    ambiguous3:1 = nan(valueA3) | nan(valueB3) | ((valueA3 f== valueB3) & (valueA3 != valueB3));
     anyAmbiguous:1 = ambiguous0 | ambiguous1 | ambiguous2 | ambiguous3;
     if (anyAmbiguous) goto <xenon_opaque_fp>;
     chooseA0:1 = valueA0 f> valueB0;
@@ -6396,16 +6396,16 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 {
     valueA0:4 = xenonA(0);
     valueB0:4 = xenonB(0);
-    ambiguous0:1 = nan(valueA0) | nan(valueB0) | (valueA0 f== valueB0);
+    ambiguous0:1 = nan(valueA0) | nan(valueB0) | ((valueA0 f== valueB0) & (valueA0 != valueB0));
     valueA1:4 = xenonA(4);
     valueB1:4 = xenonB(4);
-    ambiguous1:1 = nan(valueA1) | nan(valueB1) | (valueA1 f== valueB1);
+    ambiguous1:1 = nan(valueA1) | nan(valueB1) | ((valueA1 f== valueB1) & (valueA1 != valueB1));
     valueA2:4 = xenonA(8);
     valueB2:4 = xenonB(8);
-    ambiguous2:1 = nan(valueA2) | nan(valueB2) | (valueA2 f== valueB2);
+    ambiguous2:1 = nan(valueA2) | nan(valueB2) | ((valueA2 f== valueB2) & (valueA2 != valueB2));
     valueA3:4 = xenonA(12);
     valueB3:4 = xenonB(12);
-    ambiguous3:1 = nan(valueA3) | nan(valueB3) | (valueA3 f== valueB3);
+    ambiguous3:1 = nan(valueA3) | nan(valueB3) | ((valueA3 f== valueB3) & (valueA3 != valueB3));
     anyAmbiguous:1 = ambiguous0 | ambiguous1 | ambiguous2 | ambiguous3;
     if (anyAmbiguous) goto <xenon_opaque_fp>;
     chooseA0:1 = valueA0 f> valueB0;
@@ -6436,16 +6436,16 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 {
     valueA0:4 = xenonA(0);
     valueB0:4 = xenonB(0);
-    ambiguous0:1 = nan(valueA0) | nan(valueB0) | (valueA0 f== valueB0);
+    ambiguous0:1 = nan(valueA0) | nan(valueB0) | ((valueA0 f== valueB0) & (valueA0 != valueB0));
     valueA1:4 = xenonA(4);
     valueB1:4 = xenonB(4);
-    ambiguous1:1 = nan(valueA1) | nan(valueB1) | (valueA1 f== valueB1);
+    ambiguous1:1 = nan(valueA1) | nan(valueB1) | ((valueA1 f== valueB1) & (valueA1 != valueB1));
     valueA2:4 = xenonA(8);
     valueB2:4 = xenonB(8);
-    ambiguous2:1 = nan(valueA2) | nan(valueB2) | (valueA2 f== valueB2);
+    ambiguous2:1 = nan(valueA2) | nan(valueB2) | ((valueA2 f== valueB2) & (valueA2 != valueB2));
     valueA3:4 = xenonA(12);
     valueB3:4 = xenonB(12);
-    ambiguous3:1 = nan(valueA3) | nan(valueB3) | (valueA3 f== valueB3);
+    ambiguous3:1 = nan(valueA3) | nan(valueB3) | ((valueA3 f== valueB3) & (valueA3 != valueB3));
     anyAmbiguous:1 = ambiguous0 | ambiguous1 | ambiguous2 | ambiguous3;
     if (anyAmbiguous) goto <xenon_opaque_fp>;
     chooseA0:1 = valueA0 f> valueB0;
@@ -6476,16 +6476,16 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 {
     valueA0:4 = xenonA(0);
     valueB0:4 = xenonB(0);
-    ambiguous0:1 = nan(valueA0) | nan(valueB0) | (valueA0 f== valueB0);
+    ambiguous0:1 = nan(valueA0) | nan(valueB0) | ((valueA0 f== valueB0) & (valueA0 != valueB0));
     valueA1:4 = xenonA(4);
     valueB1:4 = xenonB(4);
-    ambiguous1:1 = nan(valueA1) | nan(valueB1) | (valueA1 f== valueB1);
+    ambiguous1:1 = nan(valueA1) | nan(valueB1) | ((valueA1 f== valueB1) & (valueA1 != valueB1));
     valueA2:4 = xenonA(8);
     valueB2:4 = xenonB(8);
-    ambiguous2:1 = nan(valueA2) | nan(valueB2) | (valueA2 f== valueB2);
+    ambiguous2:1 = nan(valueA2) | nan(valueB2) | ((valueA2 f== valueB2) & (valueA2 != valueB2));
     valueA3:4 = xenonA(12);
     valueB3:4 = xenonB(12);
-    ambiguous3:1 = nan(valueA3) | nan(valueB3) | (valueA3 f== valueB3);
+    ambiguous3:1 = nan(valueA3) | nan(valueB3) | ((valueA3 f== valueB3) & (valueA3 != valueB3));
     anyAmbiguous:1 = ambiguous0 | ambiguous1 | ambiguous2 | ambiguous3;
     if (anyAmbiguous) goto <xenon_opaque_fp>;
     chooseA0:1 = valueA0 f> valueB0;
@@ -6517,16 +6517,16 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 {
     valueA0:4 = xenonA(0);
     valueB0:4 = xenonB(0);
-    ambiguous0:1 = nan(valueA0) | nan(valueB0) | (valueA0 f== valueB0);
+    ambiguous0:1 = nan(valueA0) | nan(valueB0) | ((valueA0 f== valueB0) & (valueA0 != valueB0));
     valueA1:4 = xenonA(4);
     valueB1:4 = xenonB(4);
-    ambiguous1:1 = nan(valueA1) | nan(valueB1) | (valueA1 f== valueB1);
+    ambiguous1:1 = nan(valueA1) | nan(valueB1) | ((valueA1 f== valueB1) & (valueA1 != valueB1));
     valueA2:4 = xenonA(8);
     valueB2:4 = xenonB(8);
-    ambiguous2:1 = nan(valueA2) | nan(valueB2) | (valueA2 f== valueB2);
+    ambiguous2:1 = nan(valueA2) | nan(valueB2) | ((valueA2 f== valueB2) & (valueA2 != valueB2));
     valueA3:4 = xenonA(12);
     valueB3:4 = xenonB(12);
-    ambiguous3:1 = nan(valueA3) | nan(valueB3) | (valueA3 f== valueB3);
+    ambiguous3:1 = nan(valueA3) | nan(valueB3) | ((valueA3 f== valueB3) & (valueA3 != valueB3));
     anyAmbiguous:1 = ambiguous0 | ambiguous1 | ambiguous2 | ambiguous3;
     if (anyAmbiguous) goto <xenon_opaque_fp>;
     chooseA0:1 = valueA0 f< valueB0;
@@ -6557,16 +6557,16 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 {
     valueA0:4 = xenonA(0);
     valueB0:4 = xenonB(0);
-    ambiguous0:1 = nan(valueA0) | nan(valueB0) | (valueA0 f== valueB0);
+    ambiguous0:1 = nan(valueA0) | nan(valueB0) | ((valueA0 f== valueB0) & (valueA0 != valueB0));
     valueA1:4 = xenonA(4);
     valueB1:4 = xenonB(4);
-    ambiguous1:1 = nan(valueA1) | nan(valueB1) | (valueA1 f== valueB1);
+    ambiguous1:1 = nan(valueA1) | nan(valueB1) | ((valueA1 f== valueB1) & (valueA1 != valueB1));
     valueA2:4 = xenonA(8);
     valueB2:4 = xenonB(8);
-    ambiguous2:1 = nan(valueA2) | nan(valueB2) | (valueA2 f== valueB2);
+    ambiguous2:1 = nan(valueA2) | nan(valueB2) | ((valueA2 f== valueB2) & (valueA2 != valueB2));
     valueA3:4 = xenonA(12);
     valueB3:4 = xenonB(12);
-    ambiguous3:1 = nan(valueA3) | nan(valueB3) | (valueA3 f== valueB3);
+    ambiguous3:1 = nan(valueA3) | nan(valueB3) | ((valueA3 f== valueB3) & (valueA3 != valueB3));
     anyAmbiguous:1 = ambiguous0 | ambiguous1 | ambiguous2 | ambiguous3;
     if (anyAmbiguous) goto <xenon_opaque_fp>;
     chooseA0:1 = valueA0 f< valueB0;
@@ -6597,16 +6597,16 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 {
     valueA0:4 = xenonA(0);
     valueB0:4 = xenonB(0);
-    ambiguous0:1 = nan(valueA0) | nan(valueB0) | (valueA0 f== valueB0);
+    ambiguous0:1 = nan(valueA0) | nan(valueB0) | ((valueA0 f== valueB0) & (valueA0 != valueB0));
     valueA1:4 = xenonA(4);
     valueB1:4 = xenonB(4);
-    ambiguous1:1 = nan(valueA1) | nan(valueB1) | (valueA1 f== valueB1);
+    ambiguous1:1 = nan(valueA1) | nan(valueB1) | ((valueA1 f== valueB1) & (valueA1 != valueB1));
     valueA2:4 = xenonA(8);
     valueB2:4 = xenonB(8);
-    ambiguous2:1 = nan(valueA2) | nan(valueB2) | (valueA2 f== valueB2);
+    ambiguous2:1 = nan(valueA2) | nan(valueB2) | ((valueA2 f== valueB2) & (valueA2 != valueB2));
     valueA3:4 = xenonA(12);
     valueB3:4 = xenonB(12);
-    ambiguous3:1 = nan(valueA3) | nan(valueB3) | (valueA3 f== valueB3);
+    ambiguous3:1 = nan(valueA3) | nan(valueB3) | ((valueA3 f== valueB3) & (valueA3 != valueB3));
     anyAmbiguous:1 = ambiguous0 | ambiguous1 | ambiguous2 | ambiguous3;
     if (anyAmbiguous) goto <xenon_opaque_fp>;
     chooseA0:1 = valueA0 f< valueB0;
@@ -6637,16 +6637,16 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 {
     valueA0:4 = xenonA(0);
     valueB0:4 = xenonB(0);
-    ambiguous0:1 = nan(valueA0) | nan(valueB0) | (valueA0 f== valueB0);
+    ambiguous0:1 = nan(valueA0) | nan(valueB0) | ((valueA0 f== valueB0) & (valueA0 != valueB0));
     valueA1:4 = xenonA(4);
     valueB1:4 = xenonB(4);
-    ambiguous1:1 = nan(valueA1) | nan(valueB1) | (valueA1 f== valueB1);
+    ambiguous1:1 = nan(valueA1) | nan(valueB1) | ((valueA1 f== valueB1) & (valueA1 != valueB1));
     valueA2:4 = xenonA(8);
     valueB2:4 = xenonB(8);
-    ambiguous2:1 = nan(valueA2) | nan(valueB2) | (valueA2 f== valueB2);
+    ambiguous2:1 = nan(valueA2) | nan(valueB2) | ((valueA2 f== valueB2) & (valueA2 != valueB2));
     valueA3:4 = xenonA(12);
     valueB3:4 = xenonB(12);
-    ambiguous3:1 = nan(valueA3) | nan(valueB3) | (valueA3 f== valueB3);
+    ambiguous3:1 = nan(valueA3) | nan(valueB3) | ((valueA3 f== valueB3) & (valueA3 != valueB3));
     anyAmbiguous:1 = ambiguous0 | ambiguous1 | ambiguous2 | ambiguous3;
     if (anyAmbiguous) goto <xenon_opaque_fp>;
     chooseA0:1 = valueA0 f< valueB0;
