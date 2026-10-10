@@ -1130,3 +1130,151 @@ define pcodeop xenonVrlimi128;
     *[ram]:16 aligned = (oldValue & ~mask) | (newValue & mask);
 <done>
 }
+
+# ---- VMX128 vector permutation-control generators (opaque) ----
+# Output depends on EA mod 16. The custom userop explicitly records this
+# dependency pending proven per-byte shift-mask numerical semantics.
+define pcodeop xenonLvsl128;
+define pcodeop xenonLvsr128;
+
+:lvsl128 xenonD,RA_OR_ZERO,B is OP=4 & xenonD & RA_OR_ZERO & B & XOP_3_10=0 & BITS_0_1=3
+{
+    build RA_OR_ZERO;
+    offset:$(REGISTER_SIZE) = (RA_OR_ZERO + B) & 15;
+    result:16 = xenonLvsl128(offset);
+    xenonD = result;
+}
+
+:lvsl128 xenonD,RA_OR_ZERO,B is OP=4 & xenonD & RA_OR_ZERO & B & XOP_3_10=1 & BITS_0_1=3
+{
+    build RA_OR_ZERO;
+    offset:$(REGISTER_SIZE) = (RA_OR_ZERO + B) & 15;
+    result:16 = xenonLvsl128(offset);
+    xenonD = result;
+}
+
+:lvsr128 xenonD,RA_OR_ZERO,B is OP=4 & xenonD & RA_OR_ZERO & B & XOP_3_10=8 & BITS_0_1=3
+{
+    build RA_OR_ZERO;
+    offset:$(REGISTER_SIZE) = (RA_OR_ZERO + B) & 15;
+    result:16 = xenonLvsr128(offset);
+    xenonD = result;
+}
+
+:lvsr128 xenonD,RA_OR_ZERO,B is OP=4 & xenonD & RA_OR_ZERO & B & XOP_3_10=9 & BITS_0_1=3
+{
+    build RA_OR_ZERO;
+    offset:$(REGISTER_SIZE) = (RA_OR_ZERO + B) & 15;
+    result:16 = xenonLvsr128(offset);
+    xenonD = result;
+}
+
+# ---- Opcode-31 Xbox vector X-form extensions ----
+# The Rc-bit-requiring samples are left unsupported deliberately, as the
+# actual Xenon hardware legality of Rc=1 needs independent verification.
+# Two opcode-31 forms collide with Ghidra's generic A2 stvepx instructions,
+# removed ONLY from the variant-local generated ppc_isa.sinc.
+
+:stvlx vrD,RA_OR_ZERO,B is OP=31 & vrD & RA_OR_ZERO & B & XOP_1_10=647 & Rc=0
+{
+    build RA_OR_ZERO;
+    addr:$(REGISTER_SIZE) = RA_OR_ZERO + B;
+    shift:$(REGISTER_SIZE) = (addr & 15) * 8;
+    aligned:$(REGISTER_SIZE) = addr & 0xfffffffffffffff0;
+    mask:16 = ~(0:16) >> shift;
+    oldValue:16 = *[ram]:16 aligned;
+    newValue:16 = vrD >> shift;
+    *[ram]:16 aligned = (oldValue & ~mask) | (newValue & mask);
+}
+
+:stvrx vrD,RA_OR_ZERO,B is OP=31 & vrD & RA_OR_ZERO & B & XOP_1_10=679 & Rc=0
+{
+    build RA_OR_ZERO;
+    addr:$(REGISTER_SIZE) = RA_OR_ZERO + B;
+    off:$(REGISTER_SIZE) = addr & 15;
+    if (off == 0) goto <done>;
+    aligned:$(REGISTER_SIZE) = addr & 0xfffffffffffffff0;
+    shift:$(REGISTER_SIZE) = (16 - off) * 8;
+    mask:16 = ~(~(0:16) >> shift);
+    oldValue:16 = *[ram]:16 aligned;
+    newValue:16 = vrD << shift;
+    *[ram]:16 aligned = (oldValue & ~mask) | (newValue & mask);
+<done>
+}
+
+:lvlxl vrD,RA_OR_ZERO,B is OP=31 & vrD & RA_OR_ZERO & B & XOP_1_10=775 & Rc=0
+{
+    build RA_OR_ZERO;
+    addr:$(REGISTER_SIZE) = RA_OR_ZERO + B;
+    shift:$(REGISTER_SIZE) = (addr & 15) * 8;
+    aligned:$(REGISTER_SIZE) = addr & 0xfffffffffffffff0;
+    data:16 = *[ram]:16 aligned;
+    vrD = data << shift;
+}
+
+:lvrxl vrD,RA_OR_ZERO,B is OP=31 & vrD & RA_OR_ZERO & B & XOP_1_10=807 & Rc=0
+{
+    build RA_OR_ZERO;
+    addr:$(REGISTER_SIZE) = RA_OR_ZERO + B;
+    off:$(REGISTER_SIZE) = addr & 15;
+    if (off == 0) goto <no_load>;
+    aligned:$(REGISTER_SIZE) = addr & 0xfffffffffffffff0;
+    data:16 = *[ram]:16 aligned;
+    shift:$(REGISTER_SIZE) = (16 - off) * 8;
+    vrD = data >> shift;
+    goto <done>;
+<no_load>
+    vrD = 0:16;
+<done>
+}
+
+:stvlxl vrD,RA_OR_ZERO,B is OP=31 & vrD & RA_OR_ZERO & B & XOP_1_10=903 & Rc=0
+{
+    build RA_OR_ZERO;
+    addr:$(REGISTER_SIZE) = RA_OR_ZERO + B;
+    shift:$(REGISTER_SIZE) = (addr & 15) * 8;
+    aligned:$(REGISTER_SIZE) = addr & 0xfffffffffffffff0;
+    mask:16 = ~(0:16) >> shift;
+    oldValue:16 = *[ram]:16 aligned;
+    newValue:16 = vrD >> shift;
+    *[ram]:16 aligned = (oldValue & ~mask) | (newValue & mask);
+}
+
+:stvrxl vrD,RA_OR_ZERO,B is OP=31 & vrD & RA_OR_ZERO & B & XOP_1_10=935 & Rc=0
+{
+    build RA_OR_ZERO;
+    addr:$(REGISTER_SIZE) = RA_OR_ZERO + B;
+    off:$(REGISTER_SIZE) = addr & 15;
+    if (off == 0) goto <done>;
+    aligned:$(REGISTER_SIZE) = addr & 0xfffffffffffffff0;
+    shift:$(REGISTER_SIZE) = (16 - off) * 8;
+    mask:16 = ~(~(0:16) >> shift);
+    oldValue:16 = *[ram]:16 aligned;
+    newValue:16 = vrD << shift;
+    *[ram]:16 aligned = (oldValue & ~mask) | (newValue & mask);
+<done>
+}
+
+# dcbz128 differs from generic dcbz by RT=1 (BITS_21_25). It clears
+# the entire 128-byte-aligned cache line, per Xenia's memory emitter.
+# Generic dcbz is restricted to RT=0 in Xenon's generated ppc_isa.sinc.
+:dcbz128 RA_OR_ZERO,B is OP=31 & BITS_21_25=1 & RA_OR_ZERO & B & XOP_1_10=1014
+{
+    build RA_OR_ZERO;
+    addr:$(REGISTER_SIZE) = (RA_OR_ZERO + B) & 0xffffffffffffff80;
+    *[ram]:16 addr = 0:16;
+    target1:$(REGISTER_SIZE) = addr + 16;
+    *[ram]:16 target1 = 0:16;
+    target2:$(REGISTER_SIZE) = addr + 32;
+    *[ram]:16 target2 = 0:16;
+    target3:$(REGISTER_SIZE) = addr + 48;
+    *[ram]:16 target3 = 0:16;
+    target4:$(REGISTER_SIZE) = addr + 64;
+    *[ram]:16 target4 = 0:16;
+    target5:$(REGISTER_SIZE) = addr + 80;
+    *[ram]:16 target5 = 0:16;
+    target6:$(REGISTER_SIZE) = addr + 96;
+    *[ram]:16 target6 = 0:16;
+    target7:$(REGISTER_SIZE) = addr + 112;
+    *[ram]:16 target7 = 0:16;
+}
