@@ -21,8 +21,8 @@ define pcodeop xenonVsro128;
 define pcodeop xenonVpkd3d128;
 define pcodeop xenonVcfpsxws128;
 define pcodeop xenonVcfpuxws128;
-define pcodeop xenonVcsxwfp128;
-define pcodeop xenonVcuxwfp128;
+
+
 define pcodeop xenonVrfim128;
 
 define pcodeop xenonVrfip128;
@@ -1362,27 +1362,99 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 # vcsxwfp128: opaque; Xenia mask/value fc0007f0/180002b0
 :vcsxwfp128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=86 & BITS_0_1
 {
-    result:16 = xenonVcsxwfp128(xenonB, A_BITS:4);
-    xenonD = result;
+    exponent:4 = (127:4 - A_BITS:4) << 23;
+    integerWord0:4 = xenonB(0);
+    convertedWord0:4 = int2float(integerWord0);
+    scaledWord0:4 = convertedWord0 f* exponent;
+    vectorWord0:16 = zext(scaledWord0);
+    integerWord1:4 = xenonB(4);
+    convertedWord1:4 = int2float(integerWord1);
+    scaledWord1:4 = convertedWord1 f* exponent;
+    vectorWord1:16 = zext(scaledWord1) << 32;
+    integerWord2:4 = xenonB(8);
+    convertedWord2:4 = int2float(integerWord2);
+    scaledWord2:4 = convertedWord2 f* exponent;
+    vectorWord2:16 = zext(scaledWord2) << 64;
+    integerWord3:4 = xenonB(12);
+    convertedWord3:4 = int2float(integerWord3);
+    scaledWord3:4 = convertedWord3 f* exponent;
+    vectorWord3:16 = zext(scaledWord3) << 96;
+    xenonD = vectorWord0 | vectorWord1 | vectorWord2 | vectorWord3;
 }
 
 :vcsxwfp128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=87 & BITS_0_1
 {
-    result:16 = xenonVcsxwfp128(xenonB, A_BITS:4);
-    xenonD = result;
+    exponent:4 = (127:4 - A_BITS:4) << 23;
+    integerWord0:4 = xenonB(0);
+    convertedWord0:4 = int2float(integerWord0);
+    scaledWord0:4 = convertedWord0 f* exponent;
+    vectorWord0:16 = zext(scaledWord0);
+    integerWord1:4 = xenonB(4);
+    convertedWord1:4 = int2float(integerWord1);
+    scaledWord1:4 = convertedWord1 f* exponent;
+    vectorWord1:16 = zext(scaledWord1) << 32;
+    integerWord2:4 = xenonB(8);
+    convertedWord2:4 = int2float(integerWord2);
+    scaledWord2:4 = convertedWord2 f* exponent;
+    vectorWord2:16 = zext(scaledWord2) << 64;
+    integerWord3:4 = xenonB(12);
+    convertedWord3:4 = int2float(integerWord3);
+    scaledWord3:4 = convertedWord3 f* exponent;
+    vectorWord3:16 = zext(scaledWord3) << 96;
+    xenonD = vectorWord0 | vectorWord1 | vectorWord2 | vectorWord3;
 }
 
 # vcuxwfp128: opaque; Xenia mask/value fc0007f0/180002f0
 :vcuxwfp128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=94 & BITS_0_1
 {
-    result:16 = xenonVcuxwfp128(xenonB, A_BITS:4);
-    xenonD = result;
+    exponent:4 = (127:4 - A_BITS:4) << 23;
+    integerWord0:4 = xenonB(0);
+    extendedUnsigned0:8 = zext(integerWord0);
+    convertedWord0:4 = int2float(extendedUnsigned0);
+    scaledWord0:4 = convertedWord0 f* exponent;
+    vectorWord0:16 = zext(scaledWord0);
+    integerWord1:4 = xenonB(4);
+    extendedUnsigned1:8 = zext(integerWord1);
+    convertedWord1:4 = int2float(extendedUnsigned1);
+    scaledWord1:4 = convertedWord1 f* exponent;
+    vectorWord1:16 = zext(scaledWord1) << 32;
+    integerWord2:4 = xenonB(8);
+    extendedUnsigned2:8 = zext(integerWord2);
+    convertedWord2:4 = int2float(extendedUnsigned2);
+    scaledWord2:4 = convertedWord2 f* exponent;
+    vectorWord2:16 = zext(scaledWord2) << 64;
+    integerWord3:4 = xenonB(12);
+    extendedUnsigned3:8 = zext(integerWord3);
+    convertedWord3:4 = int2float(extendedUnsigned3);
+    scaledWord3:4 = convertedWord3 f* exponent;
+    vectorWord3:16 = zext(scaledWord3) << 96;
+    xenonD = vectorWord0 | vectorWord1 | vectorWord2 | vectorWord3;
 }
 
 :vcuxwfp128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=95 & BITS_0_1
 {
-    result:16 = xenonVcuxwfp128(xenonB, A_BITS:4);
-    xenonD = result;
+    exponent:4 = (127:4 - A_BITS:4) << 23;
+    integerWord0:4 = xenonB(0);
+    extendedUnsigned0:8 = zext(integerWord0);
+    convertedWord0:4 = int2float(extendedUnsigned0);
+    scaledWord0:4 = convertedWord0 f* exponent;
+    vectorWord0:16 = zext(scaledWord0);
+    integerWord1:4 = xenonB(4);
+    extendedUnsigned1:8 = zext(integerWord1);
+    convertedWord1:4 = int2float(extendedUnsigned1);
+    scaledWord1:4 = convertedWord1 f* exponent;
+    vectorWord1:16 = zext(scaledWord1) << 32;
+    integerWord2:4 = xenonB(8);
+    extendedUnsigned2:8 = zext(integerWord2);
+    convertedWord2:4 = int2float(extendedUnsigned2);
+    scaledWord2:4 = convertedWord2 f* exponent;
+    vectorWord2:16 = zext(scaledWord2) << 64;
+    integerWord3:4 = xenonB(12);
+    extendedUnsigned3:8 = zext(integerWord3);
+    convertedWord3:4 = int2float(extendedUnsigned3);
+    scaledWord3:4 = convertedWord3 f* exponent;
+    vectorWord3:16 = zext(scaledWord3) << 96;
+    xenonD = vectorWord0 | vectorWord1 | vectorWord2 | vectorWord3;
 }
 
 # vrfim128: opaque; Xenia mask/value fc0007f0/18000330
