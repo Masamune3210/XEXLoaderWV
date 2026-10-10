@@ -22,7 +22,9 @@ import ghidra.app.util.opinion.LoadSpec;
 import ghidra.app.util.opinion.Loader.ImporterSettings;
 import ghidra.framework.model.DomainObject;
 import ghidra.program.model.lang.LanguageCompilerSpecPair;
+import ghidra.program.model.lang.LanguageID;
 import ghidra.program.model.listing.Program;
+import ghidra.program.util.DefaultLanguageService;
 import ghidra.util.Msg;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskBuilder;
@@ -63,9 +65,27 @@ public class XEXLoaderWVLoader extends AbstractLibrarySupportLoader {
 		List<LoadSpec> loadSpecs = new ArrayList<>();
 		Msg.info(this, "XEX Loader: Checking Signature");
 		BinaryReader br = new BinaryReader(provider, false);
-		if (br.readInt(0) == 0x58455832)
-			loadSpecs.add(
-					new LoadSpec(this, 0, new LanguageCompilerSpecPair("PowerPC:BE:64:A2ALT-32addr", "default"), true));
+		if (br.readInt(0) != 0x58455832)
+			return loadSpecs;
+
+		// All Xbox 360 XEX binaries can contain Xenon VMX128 instructions,
+		// not just the retail kernel. Prefer the expanded language if installed,
+		// while retaining stock A2ALT as a selectable fallback.
+		boolean xenonAvailable = false;
+		try {
+			// Check only metadata here; importing options must not compile SLEIGH.
+			DefaultLanguageService.getLanguageService().getLanguageDescription(
+					new LanguageID("PowerPC:BE:64:XENON-32addr"));
+			xenonAvailable = true;
+		}
+		catch (Exception unavailable) {
+			// Existing installations without the Xenon language remain supported.
+		}
+		if (xenonAvailable)
+			loadSpecs.add(new LoadSpec(this, 0,
+				new LanguageCompilerSpecPair("PowerPC:BE:64:XENON-32addr", "default"), true));
+		loadSpecs.add(new LoadSpec(this, 0,
+			new LanguageCompilerSpecPair("PowerPC:BE:64:A2ALT-32addr", "default"), !xenonAvailable));
 		return loadSpecs;
 	}
 
