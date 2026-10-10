@@ -254,7 +254,6 @@ public class Xbox360RetailKernelPdataAnalyzer extends AbstractAnalyzer {
                 }
                 else created++;
             }
-            catch (CancelledException ex) { throw ex; }
             catch (Exception ex) {
                 skipped++;
                 if (failures.size() < 20)
