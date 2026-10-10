@@ -1066,7 +1066,8 @@ class XenonIsaInventoryTests(unittest.TestCase):
                 "shortY = 0x7fc00000:4;",
                 "placeX:16 = zext(shortX) << 96;",
                 "placeY:16 = zext(shortY) << 64;",
-                "shortOne:16 = 0x3f800000:16;",
+                "shortOneWord:4 = 0x3f800000:4;",
+                "shortOne:16 = zext(shortOneWord);",
                 "xenonD = placeX | placeY | shortOne;",
             ):
                 self.assertIn(statement, body)
