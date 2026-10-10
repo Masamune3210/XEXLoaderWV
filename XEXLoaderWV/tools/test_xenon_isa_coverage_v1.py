@@ -1047,7 +1047,9 @@ class XenonIsaInventoryTests(unittest.TestCase):
                         v = f"source{letter}{i}"
                         self.assertIn(f"{v}:4 = {vec}({i*4});", body)
                         self.assertIn(
-                            f"if (nan({v})) goto <fp_opaque>;", body)
+                            f"nan{letter}{i}:1 = nan({v});", body)
+                        self.assertIn(
+                            f"if (nan{letter}{i}) goto <fp_opaque>;", body)
                         self.assertIn(
                             f"if ({v} f< lowerSafe) goto <fp_opaque>;", body)
                         self.assertIn(
