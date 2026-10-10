@@ -385,6 +385,82 @@ public class Xbox360RetailKernelPdataAnalyzer extends AbstractAnalyzer {
             }
         }
 
+        // Ordinal 126 (KeLeaveUserMode) is a verified PowerPC function
+        // without an unwind/.pdata record. Unlike the other 300 distinct
+        // uncovered export destinations, generic PE analysis does not create
+        // its function. The bytes are a privileged register/state restore
+        // ending in a return and an alternate error path. The next .pdata
+        // function begins at 0x80073740, with padding/data at 0x80073734.
+        //
+        // Seed ONLY this known, verified export; do not assume all exports
+        // without .pdata share a signature, return convention or body size.
+        int specialExportFunctionsCreated = 0;
+        int specialExportFunctionFailures = 0;
+        final long specialStart = 0x80073690L;
+        if (metadata.codeExportsWithoutPdata.contains(specialStart) &&
+                "KeLeaveUserMode".equals(firstName(metadata, specialStart))) {
+            monitor.checkCancelled();
+            Address entry = at(program, specialStart);
+            AddressSet localExtent = new AddressSet(entry, at(program, 0x80073733L));
+            try {
+                // Independent entry opcode check in addition to the exact
+                // executable SHA256 and two prologue checks in canAnalyze().
+                if (readU32(program.getMemory(), entry, true) != 0x808D0100L) {
+                    throw new IllegalStateException("Unexpected KeLeaveUserMode entry bytes");
+                }
+
+                if (functions.getFunctionAt(entry) == null &&
+                        functions.getFunctionContaining(entry) == null) {
+                    if (listing.getDefinedDataAt(entry) != null) {
+                        throw new IllegalStateException("Entry occupied by defined data");
+                    }
+                    if (listing.getInstructionAt(entry) == null) {
+                        DisassembleCommand cmd = new DisassembleCommand(entry, localExtent, true);
+                        cmd.enableCodeAnalysis(false);
+                        cmd.applyTo(program, monitor);
+                    }
+                    if (listing.getInstructionAt(entry) == null) {
+                        throw new IllegalStateException("KeLeaveUserMode entry still not disassembled");
+                    }
+
+                    AddressSetView reachable =
+                        CreateFunctionCmd.getFunctionBody(program, entry, false, monitor);
+                    AddressSet localBody = new AddressSet(reachable.intersect(localExtent));
+                    Iterator<Function> conflicts = functions.getFunctionsOverlapping(localBody);
+                    while (conflicts.hasNext()) {
+                        Function other = conflicts.next();
+                        localBody = localBody.subtract(other.getBody());
+                    }
+                    if (!localBody.contains(entry)) {
+                        throw new IllegalStateException("Reachable body loses entry to an existing function");
+                    }
+
+                    Function function = functions.createFunction("KeLeaveUserMode",
+                        entry, localBody, SourceType.ANALYSIS);
+                    if (function == null) {
+                        throw new IllegalStateException("Ghidra rejected the verified export function");
+                    }
+                    function.setRepeatableComment(
+                        "Retail 17559 xboxkrnl export ordinal 126; privileged mode transition. " +
+                        "Not covered by .pdata. Body follows decoded control flow and is " +
+                        "limited to 0x80073690-0x80073733; no signature inferred.");
+                    specialExportFunctionsCreated++;
+                }
+            }
+            catch (Exception ex) {
+                specialExportFunctionFailures++;
+                if (failures.size() < 20) {
+                    failures.add("KeLeaveUserMode export @ " + entry + ": " + ex.getMessage());
+                }
+            }
+        }
+        else {
+            specialExportFunctionFailures++;
+            if (failures.size() < 20) {
+                failures.add("Expected ordinal 126 KeLeaveUserMode export not verified");
+            }
+        }
+
         // Export addresses from the PE are real entrypoints, even when they
         // have no .pdata record. Do not guess their function sizes.
         for (long address : metadata.codeExportsWithoutPdata) {
@@ -425,13 +501,15 @@ public class Xbox360RetailKernelPdataAnalyzer extends AbstractAnalyzer {
             "Xbox 360 kernel 17559: .pdata functions created=%d, existing=%d, " +
             "skipped=%d, pending disassembly=%d, entry data conflicts=%d, " +
             "flow bodies updated=%d, flow failures=%d, truncated flows=%d, " +
-            "export labels=%d, leaf entrypoints added=%d, already marked=%d",
+            "export labels=%d, leaf entrypoints added=%d, already marked=%d, " +
+            "special export functions created=%d, special failures=%d",
             created, alreadyPresent, skipped, deferredDisassembly, blockedByDefinedData,
             flowBodiesSet, flowBodyFailures, flowBodyOutOfRange,
-            newLabels, leafEntrypoints, previouslyMarkedEntrypoints));
+            newLabels, leafEntrypoints, previouslyMarkedEntrypoints,
+            specialExportFunctionsCreated, specialExportFunctionFailures));
         for (String failure : failures) log.appendMsg("  " + failure);
         if (failures.size() >= 20)
             log.appendMsg("  (Additional failures or pending entries suppressed; see counts above)");
-        return skipped == 0 && flowBodyFailures == 0;
+        return skipped == 0 && flowBodyFailures == 0 && specialExportFunctionFailures == 0;
     }
 }
