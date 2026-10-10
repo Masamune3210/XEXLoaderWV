@@ -102,3 +102,22 @@ The analyzer separately reports pending instructions, true function creation
 failures, and pre-existing export entrypoints. A successful metadata boundary
 pass is not proof that every instruction has been decoded; check the normal
 auto-analysis results before declaring full coverage.
+
+
+### Kernel analyzer eligibility during initial Ghidra PE import
+
+Ghidra constructs the analyzer list when the newly imported Program first opens.
+The analyzer's `canAnalyze()` now checks only the PowerPC language and PE
+executable format so it can register even if Ghidra has not yet supplied the
+executable SHA-256 metadata. **The SHA-256, base address, section layout,
+and .pdata/export validation remain mandatory in `added()` before any
+Program changes.** The analyzer logs whether Ghidra considered it eligible
+for a Program named `xboxkrnl.exe`, and logs when `added()` actually runs.
+This allows diagnosis of differences between an analyzer not being discovered,
+not being eligible, being disabled, and failing runtime verification.
+
+For validation, rebuild/reinstall, restart Ghidra, then open a kernel Program
+and inspect `application.log` for `Retail kernel analyzer eligibility`.
+A qualifying fresh PE import must list `Xbox 360 Retail Kernel 17559 Pdata`
+in analysis options and in the final analyzer timing report. Do not compare
+a post-analysis audit against a different import session.
