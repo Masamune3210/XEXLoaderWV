@@ -63,6 +63,7 @@ EXPECTED = {
     "vpkswus128": "native-pcode",
     "vpkuhus128": "native-pcode",
     "vpkuwus128": "native-pcode",
+    "vupkd3d128": "opaque-userop",
     "vmaddfp128": "opaque-userop",
     "vmaddcfp128": "opaque-userop",
     "vnmsubfp128": "opaque-userop",
