@@ -3958,33 +3958,79 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
     scalingBits:4 = (127:4 + A_BITS:4) << 23;
     lowerBound:4 = 0xcf000000:4;
     upperBound:4 = 0x4f000000:4;
-    fpSource0:4 = xenonB(0);
-    scaledValue0:4 = fpSource0 f* scalingBits;
-    overflowTest0:1 = nan(scaledValue0) | (scaledValue0 f< lowerBound) | (scaledValue0 f>= upperBound);
-    fpSource1:4 = xenonB(4);
-    scaledValue1:4 = fpSource1 f* scalingBits;
-    overflowTest1:1 = nan(scaledValue1) | (scaledValue1 f< lowerBound) | (scaledValue1 f>= upperBound);
-    fpSource2:4 = xenonB(8);
-    scaledValue2:4 = fpSource2 f* scalingBits;
-    overflowTest2:1 = nan(scaledValue2) | (scaledValue2 f< lowerBound) | (scaledValue2 f>= upperBound);
-    fpSource3:4 = xenonB(12);
-    scaledValue3:4 = fpSource3 f* scalingBits;
-    overflowTest3:1 = nan(scaledValue3) | (scaledValue3 f< lowerBound) | (scaledValue3 f>= upperBound);
-    anySaturation:1 = overflowTest0 | overflowTest1 | overflowTest2 | overflowTest3;
-    if (anySaturation) goto <conversion_saturates>;
-    integerWord0:4 = trunc(scaledValue0);
-    combinedWord0:16 = zext(integerWord0);
-    integerWord1:4 = trunc(scaledValue1);
-    combinedWord1:16 = zext(integerWord1) << 32;
-    integerWord2:4 = trunc(scaledValue2);
-    combinedWord2:16 = zext(integerWord2) << 64;
-    integerWord3:4 = trunc(scaledValue3);
-    combinedWord3:16 = zext(integerWord3) << 96;
-    xenonD = combinedWord0 | combinedWord1 | combinedWord2 | combinedWord3;
+    sourceFloat0:4 = xenonB(0);
+    scaledFloat0:4 = sourceFloat0 f* scalingBits;
+    conversionNaN0:1 = nan(scaledFloat0);
+    belowMin0:1 = scaledFloat0 f< lowerBound;
+    aboveMax0:1 = scaledFloat0 f>= upperBound;
+    sourceFloat1:4 = xenonB(4);
+    scaledFloat1:4 = sourceFloat1 f* scalingBits;
+    conversionNaN1:1 = nan(scaledFloat1);
+    belowMin1:1 = scaledFloat1 f< lowerBound;
+    aboveMax1:1 = scaledFloat1 f>= upperBound;
+    sourceFloat2:4 = xenonB(8);
+    scaledFloat2:4 = sourceFloat2 f* scalingBits;
+    conversionNaN2:1 = nan(scaledFloat2);
+    belowMin2:1 = scaledFloat2 f< lowerBound;
+    aboveMax2:1 = scaledFloat2 f>= upperBound;
+    sourceFloat3:4 = xenonB(12);
+    scaledFloat3:4 = sourceFloat3 f* scalingBits;
+    conversionNaN3:1 = nan(scaledFloat3);
+    belowMin3:1 = scaledFloat3 f< lowerBound;
+    aboveMax3:1 = scaledFloat3 f>= upperBound;
+    anyNaN:1 = conversionNaN0 | conversionNaN1 | conversionNaN2 | conversionNaN3;
+    if (anyNaN) goto <conversion_nan_opaque>;
+    if (belowMin0) goto <saturate_low_0>;
+    if (aboveMax0) goto <saturate_high_0>;
+    convertedInt0:4 = trunc(scaledFloat0);
+    goto <conversion_lane_join_0>;
+<saturate_low_0>
+    convertedInt0:4 = 0x80000000:4;
+    goto <conversion_lane_join_0>;
+<saturate_high_0>
+    convertedInt0:4 = 0x7fffffff:4;
+<conversion_lane_join_0>
+    assembledInt0:16 = zext(convertedInt0);
+    if (belowMin1) goto <saturate_low_1>;
+    if (aboveMax1) goto <saturate_high_1>;
+    convertedInt1:4 = trunc(scaledFloat1);
+    goto <conversion_lane_join_1>;
+<saturate_low_1>
+    convertedInt1:4 = 0x80000000:4;
+    goto <conversion_lane_join_1>;
+<saturate_high_1>
+    convertedInt1:4 = 0x7fffffff:4;
+<conversion_lane_join_1>
+    assembledInt1:16 = zext(convertedInt1) << 32;
+    if (belowMin2) goto <saturate_low_2>;
+    if (aboveMax2) goto <saturate_high_2>;
+    convertedInt2:4 = trunc(scaledFloat2);
+    goto <conversion_lane_join_2>;
+<saturate_low_2>
+    convertedInt2:4 = 0x80000000:4;
+    goto <conversion_lane_join_2>;
+<saturate_high_2>
+    convertedInt2:4 = 0x7fffffff:4;
+<conversion_lane_join_2>
+    assembledInt2:16 = zext(convertedInt2) << 64;
+    if (belowMin3) goto <saturate_low_3>;
+    if (aboveMax3) goto <saturate_high_3>;
+    convertedInt3:4 = trunc(scaledFloat3);
+    goto <conversion_lane_join_3>;
+<saturate_low_3>
+    convertedInt3:4 = 0x80000000:4;
+    goto <conversion_lane_join_3>;
+<saturate_high_3>
+    convertedInt3:4 = 0x7fffffff:4;
+<conversion_lane_join_3>
+    assembledInt3:16 = zext(convertedInt3) << 96;
+    xenonD = assembledInt0 | assembledInt1 | assembledInt2 | assembledInt3;
+    conversionSaturated:1 = (belowMin0 | aboveMax0) | (belowMin1 | aboveMax1) | (belowMin2 | aboveMax2) | (belowMin3 | aboveMax3);
+    xenonSetVscrSatIf(conversionSaturated);
     goto <conversion_done>;
-<conversion_saturates>
-    saturatedOutput:16 = xenonVcfpsxws128(xenonB, A_BITS:4);
-    xenonD = saturatedOutput;
+<conversion_nan_opaque>
+    unresolvedNaN:16 = xenonVcfpsxws128(xenonB, A_BITS:4);
+    xenonD = unresolvedNaN;
 <conversion_done>
 }
 
@@ -3993,33 +4039,79 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
     scalingBits:4 = (127:4 + A_BITS:4) << 23;
     lowerBound:4 = 0xcf000000:4;
     upperBound:4 = 0x4f000000:4;
-    fpSource0:4 = xenonB(0);
-    scaledValue0:4 = fpSource0 f* scalingBits;
-    overflowTest0:1 = nan(scaledValue0) | (scaledValue0 f< lowerBound) | (scaledValue0 f>= upperBound);
-    fpSource1:4 = xenonB(4);
-    scaledValue1:4 = fpSource1 f* scalingBits;
-    overflowTest1:1 = nan(scaledValue1) | (scaledValue1 f< lowerBound) | (scaledValue1 f>= upperBound);
-    fpSource2:4 = xenonB(8);
-    scaledValue2:4 = fpSource2 f* scalingBits;
-    overflowTest2:1 = nan(scaledValue2) | (scaledValue2 f< lowerBound) | (scaledValue2 f>= upperBound);
-    fpSource3:4 = xenonB(12);
-    scaledValue3:4 = fpSource3 f* scalingBits;
-    overflowTest3:1 = nan(scaledValue3) | (scaledValue3 f< lowerBound) | (scaledValue3 f>= upperBound);
-    anySaturation:1 = overflowTest0 | overflowTest1 | overflowTest2 | overflowTest3;
-    if (anySaturation) goto <conversion_saturates>;
-    integerWord0:4 = trunc(scaledValue0);
-    combinedWord0:16 = zext(integerWord0);
-    integerWord1:4 = trunc(scaledValue1);
-    combinedWord1:16 = zext(integerWord1) << 32;
-    integerWord2:4 = trunc(scaledValue2);
-    combinedWord2:16 = zext(integerWord2) << 64;
-    integerWord3:4 = trunc(scaledValue3);
-    combinedWord3:16 = zext(integerWord3) << 96;
-    xenonD = combinedWord0 | combinedWord1 | combinedWord2 | combinedWord3;
+    sourceFloat0:4 = xenonB(0);
+    scaledFloat0:4 = sourceFloat0 f* scalingBits;
+    conversionNaN0:1 = nan(scaledFloat0);
+    belowMin0:1 = scaledFloat0 f< lowerBound;
+    aboveMax0:1 = scaledFloat0 f>= upperBound;
+    sourceFloat1:4 = xenonB(4);
+    scaledFloat1:4 = sourceFloat1 f* scalingBits;
+    conversionNaN1:1 = nan(scaledFloat1);
+    belowMin1:1 = scaledFloat1 f< lowerBound;
+    aboveMax1:1 = scaledFloat1 f>= upperBound;
+    sourceFloat2:4 = xenonB(8);
+    scaledFloat2:4 = sourceFloat2 f* scalingBits;
+    conversionNaN2:1 = nan(scaledFloat2);
+    belowMin2:1 = scaledFloat2 f< lowerBound;
+    aboveMax2:1 = scaledFloat2 f>= upperBound;
+    sourceFloat3:4 = xenonB(12);
+    scaledFloat3:4 = sourceFloat3 f* scalingBits;
+    conversionNaN3:1 = nan(scaledFloat3);
+    belowMin3:1 = scaledFloat3 f< lowerBound;
+    aboveMax3:1 = scaledFloat3 f>= upperBound;
+    anyNaN:1 = conversionNaN0 | conversionNaN1 | conversionNaN2 | conversionNaN3;
+    if (anyNaN) goto <conversion_nan_opaque>;
+    if (belowMin0) goto <saturate_low_0>;
+    if (aboveMax0) goto <saturate_high_0>;
+    convertedInt0:4 = trunc(scaledFloat0);
+    goto <conversion_lane_join_0>;
+<saturate_low_0>
+    convertedInt0:4 = 0x80000000:4;
+    goto <conversion_lane_join_0>;
+<saturate_high_0>
+    convertedInt0:4 = 0x7fffffff:4;
+<conversion_lane_join_0>
+    assembledInt0:16 = zext(convertedInt0);
+    if (belowMin1) goto <saturate_low_1>;
+    if (aboveMax1) goto <saturate_high_1>;
+    convertedInt1:4 = trunc(scaledFloat1);
+    goto <conversion_lane_join_1>;
+<saturate_low_1>
+    convertedInt1:4 = 0x80000000:4;
+    goto <conversion_lane_join_1>;
+<saturate_high_1>
+    convertedInt1:4 = 0x7fffffff:4;
+<conversion_lane_join_1>
+    assembledInt1:16 = zext(convertedInt1) << 32;
+    if (belowMin2) goto <saturate_low_2>;
+    if (aboveMax2) goto <saturate_high_2>;
+    convertedInt2:4 = trunc(scaledFloat2);
+    goto <conversion_lane_join_2>;
+<saturate_low_2>
+    convertedInt2:4 = 0x80000000:4;
+    goto <conversion_lane_join_2>;
+<saturate_high_2>
+    convertedInt2:4 = 0x7fffffff:4;
+<conversion_lane_join_2>
+    assembledInt2:16 = zext(convertedInt2) << 64;
+    if (belowMin3) goto <saturate_low_3>;
+    if (aboveMax3) goto <saturate_high_3>;
+    convertedInt3:4 = trunc(scaledFloat3);
+    goto <conversion_lane_join_3>;
+<saturate_low_3>
+    convertedInt3:4 = 0x80000000:4;
+    goto <conversion_lane_join_3>;
+<saturate_high_3>
+    convertedInt3:4 = 0x7fffffff:4;
+<conversion_lane_join_3>
+    assembledInt3:16 = zext(convertedInt3) << 96;
+    xenonD = assembledInt0 | assembledInt1 | assembledInt2 | assembledInt3;
+    conversionSaturated:1 = (belowMin0 | aboveMax0) | (belowMin1 | aboveMax1) | (belowMin2 | aboveMax2) | (belowMin3 | aboveMax3);
+    xenonSetVscrSatIf(conversionSaturated);
     goto <conversion_done>;
-<conversion_saturates>
-    saturatedOutput:16 = xenonVcfpsxws128(xenonB, A_BITS:4);
-    xenonD = saturatedOutput;
+<conversion_nan_opaque>
+    unresolvedNaN:16 = xenonVcfpsxws128(xenonB, A_BITS:4);
+    xenonD = unresolvedNaN;
 <conversion_done>
 }
 
@@ -4029,37 +4121,83 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
     scalingBits:4 = (127:4 + A_BITS:4) << 23;
     lowerBound:4 = 0:4;
     upperBound:4 = 0x4f800000:4;
-    fpSource0:4 = xenonB(0);
-    scaledValue0:4 = fpSource0 f* scalingBits;
-    overflowTest0:1 = nan(scaledValue0) | (scaledValue0 f< lowerBound) | (scaledValue0 f>= upperBound);
-    fpSource1:4 = xenonB(4);
-    scaledValue1:4 = fpSource1 f* scalingBits;
-    overflowTest1:1 = nan(scaledValue1) | (scaledValue1 f< lowerBound) | (scaledValue1 f>= upperBound);
-    fpSource2:4 = xenonB(8);
-    scaledValue2:4 = fpSource2 f* scalingBits;
-    overflowTest2:1 = nan(scaledValue2) | (scaledValue2 f< lowerBound) | (scaledValue2 f>= upperBound);
-    fpSource3:4 = xenonB(12);
-    scaledValue3:4 = fpSource3 f* scalingBits;
-    overflowTest3:1 = nan(scaledValue3) | (scaledValue3 f< lowerBound) | (scaledValue3 f>= upperBound);
-    anySaturation:1 = overflowTest0 | overflowTest1 | overflowTest2 | overflowTest3;
-    if (anySaturation) goto <conversion_saturates>;
-    integer640:8 = trunc(scaledValue0);
-    integerWord0:4 = integer640(0);
-    combinedWord0:16 = zext(integerWord0);
-    integer641:8 = trunc(scaledValue1);
-    integerWord1:4 = integer641(0);
-    combinedWord1:16 = zext(integerWord1) << 32;
-    integer642:8 = trunc(scaledValue2);
-    integerWord2:4 = integer642(0);
-    combinedWord2:16 = zext(integerWord2) << 64;
-    integer643:8 = trunc(scaledValue3);
-    integerWord3:4 = integer643(0);
-    combinedWord3:16 = zext(integerWord3) << 96;
-    xenonD = combinedWord0 | combinedWord1 | combinedWord2 | combinedWord3;
+    sourceFloat0:4 = xenonB(0);
+    scaledFloat0:4 = sourceFloat0 f* scalingBits;
+    conversionNaN0:1 = nan(scaledFloat0);
+    belowMin0:1 = scaledFloat0 f< lowerBound;
+    aboveMax0:1 = scaledFloat0 f>= upperBound;
+    sourceFloat1:4 = xenonB(4);
+    scaledFloat1:4 = sourceFloat1 f* scalingBits;
+    conversionNaN1:1 = nan(scaledFloat1);
+    belowMin1:1 = scaledFloat1 f< lowerBound;
+    aboveMax1:1 = scaledFloat1 f>= upperBound;
+    sourceFloat2:4 = xenonB(8);
+    scaledFloat2:4 = sourceFloat2 f* scalingBits;
+    conversionNaN2:1 = nan(scaledFloat2);
+    belowMin2:1 = scaledFloat2 f< lowerBound;
+    aboveMax2:1 = scaledFloat2 f>= upperBound;
+    sourceFloat3:4 = xenonB(12);
+    scaledFloat3:4 = sourceFloat3 f* scalingBits;
+    conversionNaN3:1 = nan(scaledFloat3);
+    belowMin3:1 = scaledFloat3 f< lowerBound;
+    aboveMax3:1 = scaledFloat3 f>= upperBound;
+    anyNaN:1 = conversionNaN0 | conversionNaN1 | conversionNaN2 | conversionNaN3;
+    if (anyNaN) goto <conversion_nan_opaque>;
+    if (belowMin0) goto <saturate_low_0>;
+    if (aboveMax0) goto <saturate_high_0>;
+    castWide0:8 = trunc(scaledFloat0);
+    convertedInt0:4 = castWide0(0);
+    goto <conversion_lane_join_0>;
+<saturate_low_0>
+    convertedInt0:4 = 0:4;
+    goto <conversion_lane_join_0>;
+<saturate_high_0>
+    convertedInt0:4 = 0xffffffff:4;
+<conversion_lane_join_0>
+    assembledInt0:16 = zext(convertedInt0);
+    if (belowMin1) goto <saturate_low_1>;
+    if (aboveMax1) goto <saturate_high_1>;
+    castWide1:8 = trunc(scaledFloat1);
+    convertedInt1:4 = castWide1(0);
+    goto <conversion_lane_join_1>;
+<saturate_low_1>
+    convertedInt1:4 = 0:4;
+    goto <conversion_lane_join_1>;
+<saturate_high_1>
+    convertedInt1:4 = 0xffffffff:4;
+<conversion_lane_join_1>
+    assembledInt1:16 = zext(convertedInt1) << 32;
+    if (belowMin2) goto <saturate_low_2>;
+    if (aboveMax2) goto <saturate_high_2>;
+    castWide2:8 = trunc(scaledFloat2);
+    convertedInt2:4 = castWide2(0);
+    goto <conversion_lane_join_2>;
+<saturate_low_2>
+    convertedInt2:4 = 0:4;
+    goto <conversion_lane_join_2>;
+<saturate_high_2>
+    convertedInt2:4 = 0xffffffff:4;
+<conversion_lane_join_2>
+    assembledInt2:16 = zext(convertedInt2) << 64;
+    if (belowMin3) goto <saturate_low_3>;
+    if (aboveMax3) goto <saturate_high_3>;
+    castWide3:8 = trunc(scaledFloat3);
+    convertedInt3:4 = castWide3(0);
+    goto <conversion_lane_join_3>;
+<saturate_low_3>
+    convertedInt3:4 = 0:4;
+    goto <conversion_lane_join_3>;
+<saturate_high_3>
+    convertedInt3:4 = 0xffffffff:4;
+<conversion_lane_join_3>
+    assembledInt3:16 = zext(convertedInt3) << 96;
+    xenonD = assembledInt0 | assembledInt1 | assembledInt2 | assembledInt3;
+    conversionSaturated:1 = (belowMin0 | aboveMax0) | (belowMin1 | aboveMax1) | (belowMin2 | aboveMax2) | (belowMin3 | aboveMax3);
+    xenonSetVscrSatIf(conversionSaturated);
     goto <conversion_done>;
-<conversion_saturates>
-    saturatedOutput:16 = xenonVcfpuxws128(xenonB, A_BITS:4);
-    xenonD = saturatedOutput;
+<conversion_nan_opaque>
+    unresolvedNaN:16 = xenonVcfpuxws128(xenonB, A_BITS:4);
+    xenonD = unresolvedNaN;
 <conversion_done>
 }
 
@@ -4068,37 +4206,83 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
     scalingBits:4 = (127:4 + A_BITS:4) << 23;
     lowerBound:4 = 0:4;
     upperBound:4 = 0x4f800000:4;
-    fpSource0:4 = xenonB(0);
-    scaledValue0:4 = fpSource0 f* scalingBits;
-    overflowTest0:1 = nan(scaledValue0) | (scaledValue0 f< lowerBound) | (scaledValue0 f>= upperBound);
-    fpSource1:4 = xenonB(4);
-    scaledValue1:4 = fpSource1 f* scalingBits;
-    overflowTest1:1 = nan(scaledValue1) | (scaledValue1 f< lowerBound) | (scaledValue1 f>= upperBound);
-    fpSource2:4 = xenonB(8);
-    scaledValue2:4 = fpSource2 f* scalingBits;
-    overflowTest2:1 = nan(scaledValue2) | (scaledValue2 f< lowerBound) | (scaledValue2 f>= upperBound);
-    fpSource3:4 = xenonB(12);
-    scaledValue3:4 = fpSource3 f* scalingBits;
-    overflowTest3:1 = nan(scaledValue3) | (scaledValue3 f< lowerBound) | (scaledValue3 f>= upperBound);
-    anySaturation:1 = overflowTest0 | overflowTest1 | overflowTest2 | overflowTest3;
-    if (anySaturation) goto <conversion_saturates>;
-    integer640:8 = trunc(scaledValue0);
-    integerWord0:4 = integer640(0);
-    combinedWord0:16 = zext(integerWord0);
-    integer641:8 = trunc(scaledValue1);
-    integerWord1:4 = integer641(0);
-    combinedWord1:16 = zext(integerWord1) << 32;
-    integer642:8 = trunc(scaledValue2);
-    integerWord2:4 = integer642(0);
-    combinedWord2:16 = zext(integerWord2) << 64;
-    integer643:8 = trunc(scaledValue3);
-    integerWord3:4 = integer643(0);
-    combinedWord3:16 = zext(integerWord3) << 96;
-    xenonD = combinedWord0 | combinedWord1 | combinedWord2 | combinedWord3;
+    sourceFloat0:4 = xenonB(0);
+    scaledFloat0:4 = sourceFloat0 f* scalingBits;
+    conversionNaN0:1 = nan(scaledFloat0);
+    belowMin0:1 = scaledFloat0 f< lowerBound;
+    aboveMax0:1 = scaledFloat0 f>= upperBound;
+    sourceFloat1:4 = xenonB(4);
+    scaledFloat1:4 = sourceFloat1 f* scalingBits;
+    conversionNaN1:1 = nan(scaledFloat1);
+    belowMin1:1 = scaledFloat1 f< lowerBound;
+    aboveMax1:1 = scaledFloat1 f>= upperBound;
+    sourceFloat2:4 = xenonB(8);
+    scaledFloat2:4 = sourceFloat2 f* scalingBits;
+    conversionNaN2:1 = nan(scaledFloat2);
+    belowMin2:1 = scaledFloat2 f< lowerBound;
+    aboveMax2:1 = scaledFloat2 f>= upperBound;
+    sourceFloat3:4 = xenonB(12);
+    scaledFloat3:4 = sourceFloat3 f* scalingBits;
+    conversionNaN3:1 = nan(scaledFloat3);
+    belowMin3:1 = scaledFloat3 f< lowerBound;
+    aboveMax3:1 = scaledFloat3 f>= upperBound;
+    anyNaN:1 = conversionNaN0 | conversionNaN1 | conversionNaN2 | conversionNaN3;
+    if (anyNaN) goto <conversion_nan_opaque>;
+    if (belowMin0) goto <saturate_low_0>;
+    if (aboveMax0) goto <saturate_high_0>;
+    castWide0:8 = trunc(scaledFloat0);
+    convertedInt0:4 = castWide0(0);
+    goto <conversion_lane_join_0>;
+<saturate_low_0>
+    convertedInt0:4 = 0:4;
+    goto <conversion_lane_join_0>;
+<saturate_high_0>
+    convertedInt0:4 = 0xffffffff:4;
+<conversion_lane_join_0>
+    assembledInt0:16 = zext(convertedInt0);
+    if (belowMin1) goto <saturate_low_1>;
+    if (aboveMax1) goto <saturate_high_1>;
+    castWide1:8 = trunc(scaledFloat1);
+    convertedInt1:4 = castWide1(0);
+    goto <conversion_lane_join_1>;
+<saturate_low_1>
+    convertedInt1:4 = 0:4;
+    goto <conversion_lane_join_1>;
+<saturate_high_1>
+    convertedInt1:4 = 0xffffffff:4;
+<conversion_lane_join_1>
+    assembledInt1:16 = zext(convertedInt1) << 32;
+    if (belowMin2) goto <saturate_low_2>;
+    if (aboveMax2) goto <saturate_high_2>;
+    castWide2:8 = trunc(scaledFloat2);
+    convertedInt2:4 = castWide2(0);
+    goto <conversion_lane_join_2>;
+<saturate_low_2>
+    convertedInt2:4 = 0:4;
+    goto <conversion_lane_join_2>;
+<saturate_high_2>
+    convertedInt2:4 = 0xffffffff:4;
+<conversion_lane_join_2>
+    assembledInt2:16 = zext(convertedInt2) << 64;
+    if (belowMin3) goto <saturate_low_3>;
+    if (aboveMax3) goto <saturate_high_3>;
+    castWide3:8 = trunc(scaledFloat3);
+    convertedInt3:4 = castWide3(0);
+    goto <conversion_lane_join_3>;
+<saturate_low_3>
+    convertedInt3:4 = 0:4;
+    goto <conversion_lane_join_3>;
+<saturate_high_3>
+    convertedInt3:4 = 0xffffffff:4;
+<conversion_lane_join_3>
+    assembledInt3:16 = zext(convertedInt3) << 96;
+    xenonD = assembledInt0 | assembledInt1 | assembledInt2 | assembledInt3;
+    conversionSaturated:1 = (belowMin0 | aboveMax0) | (belowMin1 | aboveMax1) | (belowMin2 | aboveMax2) | (belowMin3 | aboveMax3);
+    xenonSetVscrSatIf(conversionSaturated);
     goto <conversion_done>;
-<conversion_saturates>
-    saturatedOutput:16 = xenonVcfpuxws128(xenonB, A_BITS:4);
-    xenonD = saturatedOutput;
+<conversion_nan_opaque>
+    unresolvedNaN:16 = xenonVcfpuxws128(xenonB, A_BITS:4);
+    xenonD = unresolvedNaN;
 <conversion_done>
 }
 
