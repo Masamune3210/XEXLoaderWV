@@ -212,8 +212,9 @@ public class Xbox360RetailKernelPdataAnalyzer extends AbstractAnalyzer {
         FunctionManager functions = program.getFunctionManager();
         Listing listing = program.getListing();
         SymbolTable symbols = program.getSymbolTable();
-        int created = 0, alreadyPresent = 0, skipped = 0, disassemblyFailures = 0;
-        int newLabels = 0, leafEntrypoints = 0;
+        int created = 0, alreadyPresent = 0, skipped = 0;
+        int deferredDisassembly = 0, blockedByDefinedData = 0;
+        int newLabels = 0, leafEntrypoints = 0, previouslyMarkedEntrypoints = 0;
         List<String> failures = new ArrayList<>();
 
         for (Range record : metadata.pdata) {
@@ -236,19 +237,38 @@ public class Xbox360RetailKernelPdataAnalyzer extends AbstractAnalyzer {
             try {
                 // Restrict flow to the proven .pdata range; it is not safe to
                 // disassemble through a neighboring function boundary.
-                if (listing.getInstructionAt(entry) == null) {
+                // The early FORMAT pass can encounter an undefined entry point:
+                // disassembly may not yet have a context. A verified .pdata
+                // range is authoritative even when instructions aren't ready.
+                // Ghidra's FunctionManager allows a function on undefined
+                // bytes but correctly forbids one whose entry is defined DATA.
+                boolean decoded = listing.getInstructionAt(entry) != null;
+                String disassemblyStatus = null;
+                if (!decoded && listing.getDefinedDataAt(entry) == null) {
                     DisassembleCommand disassemble = new DisassembleCommand(entry, exactBody, true);
                     disassemble.enableCodeAnalysis(false);
                     disassemble.applyTo(program, monitor);
+                    decoded = listing.getInstructionAt(entry) != null;
+                    if (!decoded) disassemblyStatus = disassemble.getStatusMsg();
                 }
-                if (listing.getInstructionAt(entry) == null) {
-                    disassemblyFailures++;
+                if (!decoded && listing.getDefinedDataAt(entry) != null) {
+                    blockedByDefinedData++;
+                    skipped++;
                     if (failures.size() < 20)
-                        failures.add("No instruction at .pdata start " + entry);
+                        failures.add("Entry occupied by defined data at " + entry +
+                            " type=" + listing.getDefinedDataAt(entry).getDataType().getName());
                     continue;
                 }
+                // Reserving the validated exact body now prevents the generic
+                // function analyzer from swallowing neighboring entry points.
                 Function function = functions.createFunction(firstName(metadata, record.start),
                     entry, exactBody, SourceType.ANALYSIS);
+                if (function != null && !decoded) {
+                    deferredDisassembly++;
+                    if (failures.size() < 20)
+                        failures.add("Pending instruction at " + entry +
+                            " (metadata range reserved; disassembler: " + disassemblyStatus + ")");
+                }
                 if (function == null) {
                     skipped++;
                     if (failures.size() < 20)
@@ -273,6 +293,7 @@ public class Xbox360RetailKernelPdataAnalyzer extends AbstractAnalyzer {
                     symbols.addExternalEntryPoint(entry);
                     leafEntrypoints++;
                 }
+                else previouslyMarkedEntrypoints++;
             }
             catch (Exception ex) {
                 if (failures.size() < 20)
@@ -300,9 +321,13 @@ public class Xbox360RetailKernelPdataAnalyzer extends AbstractAnalyzer {
 
         log.appendMsg(String.format(
             "Xbox 360 kernel 17559: .pdata functions created=%d, existing=%d, " +
-            "skipped=%d, disassembly failures=%d, export labels=%d, leaf entrypoints=%d",
-            created, alreadyPresent, skipped, disassemblyFailures, newLabels, leafEntrypoints));
+            "skipped=%d, pending disassembly=%d, entry data conflicts=%d, " +
+            "export labels=%d, leaf entrypoints added=%d, already marked=%d",
+            created, alreadyPresent, skipped, deferredDisassembly, blockedByDefinedData,
+            newLabels, leafEntrypoints, previouslyMarkedEntrypoints));
         for (String failure : failures) log.appendMsg("  " + failure);
-        return skipped == 0 && disassemblyFailures == 0;
+        if (failures.size() >= 20)
+            log.appendMsg("  (Additional failures or pending entries suppressed; see counts above)");
+        return skipped == 0;
     }
 }
