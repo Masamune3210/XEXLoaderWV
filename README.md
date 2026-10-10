@@ -59,56 +59,66 @@ gradle buildExtension
 If you are building from Eclipse or another IDE, make sure it uses a compatible JDK and Gradle version for the Ghidra version you are targeting.
 
 
-## Xbox 360 retail 17559 kernel PE analysis
+## Xbox 360 retail 17559 kernel memory-image PE import
 
-This extension includes `Xbox360RetailKernelPdataAnalyzer`, an **early Ghidra analyzer**
-for the verified Microsoft retail 17559 `xboxkrnl.exe`. The normal **PE loader**
-still imports this file; the analyzer is independently discovered by Ghidra,
-and runs at `FORMAT_ANALYSIS + 1` before generic function discovery.
+**IMPORTANT: The raw 17559 kernel split from the firmware is an already-mapped
+memory image, not a normal file-layout PE.** Its embedded COFF section headers
+retain file offsets that differ from where the firmware image actually stores
+the section bytes. For example, `.text` content is at physical `0x21000`,
+but `PointerToRawData` says `0x1C400`. Importing this exact original image
+through Ghidra's ordinary PE loader produces **incorrect code bytes at nearly
+all function addresses**, no matter how carefully functions are annotated.
 
-- Requires `PowerPC:BE:64:A2ALT-32addr`, PE image base `0x80040000` and the
-  *exact verified retail* executable SHA-256
-  `e1d1c87dbcbec01c71c5400cc129a462fa46738d267e29151a91c5354bdf6cb8`.
-  Other builds are intentionally untouched.
-- Validates the 3,188 non-overlapping big-endian `.pdata` records and the
-  931-slot little-endian PE export directory before modifying the Program.
-- Seeds bounded disassembly and all verified `.pdata` function entry points.
-  Creates Ghidra bodies from reachable decoded instructions within each
-  verified range, rather than treating the whole contiguous unwind extent as
-  a function body. Preserves the full byte extent in function comments.
-  Uses the existing `ImportRenamer` ordinal-name mapping
-  for all 921 populated exports, including 17 code aliases.
-- Marks the 317 code exports not covered by `.pdata` as external entrypoints
-  without guessing their function lengths. Names non-executable data exports,
-  but does not turn them into functions.
-- Does not change any imported bytes, function signatures, or datatypes.
+The extension now offers two safe workflows:
 
-**For a clean test**, build/install this extension, restart Ghidra, then
-import `xboxkrnl.exe` as a regular PE and enable the
-`Xbox 360 Retail Kernel 17559 Pdata` analyzer in the initial Auto Analyze
-dialog. Confirm the Auto Analysis log's function counts, and inspect the
-exported functions before importing XAM through the XEX loader.
+1. **Original, unchanged verified kernel:** import `xboxkrnl.exe` and select
+   **Xbox 360 Kernel 17559 Memory Image PE** in the import dialog. This
+   SHA-256-gated `PeLoader` subclass reads section bytes from their in-memory
+   virtual offsets and delegates standard PE metadata handling to Ghidra.
+   This path never modifies the source firmware-derived image.
+2. **Standard Ghidra PE loader:** normalize only the five section
+   `PointerToRawData` fields with
+   `tools/NormalizeRetailKernel17559MemoryPeV1.py`, then import the
+   normalized copy as an ordinary PE. Keep the original kernel unchanged.
 
-The earlier standalone export/.pdata scripts are for diagnostic purposes; do
-not run them on this clean-import test. The kernel analyzer has not yet been
-compiled or end-to-end tested with Ghidra 12.1.3.
+Both paths retain image base `0x80040000` and language
+`PowerPC:BE:64:A2ALT-32addr`. The destination Ghidra Program should
+be named `xboxkrnl.exe` for automatic XAM library linkage.
 
+| File / import route | Expected executable SHA-256 |
+| --- | --- |
+| Original through **Xbox 360 Kernel 17559 Memory Image PE** | `e1d1c87dbcbec01c71c5400cc129a462fa46738d267e29151a91c5354bdf6cb8` |
+| Normalized copy through **Portable Executable (PE)** | `1c6113602af25b0762fb10dfb0d7ad5c7fef1c7268826982188979b9bb2e4d85` |
 
-### Early kernel disassembly behavior
+`Xbox360RetailKernelPdataAnalyzer` only runs for one of these **correct
+loader/file pairs**, never when the original memory-layout image is imported
+with the standard FILE-layout PE loader.
 
-The FORMAT-stage kernel pass can encounter valid .pdata entries before Ghidra
-has established instructions for them. The first implementation installed
-contiguous .pdata extents as function bodies. Ghidra's normal flow repair
-subsequently removed or altered many such functions because those extents
-included unreachable blocks. The revised analyzer performs bounded entry
-disassembly, seeds minimal function entries for the complete .pdata set, and
-then expands only along reachable control flow within each verified extent.
-Undefined entries can retain an entry seed until normal analysis decodes them.
-A defined-data conflict remains untouched and is explicitly reported.
+The analyzer validates all 3,188 big-endian `.pdata` records (including
+encoded unwind lengths), the 931-slot export directory, and all affected PE
+memory blocks before creating any labels or functions. It uses bounded PPC
+disassembly, seeds known function entries, constructs reachable-code bodies,
+and preserves verified unwind extents in repeatable comments. It also
+labels the 921 populated kernel exports via the shared `ImportRenamer`
+ordinal mapping, preserving aliases.
 
-Use `ghidra_scripts/AuditXboxKrnl17559FlowBodiesV2.java` after full
-analysis on the **same kernel Program**. It reports entrypoint survival,
-whether function bodies remain inside their verified bounds, unresolved code,
-and exports inside other functions. The old exact-contiguous-body audit V1
-is only meaningful for the previous implementation. Neither the new analyzer
-nor its V2 audit has yet been runtime verified with Ghidra 12.1.3.
+**Validation sequence (Ghidra 12.1.3):**
+
+1. Rebuild/install the extension and fully restart Ghidra.
+2. Delete or set aside any prior kernel Program imported from the original
+   memory image through the wrong PE loader. Its disassembly cannot be
+   repaired by simply changing function boundaries.
+3. Fresh import using **one** of the two correct loader/file pairs above.
+   Enable `Xbox 360 Retail Kernel 17559 Pdata` at Auto Analyze.
+4. Confirm the actual bytes at `0x80061010` are `7D 88 02 A6`
+   (`mflr r12`), and `0x80089EB0` (`NtClose`) has the verified
+   prologue. The earlier broken import presented zeros at `0x80061010`.
+5. After Auto Analyze completes, run the read-only
+   `ghidra_scripts/AuditXboxKrnl17559FlowBodiesV2.java` and compare
+   its surviving entry and export counts to the previous broken-byte run.
+
+The late Ghidra flow-repair errors and 700+ function removals seen in the
+previous tests occurred against **incorrectly mapped instructions**.
+Their persistence on a correctly mapped kernel is **not yet tested**.
+The new memory-layout PE importer has been source-checked against Ghidra
+12.1.3 APIs, but has not been compiled or executed in the user's installation.
