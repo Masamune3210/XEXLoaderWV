@@ -42,8 +42,8 @@ EXPECTED = {
     "vperm128": "native-pcode",
     "vmsum3fp128": "native-pcode",
     "vmsum4fp128": "native-pcode",
-    "vupkhsh128": "opaque-userop",
-    "vupklsh128": "opaque-userop",
+    "vupkhsh128": "native-pcode",
+    "vupklsh128": "native-pcode",
 }
 
 
