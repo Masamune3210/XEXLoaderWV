@@ -1,6 +1,6 @@
 # Xbox 360 Xenon vector extension for the existing Ghidra PPC64/AltiVec SLEIGH.
 # Stock code and registers remain intact. This add-on adds precisely the
-# four instruction families observed in the verified 17559 kernel bookmarks.
+# verified VMX128 families without replacing the stock PPC language.
 #
 # IMPORTANT: this is a *separate language variant*, not an injected opcode
 # overlay on an existing Program. Build the .sla before selecting the variant.
