@@ -1560,6 +1560,250 @@ public class AuditXenonNumericalPcode extends GhidraScript {
         recordSuite("WHOLE-SHIFT", passed, failed, problems);
     }
 
+
+    // Per-word shifts and rotates: each VB lane independently chooses
+    // a shift count via its low five bits. Higher control bits are ignored.
+    private static final class LaneShift {
+        final String name;
+        final long opcode;
+        final int operation;
+
+        LaneShift(String name, long opcode, int operation) {
+            this.name = name;
+            this.opcode = opcode;
+            this.operation = operation;
+        }
+    }
+
+    private static final LaneShift[] LANE_SHIFTS = {
+        new LaneShift("vrlw128",  0x18000050L, 0),
+        new LaneShift("vslw128",  0x180000d0L, 1),
+        new LaneShift("vsraw128", 0x18000150L, 2),
+        new LaneShift("vsrw128",  0x180001d0L, 3),
+    };
+
+    // Across the first eight rows every count 0..31 occurs in one lane;
+    // the last two deliberately contain nonzero, ignored high bits.
+    private static final int[][] LANE_SHIFT_COUNTS = {
+        {  0,  1,  2,  3 }, {  4,  5,  6,  7 },
+        {  8,  9, 10, 11 }, { 12, 13, 14, 15 },
+        { 16, 17, 18, 19 }, { 20, 21, 22, 23 },
+        { 24, 25, 26, 27 }, { 28, 29, 30, 31 },
+        { 0x80000000, 0x80000001, 0x8000001f, 0x80000010 },
+        { 32, 33, 63, 0xffffffe2 },
+    };
+
+    private static final int[][] LANE_SHIFT_SOURCES = {
+        { 0x80000001, 0x7ffffffe, 0xdeadbeef, 0x12345678 },
+        { 0xf0f0f0f0, 0x01010101, 0xaaaaaaaa, 0x55555555 },
+    };
+
+    private static BigInteger vectorWords(int[] words) {
+        if (words.length != 4)
+            throw new IllegalArgumentException(
+                "Expected four 32-bit vector words");
+        BigInteger v = BigInteger.ZERO;
+        for (int i = 3; i >= 0; i--)
+            v = v.shiftLeft(32).or(
+                BigInteger.valueOf(words[i] & 0xffffffffL));
+        return v;
+    }
+
+    private static BigInteger wordShiftOracle(LaneShift operation,
+                                               int[] values,
+                                               int[] counts) {
+        if (values.length != 4 || counts.length != 4)
+            throw new IllegalArgumentException("Wrong lane count");
+        int[] results = new int[4];
+        for (int i = 0; i < 4; i++) {
+            int word = values[i];
+            int shift = counts[i] & 31;
+            switch (operation.operation) {
+                case 0:
+                    results[i] = (word << shift) |
+                        (word >>> ((32 - shift) & 31));
+                    break;
+                case 1:
+                    results[i] = word << shift;
+                    break;
+                case 2:
+                    results[i] = word >> shift;
+                    break;
+                case 3:
+                    results[i] = word >>> shift;
+                    break;
+                default:
+                    throw new IllegalArgumentException(
+                        "Unknown lane shift operation");
+            }
+        }
+        return vectorWords(results);
+    }
+
+    private static long laneShiftWord(LaneShift operation, int variant) {
+        if ((variant & ~3) != 0)
+            throw new IllegalArgumentException("Invalid VA variant");
+        long word = operation.opcode | (1L << 21) | (2L << 16) |
+            (3L << 11) | ((long) (variant & 1) << 5) |
+            ((long) (variant & 2) << 9);
+        if ((word & FP_SELECTOR_MASK) != operation.opcode ||
+                ((word >>> 21) & 31) != 1 ||
+                ((word >>> 16) & 31) != 2 ||
+                ((word >>> 11) & 31) != 3 ||
+                ((word >>> 5) & 1) != (variant & 1) ||
+                ((word >>> 10) & 1) != ((variant >>> 1) & 1))
+            throw new IllegalArgumentException(
+                "Incorrect lane-shift opcode/register fields");
+        return word;
+    }
+
+    private String executeLaneShift(LaneShift operation, Address address,
+                                    int variant, int sourcePattern,
+                                    int countPattern) throws Exception {
+        long word = laneShiftWord(operation, variant);
+        String label = operation.name + " variant=" + variant +
+            " VA=" + guardedFpSourceAName(variant) +
+            " source=" + sourcePattern + " controls=" + countPattern +
+            " word=" + String.format("%08X", word);
+        Register dest = vectorRegister("vs33");
+        Register aReg = vectorRegister(guardedFpSourceAName(variant));
+        Register bReg = vectorRegister("vs35");
+        int[] values = LANE_SHIFT_SOURCES[sourcePattern];
+        int[] counts = LANE_SHIFT_COUNTS[countPattern];
+        BigInteger inputA = vectorWords(values);
+        BigInteger inputB = vectorWords(counts);
+        BigInteger expected = wordShiftOracle(operation, values, counts);
+        EmulatorHelper emulator = new EmulatorHelper(currentProgram);
+        try {
+            byte[] opcode = wordBytes(word);
+            emulator.writeMemory(address, opcode);
+            if (!Arrays.equals(opcode, emulator.readMemory(address, 4)))
+                return label + ": emulator-private instruction mismatch";
+            emulator.writeRegister(aReg, inputA);
+            emulator.writeRegister(bReg, inputB);
+            emulator.writeRegister(dest, MASK128);
+            emulator.writeRegister(
+                currentProgram.getLanguage().getProgramCounter(),
+                address.getOffset());
+            if (!emulator.step(monitor))
+                return label + ": emulator step failed: " +
+                    emulator.getLastError();
+            BigInteger result = emulator.readRegister(dest).and(MASK128);
+            BigInteger afterA = emulator.readRegister(aReg).and(MASK128);
+            BigInteger afterB = emulator.readRegister(bReg).and(MASK128);
+            if (!expected.equals(result) || !inputA.equals(afterA) ||
+                    !inputB.equals(afterB))
+                return label + ": expectedD=" + hex128(expected) +
+                    " actualD=" + hex128(result) +
+                    " expectedA=" + hex128(inputA) +
+                    " actualA=" + hex128(afterA) +
+                    " expectedB=" + hex128(inputB) +
+                    " actualB=" + hex128(afterB);
+        }
+        finally {
+            emulator.dispose();
+        }
+        return null;
+    }
+
+    private void runLaneShifts(File manifest, Address base)
+            throws Exception {
+        Map<String, Address> sites = new LinkedHashMap<>();
+        Map<String, Long> originalWords = new LinkedHashMap<>();
+        try (BufferedReader reader = Files.newBufferedReader(
+                manifest.toPath(), StandardCharsets.UTF_8)) {
+            String header = reader.readLine();
+            if (header == null ||
+                    !header.startsWith("offset\tword_be\texpected_mnemonic\t"))
+                throw new IllegalArgumentException(
+                    "Incorrect Xenon lane-shift fixture manifest");
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] columns = line.split("\t", -1);
+                if (columns.length != 6 ||
+                        !"decode".equals(columns[5]))
+                    continue;
+                for (LaneShift operation : LANE_SHIFTS) {
+                    if (operation.name.equals(columns[2]) &&
+                            !sites.containsKey(operation.name)) {
+                        Address addr = base.add(Long.parseUnsignedLong(
+                            columns[0].replaceFirst("^0x", ""), 16));
+                        sites.put(operation.name, addr);
+                        originalWords.put(operation.name,
+                            Long.parseUnsignedLong(columns[1], 16));
+                    }
+                }
+            }
+        }
+        int passed = 0, failed = 0;
+        List<String> problems = new ArrayList<>();
+        for (LaneShift operation : LANE_SHIFTS) {
+            Address address = sites.get(operation.name);
+            Long originalWord = originalWords.get(operation.name);
+            if (address == null || originalWord == null ||
+                    (originalWord & FP_SELECTOR_MASK) != operation.opcode ||
+                    !fixtureMatches(address, originalWord)) {
+                failed++;
+                problems.add(operation.name +
+                    ": missing/mismatched original fixture bytes");
+                continue;
+            }
+            Instruction instruction = getInstructionAt(address);
+            if (instruction == null) {
+                disassemble(address);
+                instruction = getInstructionAt(address);
+            }
+            if (instruction == null ||
+                    !operation.name.equalsIgnoreCase(
+                        instruction.getMnemonicString())) {
+                failed++;
+                problems.add(operation.name +
+                    ": unexpected fixture mnemonic at " + address);
+                continue;
+            }
+            for (int variant = 0; variant < 4; variant++) {
+                for (int sourcePattern = 0; sourcePattern <
+                        LANE_SHIFT_SOURCES.length; sourcePattern++) {
+                    for (int countPattern = 0; countPattern <
+                            LANE_SHIFT_COUNTS.length; countPattern++) {
+                        monitor.checkCancelled();
+                        try {
+                            String problem = executeLaneShift(operation,
+                                address, variant, sourcePattern,
+                                countPattern);
+                            if (problem == null) passed++;
+                            else {
+                                failed++;
+                                problems.add(problem);
+                            }
+                        }
+                        catch (Exception ex) {
+                            failed++;
+                            problems.add(operation.name +
+                                " variant=" + variant +
+                                " source=" + sourcePattern +
+                                " controls=" + countPattern + ": " + ex);
+                        }
+                    }
+                }
+            }
+        }
+        println("");
+        println("============================================================");
+        println("XENON PER-LANE WORD SHIFT NATIVE NUMERICAL P-CODE AUDIT");
+        println("============================================================");
+        println("Language: " + LANGUAGE);
+        println("Cases: " + (passed + failed) + "; passed: " +
+            passed + "; failed: " + failed);
+        println("vrlw128, vslw128, vsraw128, vsrw128: four VA banks, " +
+            "two independent signed/unsigned source patterns,");
+        println("all 32 lane shift counts plus two high-bit-masked " +
+            "control patterns; each lane uses its own count.");
+        println("Source registers and original fixture bytes unchanged.");
+        println("Unresolved details follow in combined result below.");
+        recordSuite("LANE-SHIFT", passed, failed, problems);
+    }
+
     @Override
     protected void run() throws Exception {
         String id = currentProgram.getLanguage().getLanguageID()
@@ -1674,6 +1918,7 @@ public class AuditXenonNumericalPcode extends GhidraScript {
         runShuffles(manifest, base);
         runDotProducts(manifest, base);
         runWholeVectorShifts(manifest, base);
+        runLaneShifts(manifest, base);
 
         println("");
         println("============================================================");
