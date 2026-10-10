@@ -882,6 +882,8 @@ class XenonIsaInventoryTests(unittest.TestCase):
         self.assertIn("private void runShuffles(File manifest, Address base)",
                       script)
         self.assertIn("runShuffles(manifest, base);", script)
+        self.assertIn("runDotProducts(manifest, base);", script)
+        self.assertIn("XENON FP DOT PRODUCT NATIVE NUMERICAL P-CODE AUDIT", script)
         self.assertIn("import ghidra.app.emulator.DefaultEmulator;", script)
         self.assertIn('pattern == 0 && selector == 0;', script)
         self.assertIn("((DefaultEmulator) emulator.getEmulator())", script)
@@ -962,6 +964,83 @@ class XenonIsaInventoryTests(unittest.TestCase):
             self.assertEqual(
                 bytes((b if v & 16 else a)[v & 15] for v in augmented),
                 expected)
+
+    def test_native_dot_product_numeric_matrix(self):
+        # Two independent SLEIGH sources implement exact binary32 dot
+        # reductions, with a different number of products.
+        import re
+        import struct
+
+        script = (audit.ROOT.parent / "ghidra_scripts" /
+                  "AuditXenonNumericalPcode.java").read_text(
+                      encoding="utf-8")
+        expected_ops = (
+            ("vmsum3fp128", "0x14000190", 3),
+            ("vmsum4fp128", "0x140001d0", 4),
+        )
+        operations = re.findall(
+            r'new DotOperation\("([^"]+)",\s*(0x[0-9a-fA-F]+)L,\s*(\d+)\)',
+            script)
+        self.assertEqual(
+            operations,
+            [(name, opcode, str(count)) for name, opcode, count
+             in expected_ops])
+        self.assertIn("runDotProducts(manifest, base);", script)
+        self.assertIn('recordSuite("DOT", passed, failed, problems)', script)
+        self.assertIn("emulator.writeMemory(address, opcode);", script)
+        self.assertIn("emulator.readMemory(address, 4)", script)
+        self.assertIn("fixtureMatches(address, originalWord)", script)
+        self.assertIn("emulator.readRegister(a)", script)
+        self.assertIn("emulator.readRegister(b)", script)
+        self.assertIn(
+            "Register a = vectorRegister(guardedFpSourceAName(variant));",
+            script)
+        self.assertIn("for (int i = 3; i >= 4 - operation.products; i--)",
+                      script)
+        self.assertNotIn("currentProgram.getMemory().setBytes(", script)
+
+        patterns = re.findall(
+            r'new Pattern\("([^"]+)",\s*'
+            r'new int\[\] \{([^}]*)\},\s*'
+            r'new int\[\] \{([^}]*)\},\s*'
+            r'new int\[\] \{([^}]*)\}\)',
+            script)
+        self.assertEqual(len(patterns), 6)
+        count = 0
+        for name, opcode_string, products in expected_ops:
+            opcode = int(opcode_string, 16)
+            code = (audit.SLEIGH if name == "vmsum4fp128"
+                    else audit.ADDITIONAL_SLEIGH).read_text(
+                        encoding="utf-8")
+            self.assertEqual(
+                len(re.findall(r"(?m)^:" + name + r" ", code)), 4)
+            for variant in range(4):
+                mbh, oe = variant & 1, variant >> 1
+                word = (opcode | (1 << 21) | (2 << 16) |
+                        (3 << 11) | (mbh << 5) | (oe << 10))
+                self.assertEqual(word & 0xfc0003d0, opcode)
+                self.assertEqual((word >> 5) & 1, mbh)
+                self.assertEqual((word >> 10) & 1, oe)
+                self.assertEqual(
+                    ((word >> 21) & 31, (word >> 16) & 31,
+                     (word >> 11) & 31), (1, 2, 3))
+                for _, a_string, b_string, _ in patterns:
+                    a = [int(v) for v in a_string.split(",")]
+                    b = [int(v) for v in b_string.split(",")]
+                    self.assertEqual(len(a), 4)
+                    self.assertEqual(len(b), 4)
+                    self.assertTrue(all(0 < abs(v) <= 2048
+                                        for v in a + b))
+                    dot = sum(a[i] * b[i] for i in range(4-products, 4))
+                    self.assertTrue(0 < abs(dot) < (1 << 24))
+                    bits = int.from_bytes(
+                        struct.pack(">f", float(dot)), "big")
+                    result = bits.to_bytes(4, "big") * 4
+                    self.assertEqual(len(result), 16)
+                    self.assertEqual(
+                        struct.unpack(">f", result[:4])[0], float(dot))
+                    count += 1
+        self.assertEqual(count, 48)
 
     def test_unified_numerical_script_is_only_entrypoint(self):
         from pathlib import Path
