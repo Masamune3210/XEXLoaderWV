@@ -2863,51 +2863,323 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 # vmaxfp128: opaque; Xenia mask/value fc0003d0/18000280
 :vmaxfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=10 & BITS_4_5=0
 {
-    result:16 = xenonVmaxfp128(xenonA, xenonB);
-    xenonD = result;
+    valueA0:4 = xenonA(0);
+    valueB0:4 = xenonB(0);
+    ambiguous0:1 = nan(valueA0) | nan(valueB0) | (valueA0 f== valueB0);
+    valueA1:4 = xenonA(4);
+    valueB1:4 = xenonB(4);
+    ambiguous1:1 = nan(valueA1) | nan(valueB1) | (valueA1 f== valueB1);
+    valueA2:4 = xenonA(8);
+    valueB2:4 = xenonB(8);
+    ambiguous2:1 = nan(valueA2) | nan(valueB2) | (valueA2 f== valueB2);
+    valueA3:4 = xenonA(12);
+    valueB3:4 = xenonB(12);
+    ambiguous3:1 = nan(valueA3) | nan(valueB3) | (valueA3 f== valueB3);
+    anyAmbiguous:1 = ambiguous0 | ambiguous1 | ambiguous2 | ambiguous3;
+    if (anyAmbiguous) goto <xenon_opaque_fp>;
+    chooseA0:1 = valueA0 f> valueB0;
+    chooseMask0:4 = 0:4 - zext(chooseA0);
+    chosen0:4 = (valueA0 & chooseMask0) | (valueB0 & ~chooseMask0);
+    widenChosen0:16 = zext(chosen0);
+    chooseA1:1 = valueA1 f> valueB1;
+    chooseMask1:4 = 0:4 - zext(chooseA1);
+    chosen1:4 = (valueA1 & chooseMask1) | (valueB1 & ~chooseMask1);
+    widenChosen1:16 = zext(chosen1) << 32;
+    chooseA2:1 = valueA2 f> valueB2;
+    chooseMask2:4 = 0:4 - zext(chooseA2);
+    chosen2:4 = (valueA2 & chooseMask2) | (valueB2 & ~chooseMask2);
+    widenChosen2:16 = zext(chosen2) << 64;
+    chooseA3:1 = valueA3 f> valueB3;
+    chooseMask3:4 = 0:4 - zext(chooseA3);
+    chosen3:4 = (valueA3 & chooseMask3) | (valueB3 & ~chooseMask3);
+    widenChosen3:16 = zext(chosen3) << 96;
+    xenonD = widenChosen0 | widenChosen1 | widenChosen2 | widenChosen3;
+    goto <xenon_fp_done>;
+<xenon_opaque_fp>
+    ambiguousResult:16 = xenonVmaxfp128(xenonA, xenonB);
+    xenonD = ambiguousResult;
+<xenon_fp_done>
 }
 
 :vmaxfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=10 & BITS_4_5=2
 {
-    result:16 = xenonVmaxfp128(xenonA, xenonB);
-    xenonD = result;
+    valueA0:4 = xenonA(0);
+    valueB0:4 = xenonB(0);
+    ambiguous0:1 = nan(valueA0) | nan(valueB0) | (valueA0 f== valueB0);
+    valueA1:4 = xenonA(4);
+    valueB1:4 = xenonB(4);
+    ambiguous1:1 = nan(valueA1) | nan(valueB1) | (valueA1 f== valueB1);
+    valueA2:4 = xenonA(8);
+    valueB2:4 = xenonB(8);
+    ambiguous2:1 = nan(valueA2) | nan(valueB2) | (valueA2 f== valueB2);
+    valueA3:4 = xenonA(12);
+    valueB3:4 = xenonB(12);
+    ambiguous3:1 = nan(valueA3) | nan(valueB3) | (valueA3 f== valueB3);
+    anyAmbiguous:1 = ambiguous0 | ambiguous1 | ambiguous2 | ambiguous3;
+    if (anyAmbiguous) goto <xenon_opaque_fp>;
+    chooseA0:1 = valueA0 f> valueB0;
+    chooseMask0:4 = 0:4 - zext(chooseA0);
+    chosen0:4 = (valueA0 & chooseMask0) | (valueB0 & ~chooseMask0);
+    widenChosen0:16 = zext(chosen0);
+    chooseA1:1 = valueA1 f> valueB1;
+    chooseMask1:4 = 0:4 - zext(chooseA1);
+    chosen1:4 = (valueA1 & chooseMask1) | (valueB1 & ~chooseMask1);
+    widenChosen1:16 = zext(chosen1) << 32;
+    chooseA2:1 = valueA2 f> valueB2;
+    chooseMask2:4 = 0:4 - zext(chooseA2);
+    chosen2:4 = (valueA2 & chooseMask2) | (valueB2 & ~chooseMask2);
+    widenChosen2:16 = zext(chosen2) << 64;
+    chooseA3:1 = valueA3 f> valueB3;
+    chooseMask3:4 = 0:4 - zext(chooseA3);
+    chosen3:4 = (valueA3 & chooseMask3) | (valueB3 & ~chooseMask3);
+    widenChosen3:16 = zext(chosen3) << 96;
+    xenonD = widenChosen0 | widenChosen1 | widenChosen2 | widenChosen3;
+    goto <xenon_fp_done>;
+<xenon_opaque_fp>
+    ambiguousResult:16 = xenonVmaxfp128(xenonA, xenonB);
+    xenonD = ambiguousResult;
+<xenon_fp_done>
 }
 
 :vmaxfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=26 & BITS_4_5=0
 {
-    result:16 = xenonVmaxfp128(xenonA, xenonB);
-    xenonD = result;
+    valueA0:4 = xenonA(0);
+    valueB0:4 = xenonB(0);
+    ambiguous0:1 = nan(valueA0) | nan(valueB0) | (valueA0 f== valueB0);
+    valueA1:4 = xenonA(4);
+    valueB1:4 = xenonB(4);
+    ambiguous1:1 = nan(valueA1) | nan(valueB1) | (valueA1 f== valueB1);
+    valueA2:4 = xenonA(8);
+    valueB2:4 = xenonB(8);
+    ambiguous2:1 = nan(valueA2) | nan(valueB2) | (valueA2 f== valueB2);
+    valueA3:4 = xenonA(12);
+    valueB3:4 = xenonB(12);
+    ambiguous3:1 = nan(valueA3) | nan(valueB3) | (valueA3 f== valueB3);
+    anyAmbiguous:1 = ambiguous0 | ambiguous1 | ambiguous2 | ambiguous3;
+    if (anyAmbiguous) goto <xenon_opaque_fp>;
+    chooseA0:1 = valueA0 f> valueB0;
+    chooseMask0:4 = 0:4 - zext(chooseA0);
+    chosen0:4 = (valueA0 & chooseMask0) | (valueB0 & ~chooseMask0);
+    widenChosen0:16 = zext(chosen0);
+    chooseA1:1 = valueA1 f> valueB1;
+    chooseMask1:4 = 0:4 - zext(chooseA1);
+    chosen1:4 = (valueA1 & chooseMask1) | (valueB1 & ~chooseMask1);
+    widenChosen1:16 = zext(chosen1) << 32;
+    chooseA2:1 = valueA2 f> valueB2;
+    chooseMask2:4 = 0:4 - zext(chooseA2);
+    chosen2:4 = (valueA2 & chooseMask2) | (valueB2 & ~chooseMask2);
+    widenChosen2:16 = zext(chosen2) << 64;
+    chooseA3:1 = valueA3 f> valueB3;
+    chooseMask3:4 = 0:4 - zext(chooseA3);
+    chosen3:4 = (valueA3 & chooseMask3) | (valueB3 & ~chooseMask3);
+    widenChosen3:16 = zext(chosen3) << 96;
+    xenonD = widenChosen0 | widenChosen1 | widenChosen2 | widenChosen3;
+    goto <xenon_fp_done>;
+<xenon_opaque_fp>
+    ambiguousResult:16 = xenonVmaxfp128(xenonA, xenonB);
+    xenonD = ambiguousResult;
+<xenon_fp_done>
 }
 
 :vmaxfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=26 & BITS_4_5=2
 {
-    result:16 = xenonVmaxfp128(xenonA, xenonB);
-    xenonD = result;
+    valueA0:4 = xenonA(0);
+    valueB0:4 = xenonB(0);
+    ambiguous0:1 = nan(valueA0) | nan(valueB0) | (valueA0 f== valueB0);
+    valueA1:4 = xenonA(4);
+    valueB1:4 = xenonB(4);
+    ambiguous1:1 = nan(valueA1) | nan(valueB1) | (valueA1 f== valueB1);
+    valueA2:4 = xenonA(8);
+    valueB2:4 = xenonB(8);
+    ambiguous2:1 = nan(valueA2) | nan(valueB2) | (valueA2 f== valueB2);
+    valueA3:4 = xenonA(12);
+    valueB3:4 = xenonB(12);
+    ambiguous3:1 = nan(valueA3) | nan(valueB3) | (valueA3 f== valueB3);
+    anyAmbiguous:1 = ambiguous0 | ambiguous1 | ambiguous2 | ambiguous3;
+    if (anyAmbiguous) goto <xenon_opaque_fp>;
+    chooseA0:1 = valueA0 f> valueB0;
+    chooseMask0:4 = 0:4 - zext(chooseA0);
+    chosen0:4 = (valueA0 & chooseMask0) | (valueB0 & ~chooseMask0);
+    widenChosen0:16 = zext(chosen0);
+    chooseA1:1 = valueA1 f> valueB1;
+    chooseMask1:4 = 0:4 - zext(chooseA1);
+    chosen1:4 = (valueA1 & chooseMask1) | (valueB1 & ~chooseMask1);
+    widenChosen1:16 = zext(chosen1) << 32;
+    chooseA2:1 = valueA2 f> valueB2;
+    chooseMask2:4 = 0:4 - zext(chooseA2);
+    chosen2:4 = (valueA2 & chooseMask2) | (valueB2 & ~chooseMask2);
+    widenChosen2:16 = zext(chosen2) << 64;
+    chooseA3:1 = valueA3 f> valueB3;
+    chooseMask3:4 = 0:4 - zext(chooseA3);
+    chosen3:4 = (valueA3 & chooseMask3) | (valueB3 & ~chooseMask3);
+    widenChosen3:16 = zext(chosen3) << 96;
+    xenonD = widenChosen0 | widenChosen1 | widenChosen2 | widenChosen3;
+    goto <xenon_fp_done>;
+<xenon_opaque_fp>
+    ambiguousResult:16 = xenonVmaxfp128(xenonA, xenonB);
+    xenonD = ambiguousResult;
+<xenon_fp_done>
 }
 
 # vminfp128: opaque; Xenia mask/value fc0003d0/180002c0
 :vminfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=11 & BITS_4_5=0
 {
-    result:16 = xenonVminfp128(xenonA, xenonB);
-    xenonD = result;
+    valueA0:4 = xenonA(0);
+    valueB0:4 = xenonB(0);
+    ambiguous0:1 = nan(valueA0) | nan(valueB0) | (valueA0 f== valueB0);
+    valueA1:4 = xenonA(4);
+    valueB1:4 = xenonB(4);
+    ambiguous1:1 = nan(valueA1) | nan(valueB1) | (valueA1 f== valueB1);
+    valueA2:4 = xenonA(8);
+    valueB2:4 = xenonB(8);
+    ambiguous2:1 = nan(valueA2) | nan(valueB2) | (valueA2 f== valueB2);
+    valueA3:4 = xenonA(12);
+    valueB3:4 = xenonB(12);
+    ambiguous3:1 = nan(valueA3) | nan(valueB3) | (valueA3 f== valueB3);
+    anyAmbiguous:1 = ambiguous0 | ambiguous1 | ambiguous2 | ambiguous3;
+    if (anyAmbiguous) goto <xenon_opaque_fp>;
+    chooseA0:1 = valueA0 f< valueB0;
+    chooseMask0:4 = 0:4 - zext(chooseA0);
+    chosen0:4 = (valueA0 & chooseMask0) | (valueB0 & ~chooseMask0);
+    widenChosen0:16 = zext(chosen0);
+    chooseA1:1 = valueA1 f< valueB1;
+    chooseMask1:4 = 0:4 - zext(chooseA1);
+    chosen1:4 = (valueA1 & chooseMask1) | (valueB1 & ~chooseMask1);
+    widenChosen1:16 = zext(chosen1) << 32;
+    chooseA2:1 = valueA2 f< valueB2;
+    chooseMask2:4 = 0:4 - zext(chooseA2);
+    chosen2:4 = (valueA2 & chooseMask2) | (valueB2 & ~chooseMask2);
+    widenChosen2:16 = zext(chosen2) << 64;
+    chooseA3:1 = valueA3 f< valueB3;
+    chooseMask3:4 = 0:4 - zext(chooseA3);
+    chosen3:4 = (valueA3 & chooseMask3) | (valueB3 & ~chooseMask3);
+    widenChosen3:16 = zext(chosen3) << 96;
+    xenonD = widenChosen0 | widenChosen1 | widenChosen2 | widenChosen3;
+    goto <xenon_fp_done>;
+<xenon_opaque_fp>
+    ambiguousResult:16 = xenonVminfp128(xenonA, xenonB);
+    xenonD = ambiguousResult;
+<xenon_fp_done>
 }
 
 :vminfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=11 & BITS_4_5=2
 {
-    result:16 = xenonVminfp128(xenonA, xenonB);
-    xenonD = result;
+    valueA0:4 = xenonA(0);
+    valueB0:4 = xenonB(0);
+    ambiguous0:1 = nan(valueA0) | nan(valueB0) | (valueA0 f== valueB0);
+    valueA1:4 = xenonA(4);
+    valueB1:4 = xenonB(4);
+    ambiguous1:1 = nan(valueA1) | nan(valueB1) | (valueA1 f== valueB1);
+    valueA2:4 = xenonA(8);
+    valueB2:4 = xenonB(8);
+    ambiguous2:1 = nan(valueA2) | nan(valueB2) | (valueA2 f== valueB2);
+    valueA3:4 = xenonA(12);
+    valueB3:4 = xenonB(12);
+    ambiguous3:1 = nan(valueA3) | nan(valueB3) | (valueA3 f== valueB3);
+    anyAmbiguous:1 = ambiguous0 | ambiguous1 | ambiguous2 | ambiguous3;
+    if (anyAmbiguous) goto <xenon_opaque_fp>;
+    chooseA0:1 = valueA0 f< valueB0;
+    chooseMask0:4 = 0:4 - zext(chooseA0);
+    chosen0:4 = (valueA0 & chooseMask0) | (valueB0 & ~chooseMask0);
+    widenChosen0:16 = zext(chosen0);
+    chooseA1:1 = valueA1 f< valueB1;
+    chooseMask1:4 = 0:4 - zext(chooseA1);
+    chosen1:4 = (valueA1 & chooseMask1) | (valueB1 & ~chooseMask1);
+    widenChosen1:16 = zext(chosen1) << 32;
+    chooseA2:1 = valueA2 f< valueB2;
+    chooseMask2:4 = 0:4 - zext(chooseA2);
+    chosen2:4 = (valueA2 & chooseMask2) | (valueB2 & ~chooseMask2);
+    widenChosen2:16 = zext(chosen2) << 64;
+    chooseA3:1 = valueA3 f< valueB3;
+    chooseMask3:4 = 0:4 - zext(chooseA3);
+    chosen3:4 = (valueA3 & chooseMask3) | (valueB3 & ~chooseMask3);
+    widenChosen3:16 = zext(chosen3) << 96;
+    xenonD = widenChosen0 | widenChosen1 | widenChosen2 | widenChosen3;
+    goto <xenon_fp_done>;
+<xenon_opaque_fp>
+    ambiguousResult:16 = xenonVminfp128(xenonA, xenonB);
+    xenonD = ambiguousResult;
+<xenon_fp_done>
 }
 
 :vminfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=27 & BITS_4_5=0
 {
-    result:16 = xenonVminfp128(xenonA, xenonB);
-    xenonD = result;
+    valueA0:4 = xenonA(0);
+    valueB0:4 = xenonB(0);
+    ambiguous0:1 = nan(valueA0) | nan(valueB0) | (valueA0 f== valueB0);
+    valueA1:4 = xenonA(4);
+    valueB1:4 = xenonB(4);
+    ambiguous1:1 = nan(valueA1) | nan(valueB1) | (valueA1 f== valueB1);
+    valueA2:4 = xenonA(8);
+    valueB2:4 = xenonB(8);
+    ambiguous2:1 = nan(valueA2) | nan(valueB2) | (valueA2 f== valueB2);
+    valueA3:4 = xenonA(12);
+    valueB3:4 = xenonB(12);
+    ambiguous3:1 = nan(valueA3) | nan(valueB3) | (valueA3 f== valueB3);
+    anyAmbiguous:1 = ambiguous0 | ambiguous1 | ambiguous2 | ambiguous3;
+    if (anyAmbiguous) goto <xenon_opaque_fp>;
+    chooseA0:1 = valueA0 f< valueB0;
+    chooseMask0:4 = 0:4 - zext(chooseA0);
+    chosen0:4 = (valueA0 & chooseMask0) | (valueB0 & ~chooseMask0);
+    widenChosen0:16 = zext(chosen0);
+    chooseA1:1 = valueA1 f< valueB1;
+    chooseMask1:4 = 0:4 - zext(chooseA1);
+    chosen1:4 = (valueA1 & chooseMask1) | (valueB1 & ~chooseMask1);
+    widenChosen1:16 = zext(chosen1) << 32;
+    chooseA2:1 = valueA2 f< valueB2;
+    chooseMask2:4 = 0:4 - zext(chooseA2);
+    chosen2:4 = (valueA2 & chooseMask2) | (valueB2 & ~chooseMask2);
+    widenChosen2:16 = zext(chosen2) << 64;
+    chooseA3:1 = valueA3 f< valueB3;
+    chooseMask3:4 = 0:4 - zext(chooseA3);
+    chosen3:4 = (valueA3 & chooseMask3) | (valueB3 & ~chooseMask3);
+    widenChosen3:16 = zext(chosen3) << 96;
+    xenonD = widenChosen0 | widenChosen1 | widenChosen2 | widenChosen3;
+    goto <xenon_fp_done>;
+<xenon_opaque_fp>
+    ambiguousResult:16 = xenonVminfp128(xenonA, xenonB);
+    xenonD = ambiguousResult;
+<xenon_fp_done>
 }
 
 :vminfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=27 & BITS_4_5=2
 {
-    result:16 = xenonVminfp128(xenonA, xenonB);
-    xenonD = result;
+    valueA0:4 = xenonA(0);
+    valueB0:4 = xenonB(0);
+    ambiguous0:1 = nan(valueA0) | nan(valueB0) | (valueA0 f== valueB0);
+    valueA1:4 = xenonA(4);
+    valueB1:4 = xenonB(4);
+    ambiguous1:1 = nan(valueA1) | nan(valueB1) | (valueA1 f== valueB1);
+    valueA2:4 = xenonA(8);
+    valueB2:4 = xenonB(8);
+    ambiguous2:1 = nan(valueA2) | nan(valueB2) | (valueA2 f== valueB2);
+    valueA3:4 = xenonA(12);
+    valueB3:4 = xenonB(12);
+    ambiguous3:1 = nan(valueA3) | nan(valueB3) | (valueA3 f== valueB3);
+    anyAmbiguous:1 = ambiguous0 | ambiguous1 | ambiguous2 | ambiguous3;
+    if (anyAmbiguous) goto <xenon_opaque_fp>;
+    chooseA0:1 = valueA0 f< valueB0;
+    chooseMask0:4 = 0:4 - zext(chooseA0);
+    chosen0:4 = (valueA0 & chooseMask0) | (valueB0 & ~chooseMask0);
+    widenChosen0:16 = zext(chosen0);
+    chooseA1:1 = valueA1 f< valueB1;
+    chooseMask1:4 = 0:4 - zext(chooseA1);
+    chosen1:4 = (valueA1 & chooseMask1) | (valueB1 & ~chooseMask1);
+    widenChosen1:16 = zext(chosen1) << 32;
+    chooseA2:1 = valueA2 f< valueB2;
+    chooseMask2:4 = 0:4 - zext(chooseA2);
+    chosen2:4 = (valueA2 & chooseMask2) | (valueB2 & ~chooseMask2);
+    widenChosen2:16 = zext(chosen2) << 64;
+    chooseA3:1 = valueA3 f< valueB3;
+    chooseMask3:4 = 0:4 - zext(chooseA3);
+    chosen3:4 = (valueA3 & chooseMask3) | (valueB3 & ~chooseMask3);
+    widenChosen3:16 = zext(chosen3) << 96;
+    xenonD = widenChosen0 | widenChosen1 | widenChosen2 | widenChosen3;
+    goto <xenon_fp_done>;
+<xenon_opaque_fp>
+    ambiguousResult:16 = xenonVminfp128(xenonA, xenonB);
+    xenonD = ambiguousResult;
+<xenon_fp_done>
 }
 
 # vupkhsb128: opaque; Xenia mask/value fc0003d0/18000380
