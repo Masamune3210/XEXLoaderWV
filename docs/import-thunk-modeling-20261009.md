@@ -1,3 +1,10 @@
+## Twelve-test regression: substring false positive corrected (2026-10-10)
+
+- User ran the first full-batch Python test suite from the **inner Gradle project folder**. Fixture generator printed `Families=84 native=47 opaque=37 missing=0; fixture=336 words / 1344 bytes`. **11 of 12 tests passed; one failed**: `test_copied_isa_includes_and_128bit_zero_widths` used `assertNotIn("0:16", sleigh)`, spuriously matching *legal* sized temporary declarations `part0:16` and `wide0:16` in new native lane assembly. This was **not a SLEIGH compiler failure**.
+- Corrected the test to check both Xenon vector source includes via `audit.read_sleigh_source(audit.SLEIGH)` and reject only a *standalone integer constant* with regex `(?<![A-Za-z0-9_])0:16\\b`; added inline positive test (`value = 0:16;`) and negative test (`part0:16 = zext(octet0);`) to prevent recurrence. Commit `f7a3806`.
+- Independent inspection of current source: **0 illegal literal matches** across both SLEIGH files; the broader text occurs 12 times in the original and 40 times in the supplemental source, all as identifier suffixes like `part0:16`, not illegal constants. Standalone regex behavior independently tested PASS. **12/12 suite and Gradle build still need user rerun**, not claimed verified.
+- Continue from inner `XEXLoaderWV/`: `git pull`; `python -m unittest discover -s tools -p "test_xenon_isa_coverage_v1.py"`; then `gradle buildExtension` once the suite passes. Avoid another premature Ghidra install cycle if the compiler finds syntax problems in the bulk new SLEIGH.
+
 ## Bulk Xenon VMX128 batch current final state: 47 native / 37 opaque (2026-10-10)
 
 - Further numerical implementation after completing the 46 formerly missing decoder families: promoted the two **existing** `lvsl128` and `lvsr128` opcode-4 mask generators from opaque userops to native p-code. Xenia pinned `LoadVectorShl` and `LoadVectorShr` test data establish output bytes `[off .. off+15]` and `[16-off .. 31-off]` for EA offset `off = (RA+RB)&15`; each 16-byte mask is assembled from exact octets with sized 16-byte zero-extensions. These are *not* memory loads. Commits `428ed4f`, `c747b0c`.
