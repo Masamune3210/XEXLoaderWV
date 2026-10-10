@@ -307,6 +307,30 @@ class XenonIsaInventoryTests(unittest.TestCase):
                 self.assertIn("off:4 = offsetFull(0);", body)
                 self.assertNotIn("xenonLv", body)
 
+    def test_gradle_build_regenerates_xenon_fixture(self):
+        # A caller should not have to remember a separate manual generator
+        # step after changing SLEIGH, its inventories, or generator code.
+        gradle = (audit.ROOT / "build.gradle").read_text(encoding="utf-8")
+        start = gradle.index('tasks.register("generateXenonIsaFixture", Exec)')
+        verify = gradle.index('tasks.register("verifyXenonSleigh", Exec)')
+        self.assertLess(start, verify)
+        body = gradle[start:verify]
+        self.assertIn(
+            'commandLine pythonCommand, "tools/audit_xenon_isa_coverage_v1.py"',
+            body)
+        for filename in (
+            "xenon_vector_v1.sinc",
+            "xenon_vector_remaining_v1.sinc",
+            "xenia_vmx128_opcode_inventory_20261009.tsv",
+            "xenia_xform_vector_opcode_inventory_20261009.tsv",
+        ):
+            self.assertIn(filename, body)
+        self.assertIn('dependsOn tasks.named("generateXenonIsaFixture")',
+                      gradle[verify:])
+        # No Gradle outputs declaration: every extension build refreshes
+        # manifest and report, even when status categories stay identical.
+        self.assertNotIn("outputs.", body)
+
     def test_fixture_generation(self):
         with tempfile.TemporaryDirectory() as folder:
             out = Path(folder)
@@ -326,6 +350,24 @@ class XenonIsaInventoryTests(unittest.TestCase):
                         if (word & r["mask"]) == r["value"]]
                 self.assertEqual(hits, [row["expected_mnemonic"]])
             self.assertTrue((out / "xenon_isa_coverage_v1.md").exists())
+            report = (out / "xenon_isa_coverage_v1.md").read_text(
+                encoding="utf-8")
+            import hashlib
+            source_sha = hashlib.sha256(
+                audit.read_sleigh_source(audit.SLEIGH).encode("utf-8")
+            ).hexdigest()
+            self.assertIn("SLEIGH SHA-256: " + chr(96) + source_sha, report)
+            self.assertIn("Inventory SHA-256: " + chr(96) +
+                          hashlib.sha256(audit.INVENTORY.read_bytes()).hexdigest(),
+                          report)
+            self.assertIn("Extra inventory SHA-256: " + chr(96) +
+                          hashlib.sha256(
+                              audit.EXTRA_INVENTORY.read_bytes()).hexdigest(),
+                          report)
+            self.assertIn("Generator SHA-256: " + chr(96) +
+                          hashlib.sha256(Path(audit.__file__).read_bytes()).hexdigest(),
+                          report)
+
 
     def test_xenia_lookup_parser_reconstructs_masks(self):
         sample = "\n".join((
