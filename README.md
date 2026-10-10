@@ -72,8 +72,11 @@ and runs at `FORMAT_ANALYSIS + 1` before generic function discovery.
   Other builds are intentionally untouched.
 - Validates the 3,188 non-overlapping big-endian `.pdata` records and the
   931-slot little-endian PE export directory before modifying the Program.
-- Seeds bounded disassembly and explicit function bodies for established
-  `.pdata` ranges. Uses the existing `ImportRenamer` ordinal-name mapping
+- Seeds bounded disassembly and all verified `.pdata` function entry points.
+  Creates Ghidra bodies from reachable decoded instructions within each
+  verified range, rather than treating the whole contiguous unwind extent as
+  a function body. Preserves the full byte extent in function comments.
+  Uses the existing `ImportRenamer` ordinal-name mapping
   for all 921 populated exports, including 17 code aliases.
 - Marks the 317 code exports not covered by `.pdata` as external entrypoints
   without guessing their function lengths. Names non-executable data exports,
@@ -94,11 +97,18 @@ compiled or end-to-end tested with Ghidra 12.1.3.
 ### Early kernel disassembly behavior
 
 The FORMAT-stage kernel pass can encounter valid .pdata entries before Ghidra
-has established instructions for them. The analyzer now reserves the exact
-verified function body even if its entry point is still undefined, so later
-generic function discovery cannot absorb that range. If the entry is already
-defined as data, it remains untouched and is reported as an explicit conflict.
-The analyzer separately reports pending instructions, true function creation
-failures, and pre-existing export entrypoints. A successful metadata boundary
-pass is not proof that every instruction has been decoded; check the normal
-auto-analysis results before declaring full coverage.
+has established instructions for them. The first implementation installed
+contiguous .pdata extents as function bodies. Ghidra's normal flow repair
+subsequently removed or altered many such functions because those extents
+included unreachable blocks. The revised analyzer performs bounded entry
+disassembly, seeds minimal function entries for the complete .pdata set, and
+then expands only along reachable control flow within each verified extent.
+Undefined entries can retain an entry seed until normal analysis decodes them.
+A defined-data conflict remains untouched and is explicitly reported.
+
+Use `ghidra_scripts/AuditXboxKrnl17559FlowBodiesV2.java` after full
+analysis on the **same kernel Program**. It reports entrypoint survival,
+whether function bodies remain inside their verified bounds, unresolved code,
+and exports inside other functions. The old exact-contiguous-body audit V1
+is only meaningful for the previous implementation. Neither the new analyzer
+nor its V2 audit has yet been runtime verified with Ghidra 12.1.3.
