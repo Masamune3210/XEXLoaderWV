@@ -74,8 +74,9 @@ def main() -> int:
         print("  python tools/audit_xenon_isa_coverage_v1.py")
         return 2
 
-    from audit_xenon_isa_coverage_v1 import parse_sleigh
-    source_status, unused_ops = parse_sleigh(SLEIGH.read_text(encoding="utf-8"))
+    from audit_xenon_isa_coverage_v1 import parse_sleigh, read_sleigh_source
+    combined_source = read_sleigh_source(SLEIGH)
+    source_status, unused_ops = parse_sleigh(combined_source)
     with MANIFEST.open(encoding="utf-8", newline="") as f:
         records = list(csv.DictReader(f, delimiter="\t"))
     if len(records) != 336:
@@ -100,7 +101,7 @@ def main() -> int:
         word = int(row["word_be"], 16)
         if offset < 0 or offset + 4 > len(data) or data[offset:offset+4] != word.to_bytes(4, "big"):
             errors.append("%s: fixture bytes mismatch at %s" % (name, row["offset"]))
-    print("Current source SLEIGH SHA-256:", digest(SLEIGH.read_bytes()))
+    print("Combined Xenon SLEIGH SHA-256:", digest(combined_source.encode("utf-8")))
     print("Fixture:", describe(FIXTURE))
     print("Manifest:", describe(MANIFEST))
     print("Classification checks:")
