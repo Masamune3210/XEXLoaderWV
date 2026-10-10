@@ -28,265 +28,265 @@ define pcodeop xenonVupkd3d128;
 # Destination uses bits [6:10] and high register bits at [28:29] of
 # the 32-bit PPC instruction. In Ghidra token coordinates: vrDR=(21,25),
 # AX=(2,2), CX=(3,3). Do not confuse bit order with Xenia MSB numbering.
-xenonD: vs32 is vrDR=0 & AX=0 & CX=0 { export vs32; }
-xenonD: vs33 is vrDR=1 & AX=0 & CX=0 { export vs33; }
-xenonD: vs34 is vrDR=2 & AX=0 & CX=0 { export vs34; }
-xenonD: vs35 is vrDR=3 & AX=0 & CX=0 { export vs35; }
-xenonD: vs36 is vrDR=4 & AX=0 & CX=0 { export vs36; }
-xenonD: vs37 is vrDR=5 & AX=0 & CX=0 { export vs37; }
-xenonD: vs38 is vrDR=6 & AX=0 & CX=0 { export vs38; }
-xenonD: vs39 is vrDR=7 & AX=0 & CX=0 { export vs39; }
-xenonD: vs40 is vrDR=8 & AX=0 & CX=0 { export vs40; }
-xenonD: vs41 is vrDR=9 & AX=0 & CX=0 { export vs41; }
-xenonD: vs42 is vrDR=10 & AX=0 & CX=0 { export vs42; }
-xenonD: vs43 is vrDR=11 & AX=0 & CX=0 { export vs43; }
-xenonD: vs44 is vrDR=12 & AX=0 & CX=0 { export vs44; }
-xenonD: vs45 is vrDR=13 & AX=0 & CX=0 { export vs45; }
-xenonD: vs46 is vrDR=14 & AX=0 & CX=0 { export vs46; }
-xenonD: vs47 is vrDR=15 & AX=0 & CX=0 { export vs47; }
-xenonD: vs48 is vrDR=16 & AX=0 & CX=0 { export vs48; }
-xenonD: vs49 is vrDR=17 & AX=0 & CX=0 { export vs49; }
-xenonD: vs50 is vrDR=18 & AX=0 & CX=0 { export vs50; }
-xenonD: vs51 is vrDR=19 & AX=0 & CX=0 { export vs51; }
-xenonD: vs52 is vrDR=20 & AX=0 & CX=0 { export vs52; }
-xenonD: vs53 is vrDR=21 & AX=0 & CX=0 { export vs53; }
-xenonD: vs54 is vrDR=22 & AX=0 & CX=0 { export vs54; }
-xenonD: vs55 is vrDR=23 & AX=0 & CX=0 { export vs55; }
-xenonD: vs56 is vrDR=24 & AX=0 & CX=0 { export vs56; }
-xenonD: vs57 is vrDR=25 & AX=0 & CX=0 { export vs57; }
-xenonD: vs58 is vrDR=26 & AX=0 & CX=0 { export vs58; }
-xenonD: vs59 is vrDR=27 & AX=0 & CX=0 { export vs59; }
-xenonD: vs60 is vrDR=28 & AX=0 & CX=0 { export vs60; }
-xenonD: vs61 is vrDR=29 & AX=0 & CX=0 { export vs61; }
-xenonD: vs62 is vrDR=30 & AX=0 & CX=0 { export vs62; }
-xenonD: vs63 is vrDR=31 & AX=0 & CX=0 { export vs63; }
-xenonD: xv32 is vrDR=0 & AX=1 & CX=0 { export xv32; }
-xenonD: xv33 is vrDR=1 & AX=1 & CX=0 { export xv33; }
-xenonD: xv34 is vrDR=2 & AX=1 & CX=0 { export xv34; }
-xenonD: xv35 is vrDR=3 & AX=1 & CX=0 { export xv35; }
-xenonD: xv36 is vrDR=4 & AX=1 & CX=0 { export xv36; }
-xenonD: xv37 is vrDR=5 & AX=1 & CX=0 { export xv37; }
-xenonD: xv38 is vrDR=6 & AX=1 & CX=0 { export xv38; }
-xenonD: xv39 is vrDR=7 & AX=1 & CX=0 { export xv39; }
-xenonD: xv40 is vrDR=8 & AX=1 & CX=0 { export xv40; }
-xenonD: xv41 is vrDR=9 & AX=1 & CX=0 { export xv41; }
-xenonD: xv42 is vrDR=10 & AX=1 & CX=0 { export xv42; }
-xenonD: xv43 is vrDR=11 & AX=1 & CX=0 { export xv43; }
-xenonD: xv44 is vrDR=12 & AX=1 & CX=0 { export xv44; }
-xenonD: xv45 is vrDR=13 & AX=1 & CX=0 { export xv45; }
-xenonD: xv46 is vrDR=14 & AX=1 & CX=0 { export xv46; }
-xenonD: xv47 is vrDR=15 & AX=1 & CX=0 { export xv47; }
-xenonD: xv48 is vrDR=16 & AX=1 & CX=0 { export xv48; }
-xenonD: xv49 is vrDR=17 & AX=1 & CX=0 { export xv49; }
-xenonD: xv50 is vrDR=18 & AX=1 & CX=0 { export xv50; }
-xenonD: xv51 is vrDR=19 & AX=1 & CX=0 { export xv51; }
-xenonD: xv52 is vrDR=20 & AX=1 & CX=0 { export xv52; }
-xenonD: xv53 is vrDR=21 & AX=1 & CX=0 { export xv53; }
-xenonD: xv54 is vrDR=22 & AX=1 & CX=0 { export xv54; }
-xenonD: xv55 is vrDR=23 & AX=1 & CX=0 { export xv55; }
-xenonD: xv56 is vrDR=24 & AX=1 & CX=0 { export xv56; }
-xenonD: xv57 is vrDR=25 & AX=1 & CX=0 { export xv57; }
-xenonD: xv58 is vrDR=26 & AX=1 & CX=0 { export xv58; }
-xenonD: xv59 is vrDR=27 & AX=1 & CX=0 { export xv59; }
-xenonD: xv60 is vrDR=28 & AX=1 & CX=0 { export xv60; }
-xenonD: xv61 is vrDR=29 & AX=1 & CX=0 { export xv61; }
-xenonD: xv62 is vrDR=30 & AX=1 & CX=0 { export xv62; }
-xenonD: xv63 is vrDR=31 & AX=1 & CX=0 { export xv63; }
-xenonD: xv64 is vrDR=0 & AX=0 & CX=1 { export xv64; }
-xenonD: xv65 is vrDR=1 & AX=0 & CX=1 { export xv65; }
-xenonD: xv66 is vrDR=2 & AX=0 & CX=1 { export xv66; }
-xenonD: xv67 is vrDR=3 & AX=0 & CX=1 { export xv67; }
-xenonD: xv68 is vrDR=4 & AX=0 & CX=1 { export xv68; }
-xenonD: xv69 is vrDR=5 & AX=0 & CX=1 { export xv69; }
-xenonD: xv70 is vrDR=6 & AX=0 & CX=1 { export xv70; }
-xenonD: xv71 is vrDR=7 & AX=0 & CX=1 { export xv71; }
-xenonD: xv72 is vrDR=8 & AX=0 & CX=1 { export xv72; }
-xenonD: xv73 is vrDR=9 & AX=0 & CX=1 { export xv73; }
-xenonD: xv74 is vrDR=10 & AX=0 & CX=1 { export xv74; }
-xenonD: xv75 is vrDR=11 & AX=0 & CX=1 { export xv75; }
-xenonD: xv76 is vrDR=12 & AX=0 & CX=1 { export xv76; }
-xenonD: xv77 is vrDR=13 & AX=0 & CX=1 { export xv77; }
-xenonD: xv78 is vrDR=14 & AX=0 & CX=1 { export xv78; }
-xenonD: xv79 is vrDR=15 & AX=0 & CX=1 { export xv79; }
-xenonD: xv80 is vrDR=16 & AX=0 & CX=1 { export xv80; }
-xenonD: xv81 is vrDR=17 & AX=0 & CX=1 { export xv81; }
-xenonD: xv82 is vrDR=18 & AX=0 & CX=1 { export xv82; }
-xenonD: xv83 is vrDR=19 & AX=0 & CX=1 { export xv83; }
-xenonD: xv84 is vrDR=20 & AX=0 & CX=1 { export xv84; }
-xenonD: xv85 is vrDR=21 & AX=0 & CX=1 { export xv85; }
-xenonD: xv86 is vrDR=22 & AX=0 & CX=1 { export xv86; }
-xenonD: xv87 is vrDR=23 & AX=0 & CX=1 { export xv87; }
-xenonD: xv88 is vrDR=24 & AX=0 & CX=1 { export xv88; }
-xenonD: xv89 is vrDR=25 & AX=0 & CX=1 { export xv89; }
-xenonD: xv90 is vrDR=26 & AX=0 & CX=1 { export xv90; }
-xenonD: xv91 is vrDR=27 & AX=0 & CX=1 { export xv91; }
-xenonD: xv92 is vrDR=28 & AX=0 & CX=1 { export xv92; }
-xenonD: xv93 is vrDR=29 & AX=0 & CX=1 { export xv93; }
-xenonD: xv94 is vrDR=30 & AX=0 & CX=1 { export xv94; }
-xenonD: xv95 is vrDR=31 & AX=0 & CX=1 { export xv95; }
-xenonD: xv96 is vrDR=0 & AX=1 & CX=1 { export xv96; }
-xenonD: xv97 is vrDR=1 & AX=1 & CX=1 { export xv97; }
-xenonD: xv98 is vrDR=2 & AX=1 & CX=1 { export xv98; }
-xenonD: xv99 is vrDR=3 & AX=1 & CX=1 { export xv99; }
-xenonD: xv100 is vrDR=4 & AX=1 & CX=1 { export xv100; }
-xenonD: xv101 is vrDR=5 & AX=1 & CX=1 { export xv101; }
-xenonD: xv102 is vrDR=6 & AX=1 & CX=1 { export xv102; }
-xenonD: xv103 is vrDR=7 & AX=1 & CX=1 { export xv103; }
-xenonD: xv104 is vrDR=8 & AX=1 & CX=1 { export xv104; }
-xenonD: xv105 is vrDR=9 & AX=1 & CX=1 { export xv105; }
-xenonD: xv106 is vrDR=10 & AX=1 & CX=1 { export xv106; }
-xenonD: xv107 is vrDR=11 & AX=1 & CX=1 { export xv107; }
-xenonD: xv108 is vrDR=12 & AX=1 & CX=1 { export xv108; }
-xenonD: xv109 is vrDR=13 & AX=1 & CX=1 { export xv109; }
-xenonD: xv110 is vrDR=14 & AX=1 & CX=1 { export xv110; }
-xenonD: xv111 is vrDR=15 & AX=1 & CX=1 { export xv111; }
-xenonD: xv112 is vrDR=16 & AX=1 & CX=1 { export xv112; }
-xenonD: xv113 is vrDR=17 & AX=1 & CX=1 { export xv113; }
-xenonD: xv114 is vrDR=18 & AX=1 & CX=1 { export xv114; }
-xenonD: xv115 is vrDR=19 & AX=1 & CX=1 { export xv115; }
-xenonD: xv116 is vrDR=20 & AX=1 & CX=1 { export xv116; }
-xenonD: xv117 is vrDR=21 & AX=1 & CX=1 { export xv117; }
-xenonD: xv118 is vrDR=22 & AX=1 & CX=1 { export xv118; }
-xenonD: xv119 is vrDR=23 & AX=1 & CX=1 { export xv119; }
-xenonD: xv120 is vrDR=24 & AX=1 & CX=1 { export xv120; }
-xenonD: xv121 is vrDR=25 & AX=1 & CX=1 { export xv121; }
-xenonD: xv122 is vrDR=26 & AX=1 & CX=1 { export xv122; }
-xenonD: xv123 is vrDR=27 & AX=1 & CX=1 { export xv123; }
-xenonD: xv124 is vrDR=28 & AX=1 & CX=1 { export xv124; }
-xenonD: xv125 is vrDR=29 & AX=1 & CX=1 { export xv125; }
-xenonD: xv126 is vrDR=30 & AX=1 & CX=1 { export xv126; }
-xenonD: xv127 is vrDR=31 & AX=1 & CX=1 { export xv127; }
+xenonD: "vs32" is vrDR=0 & AX=0 & CX=0 { export vs32; }
+xenonD: "vs33" is vrDR=1 & AX=0 & CX=0 { export vs33; }
+xenonD: "vs34" is vrDR=2 & AX=0 & CX=0 { export vs34; }
+xenonD: "vs35" is vrDR=3 & AX=0 & CX=0 { export vs35; }
+xenonD: "vs36" is vrDR=4 & AX=0 & CX=0 { export vs36; }
+xenonD: "vs37" is vrDR=5 & AX=0 & CX=0 { export vs37; }
+xenonD: "vs38" is vrDR=6 & AX=0 & CX=0 { export vs38; }
+xenonD: "vs39" is vrDR=7 & AX=0 & CX=0 { export vs39; }
+xenonD: "vs40" is vrDR=8 & AX=0 & CX=0 { export vs40; }
+xenonD: "vs41" is vrDR=9 & AX=0 & CX=0 { export vs41; }
+xenonD: "vs42" is vrDR=10 & AX=0 & CX=0 { export vs42; }
+xenonD: "vs43" is vrDR=11 & AX=0 & CX=0 { export vs43; }
+xenonD: "vs44" is vrDR=12 & AX=0 & CX=0 { export vs44; }
+xenonD: "vs45" is vrDR=13 & AX=0 & CX=0 { export vs45; }
+xenonD: "vs46" is vrDR=14 & AX=0 & CX=0 { export vs46; }
+xenonD: "vs47" is vrDR=15 & AX=0 & CX=0 { export vs47; }
+xenonD: "vs48" is vrDR=16 & AX=0 & CX=0 { export vs48; }
+xenonD: "vs49" is vrDR=17 & AX=0 & CX=0 { export vs49; }
+xenonD: "vs50" is vrDR=18 & AX=0 & CX=0 { export vs50; }
+xenonD: "vs51" is vrDR=19 & AX=0 & CX=0 { export vs51; }
+xenonD: "vs52" is vrDR=20 & AX=0 & CX=0 { export vs52; }
+xenonD: "vs53" is vrDR=21 & AX=0 & CX=0 { export vs53; }
+xenonD: "vs54" is vrDR=22 & AX=0 & CX=0 { export vs54; }
+xenonD: "vs55" is vrDR=23 & AX=0 & CX=0 { export vs55; }
+xenonD: "vs56" is vrDR=24 & AX=0 & CX=0 { export vs56; }
+xenonD: "vs57" is vrDR=25 & AX=0 & CX=0 { export vs57; }
+xenonD: "vs58" is vrDR=26 & AX=0 & CX=0 { export vs58; }
+xenonD: "vs59" is vrDR=27 & AX=0 & CX=0 { export vs59; }
+xenonD: "vs60" is vrDR=28 & AX=0 & CX=0 { export vs60; }
+xenonD: "vs61" is vrDR=29 & AX=0 & CX=0 { export vs61; }
+xenonD: "vs62" is vrDR=30 & AX=0 & CX=0 { export vs62; }
+xenonD: "vs63" is vrDR=31 & AX=0 & CX=0 { export vs63; }
+xenonD: "xv32" is vrDR=0 & AX=1 & CX=0 { export xv32; }
+xenonD: "xv33" is vrDR=1 & AX=1 & CX=0 { export xv33; }
+xenonD: "xv34" is vrDR=2 & AX=1 & CX=0 { export xv34; }
+xenonD: "xv35" is vrDR=3 & AX=1 & CX=0 { export xv35; }
+xenonD: "xv36" is vrDR=4 & AX=1 & CX=0 { export xv36; }
+xenonD: "xv37" is vrDR=5 & AX=1 & CX=0 { export xv37; }
+xenonD: "xv38" is vrDR=6 & AX=1 & CX=0 { export xv38; }
+xenonD: "xv39" is vrDR=7 & AX=1 & CX=0 { export xv39; }
+xenonD: "xv40" is vrDR=8 & AX=1 & CX=0 { export xv40; }
+xenonD: "xv41" is vrDR=9 & AX=1 & CX=0 { export xv41; }
+xenonD: "xv42" is vrDR=10 & AX=1 & CX=0 { export xv42; }
+xenonD: "xv43" is vrDR=11 & AX=1 & CX=0 { export xv43; }
+xenonD: "xv44" is vrDR=12 & AX=1 & CX=0 { export xv44; }
+xenonD: "xv45" is vrDR=13 & AX=1 & CX=0 { export xv45; }
+xenonD: "xv46" is vrDR=14 & AX=1 & CX=0 { export xv46; }
+xenonD: "xv47" is vrDR=15 & AX=1 & CX=0 { export xv47; }
+xenonD: "xv48" is vrDR=16 & AX=1 & CX=0 { export xv48; }
+xenonD: "xv49" is vrDR=17 & AX=1 & CX=0 { export xv49; }
+xenonD: "xv50" is vrDR=18 & AX=1 & CX=0 { export xv50; }
+xenonD: "xv51" is vrDR=19 & AX=1 & CX=0 { export xv51; }
+xenonD: "xv52" is vrDR=20 & AX=1 & CX=0 { export xv52; }
+xenonD: "xv53" is vrDR=21 & AX=1 & CX=0 { export xv53; }
+xenonD: "xv54" is vrDR=22 & AX=1 & CX=0 { export xv54; }
+xenonD: "xv55" is vrDR=23 & AX=1 & CX=0 { export xv55; }
+xenonD: "xv56" is vrDR=24 & AX=1 & CX=0 { export xv56; }
+xenonD: "xv57" is vrDR=25 & AX=1 & CX=0 { export xv57; }
+xenonD: "xv58" is vrDR=26 & AX=1 & CX=0 { export xv58; }
+xenonD: "xv59" is vrDR=27 & AX=1 & CX=0 { export xv59; }
+xenonD: "xv60" is vrDR=28 & AX=1 & CX=0 { export xv60; }
+xenonD: "xv61" is vrDR=29 & AX=1 & CX=0 { export xv61; }
+xenonD: "xv62" is vrDR=30 & AX=1 & CX=0 { export xv62; }
+xenonD: "xv63" is vrDR=31 & AX=1 & CX=0 { export xv63; }
+xenonD: "xv64" is vrDR=0 & AX=0 & CX=1 { export xv64; }
+xenonD: "xv65" is vrDR=1 & AX=0 & CX=1 { export xv65; }
+xenonD: "xv66" is vrDR=2 & AX=0 & CX=1 { export xv66; }
+xenonD: "xv67" is vrDR=3 & AX=0 & CX=1 { export xv67; }
+xenonD: "xv68" is vrDR=4 & AX=0 & CX=1 { export xv68; }
+xenonD: "xv69" is vrDR=5 & AX=0 & CX=1 { export xv69; }
+xenonD: "xv70" is vrDR=6 & AX=0 & CX=1 { export xv70; }
+xenonD: "xv71" is vrDR=7 & AX=0 & CX=1 { export xv71; }
+xenonD: "xv72" is vrDR=8 & AX=0 & CX=1 { export xv72; }
+xenonD: "xv73" is vrDR=9 & AX=0 & CX=1 { export xv73; }
+xenonD: "xv74" is vrDR=10 & AX=0 & CX=1 { export xv74; }
+xenonD: "xv75" is vrDR=11 & AX=0 & CX=1 { export xv75; }
+xenonD: "xv76" is vrDR=12 & AX=0 & CX=1 { export xv76; }
+xenonD: "xv77" is vrDR=13 & AX=0 & CX=1 { export xv77; }
+xenonD: "xv78" is vrDR=14 & AX=0 & CX=1 { export xv78; }
+xenonD: "xv79" is vrDR=15 & AX=0 & CX=1 { export xv79; }
+xenonD: "xv80" is vrDR=16 & AX=0 & CX=1 { export xv80; }
+xenonD: "xv81" is vrDR=17 & AX=0 & CX=1 { export xv81; }
+xenonD: "xv82" is vrDR=18 & AX=0 & CX=1 { export xv82; }
+xenonD: "xv83" is vrDR=19 & AX=0 & CX=1 { export xv83; }
+xenonD: "xv84" is vrDR=20 & AX=0 & CX=1 { export xv84; }
+xenonD: "xv85" is vrDR=21 & AX=0 & CX=1 { export xv85; }
+xenonD: "xv86" is vrDR=22 & AX=0 & CX=1 { export xv86; }
+xenonD: "xv87" is vrDR=23 & AX=0 & CX=1 { export xv87; }
+xenonD: "xv88" is vrDR=24 & AX=0 & CX=1 { export xv88; }
+xenonD: "xv89" is vrDR=25 & AX=0 & CX=1 { export xv89; }
+xenonD: "xv90" is vrDR=26 & AX=0 & CX=1 { export xv90; }
+xenonD: "xv91" is vrDR=27 & AX=0 & CX=1 { export xv91; }
+xenonD: "xv92" is vrDR=28 & AX=0 & CX=1 { export xv92; }
+xenonD: "xv93" is vrDR=29 & AX=0 & CX=1 { export xv93; }
+xenonD: "xv94" is vrDR=30 & AX=0 & CX=1 { export xv94; }
+xenonD: "xv95" is vrDR=31 & AX=0 & CX=1 { export xv95; }
+xenonD: "xv96" is vrDR=0 & AX=1 & CX=1 { export xv96; }
+xenonD: "xv97" is vrDR=1 & AX=1 & CX=1 { export xv97; }
+xenonD: "xv98" is vrDR=2 & AX=1 & CX=1 { export xv98; }
+xenonD: "xv99" is vrDR=3 & AX=1 & CX=1 { export xv99; }
+xenonD: "xv100" is vrDR=4 & AX=1 & CX=1 { export xv100; }
+xenonD: "xv101" is vrDR=5 & AX=1 & CX=1 { export xv101; }
+xenonD: "xv102" is vrDR=6 & AX=1 & CX=1 { export xv102; }
+xenonD: "xv103" is vrDR=7 & AX=1 & CX=1 { export xv103; }
+xenonD: "xv104" is vrDR=8 & AX=1 & CX=1 { export xv104; }
+xenonD: "xv105" is vrDR=9 & AX=1 & CX=1 { export xv105; }
+xenonD: "xv106" is vrDR=10 & AX=1 & CX=1 { export xv106; }
+xenonD: "xv107" is vrDR=11 & AX=1 & CX=1 { export xv107; }
+xenonD: "xv108" is vrDR=12 & AX=1 & CX=1 { export xv108; }
+xenonD: "xv109" is vrDR=13 & AX=1 & CX=1 { export xv109; }
+xenonD: "xv110" is vrDR=14 & AX=1 & CX=1 { export xv110; }
+xenonD: "xv111" is vrDR=15 & AX=1 & CX=1 { export xv111; }
+xenonD: "xv112" is vrDR=16 & AX=1 & CX=1 { export xv112; }
+xenonD: "xv113" is vrDR=17 & AX=1 & CX=1 { export xv113; }
+xenonD: "xv114" is vrDR=18 & AX=1 & CX=1 { export xv114; }
+xenonD: "xv115" is vrDR=19 & AX=1 & CX=1 { export xv115; }
+xenonD: "xv116" is vrDR=20 & AX=1 & CX=1 { export xv116; }
+xenonD: "xv117" is vrDR=21 & AX=1 & CX=1 { export xv117; }
+xenonD: "xv118" is vrDR=22 & AX=1 & CX=1 { export xv118; }
+xenonD: "xv119" is vrDR=23 & AX=1 & CX=1 { export xv119; }
+xenonD: "xv120" is vrDR=24 & AX=1 & CX=1 { export xv120; }
+xenonD: "xv121" is vrDR=25 & AX=1 & CX=1 { export xv121; }
+xenonD: "xv122" is vrDR=26 & AX=1 & CX=1 { export xv122; }
+xenonD: "xv123" is vrDR=27 & AX=1 & CX=1 { export xv123; }
+xenonD: "xv124" is vrDR=28 & AX=1 & CX=1 { export xv124; }
+xenonD: "xv125" is vrDR=29 & AX=1 & CX=1 { export xv125; }
+xenonD: "xv126" is vrDR=30 & AX=1 & CX=1 { export xv126; }
+xenonD: "xv127" is vrDR=31 & AX=1 & CX=1 { export xv127; }
 
 # Source vector for VX128_3 is assembled from vrBR=(11,15), and
 # the two low instruction bits (BITS_0_1). These do NOT affect xD bits.
-xenonB: vs32 is vrBR=0 & BITS_0_1=0 { export vs32; }
-xenonB: vs33 is vrBR=1 & BITS_0_1=0 { export vs33; }
-xenonB: vs34 is vrBR=2 & BITS_0_1=0 { export vs34; }
-xenonB: vs35 is vrBR=3 & BITS_0_1=0 { export vs35; }
-xenonB: vs36 is vrBR=4 & BITS_0_1=0 { export vs36; }
-xenonB: vs37 is vrBR=5 & BITS_0_1=0 { export vs37; }
-xenonB: vs38 is vrBR=6 & BITS_0_1=0 { export vs38; }
-xenonB: vs39 is vrBR=7 & BITS_0_1=0 { export vs39; }
-xenonB: vs40 is vrBR=8 & BITS_0_1=0 { export vs40; }
-xenonB: vs41 is vrBR=9 & BITS_0_1=0 { export vs41; }
-xenonB: vs42 is vrBR=10 & BITS_0_1=0 { export vs42; }
-xenonB: vs43 is vrBR=11 & BITS_0_1=0 { export vs43; }
-xenonB: vs44 is vrBR=12 & BITS_0_1=0 { export vs44; }
-xenonB: vs45 is vrBR=13 & BITS_0_1=0 { export vs45; }
-xenonB: vs46 is vrBR=14 & BITS_0_1=0 { export vs46; }
-xenonB: vs47 is vrBR=15 & BITS_0_1=0 { export vs47; }
-xenonB: vs48 is vrBR=16 & BITS_0_1=0 { export vs48; }
-xenonB: vs49 is vrBR=17 & BITS_0_1=0 { export vs49; }
-xenonB: vs50 is vrBR=18 & BITS_0_1=0 { export vs50; }
-xenonB: vs51 is vrBR=19 & BITS_0_1=0 { export vs51; }
-xenonB: vs52 is vrBR=20 & BITS_0_1=0 { export vs52; }
-xenonB: vs53 is vrBR=21 & BITS_0_1=0 { export vs53; }
-xenonB: vs54 is vrBR=22 & BITS_0_1=0 { export vs54; }
-xenonB: vs55 is vrBR=23 & BITS_0_1=0 { export vs55; }
-xenonB: vs56 is vrBR=24 & BITS_0_1=0 { export vs56; }
-xenonB: vs57 is vrBR=25 & BITS_0_1=0 { export vs57; }
-xenonB: vs58 is vrBR=26 & BITS_0_1=0 { export vs58; }
-xenonB: vs59 is vrBR=27 & BITS_0_1=0 { export vs59; }
-xenonB: vs60 is vrBR=28 & BITS_0_1=0 { export vs60; }
-xenonB: vs61 is vrBR=29 & BITS_0_1=0 { export vs61; }
-xenonB: vs62 is vrBR=30 & BITS_0_1=0 { export vs62; }
-xenonB: vs63 is vrBR=31 & BITS_0_1=0 { export vs63; }
-xenonB: xv32 is vrBR=0 & BITS_0_1=1 { export xv32; }
-xenonB: xv33 is vrBR=1 & BITS_0_1=1 { export xv33; }
-xenonB: xv34 is vrBR=2 & BITS_0_1=1 { export xv34; }
-xenonB: xv35 is vrBR=3 & BITS_0_1=1 { export xv35; }
-xenonB: xv36 is vrBR=4 & BITS_0_1=1 { export xv36; }
-xenonB: xv37 is vrBR=5 & BITS_0_1=1 { export xv37; }
-xenonB: xv38 is vrBR=6 & BITS_0_1=1 { export xv38; }
-xenonB: xv39 is vrBR=7 & BITS_0_1=1 { export xv39; }
-xenonB: xv40 is vrBR=8 & BITS_0_1=1 { export xv40; }
-xenonB: xv41 is vrBR=9 & BITS_0_1=1 { export xv41; }
-xenonB: xv42 is vrBR=10 & BITS_0_1=1 { export xv42; }
-xenonB: xv43 is vrBR=11 & BITS_0_1=1 { export xv43; }
-xenonB: xv44 is vrBR=12 & BITS_0_1=1 { export xv44; }
-xenonB: xv45 is vrBR=13 & BITS_0_1=1 { export xv45; }
-xenonB: xv46 is vrBR=14 & BITS_0_1=1 { export xv46; }
-xenonB: xv47 is vrBR=15 & BITS_0_1=1 { export xv47; }
-xenonB: xv48 is vrBR=16 & BITS_0_1=1 { export xv48; }
-xenonB: xv49 is vrBR=17 & BITS_0_1=1 { export xv49; }
-xenonB: xv50 is vrBR=18 & BITS_0_1=1 { export xv50; }
-xenonB: xv51 is vrBR=19 & BITS_0_1=1 { export xv51; }
-xenonB: xv52 is vrBR=20 & BITS_0_1=1 { export xv52; }
-xenonB: xv53 is vrBR=21 & BITS_0_1=1 { export xv53; }
-xenonB: xv54 is vrBR=22 & BITS_0_1=1 { export xv54; }
-xenonB: xv55 is vrBR=23 & BITS_0_1=1 { export xv55; }
-xenonB: xv56 is vrBR=24 & BITS_0_1=1 { export xv56; }
-xenonB: xv57 is vrBR=25 & BITS_0_1=1 { export xv57; }
-xenonB: xv58 is vrBR=26 & BITS_0_1=1 { export xv58; }
-xenonB: xv59 is vrBR=27 & BITS_0_1=1 { export xv59; }
-xenonB: xv60 is vrBR=28 & BITS_0_1=1 { export xv60; }
-xenonB: xv61 is vrBR=29 & BITS_0_1=1 { export xv61; }
-xenonB: xv62 is vrBR=30 & BITS_0_1=1 { export xv62; }
-xenonB: xv63 is vrBR=31 & BITS_0_1=1 { export xv63; }
-xenonB: xv64 is vrBR=0 & BITS_0_1=2 { export xv64; }
-xenonB: xv65 is vrBR=1 & BITS_0_1=2 { export xv65; }
-xenonB: xv66 is vrBR=2 & BITS_0_1=2 { export xv66; }
-xenonB: xv67 is vrBR=3 & BITS_0_1=2 { export xv67; }
-xenonB: xv68 is vrBR=4 & BITS_0_1=2 { export xv68; }
-xenonB: xv69 is vrBR=5 & BITS_0_1=2 { export xv69; }
-xenonB: xv70 is vrBR=6 & BITS_0_1=2 { export xv70; }
-xenonB: xv71 is vrBR=7 & BITS_0_1=2 { export xv71; }
-xenonB: xv72 is vrBR=8 & BITS_0_1=2 { export xv72; }
-xenonB: xv73 is vrBR=9 & BITS_0_1=2 { export xv73; }
-xenonB: xv74 is vrBR=10 & BITS_0_1=2 { export xv74; }
-xenonB: xv75 is vrBR=11 & BITS_0_1=2 { export xv75; }
-xenonB: xv76 is vrBR=12 & BITS_0_1=2 { export xv76; }
-xenonB: xv77 is vrBR=13 & BITS_0_1=2 { export xv77; }
-xenonB: xv78 is vrBR=14 & BITS_0_1=2 { export xv78; }
-xenonB: xv79 is vrBR=15 & BITS_0_1=2 { export xv79; }
-xenonB: xv80 is vrBR=16 & BITS_0_1=2 { export xv80; }
-xenonB: xv81 is vrBR=17 & BITS_0_1=2 { export xv81; }
-xenonB: xv82 is vrBR=18 & BITS_0_1=2 { export xv82; }
-xenonB: xv83 is vrBR=19 & BITS_0_1=2 { export xv83; }
-xenonB: xv84 is vrBR=20 & BITS_0_1=2 { export xv84; }
-xenonB: xv85 is vrBR=21 & BITS_0_1=2 { export xv85; }
-xenonB: xv86 is vrBR=22 & BITS_0_1=2 { export xv86; }
-xenonB: xv87 is vrBR=23 & BITS_0_1=2 { export xv87; }
-xenonB: xv88 is vrBR=24 & BITS_0_1=2 { export xv88; }
-xenonB: xv89 is vrBR=25 & BITS_0_1=2 { export xv89; }
-xenonB: xv90 is vrBR=26 & BITS_0_1=2 { export xv90; }
-xenonB: xv91 is vrBR=27 & BITS_0_1=2 { export xv91; }
-xenonB: xv92 is vrBR=28 & BITS_0_1=2 { export xv92; }
-xenonB: xv93 is vrBR=29 & BITS_0_1=2 { export xv93; }
-xenonB: xv94 is vrBR=30 & BITS_0_1=2 { export xv94; }
-xenonB: xv95 is vrBR=31 & BITS_0_1=2 { export xv95; }
-xenonB: xv96 is vrBR=0 & BITS_0_1=3 { export xv96; }
-xenonB: xv97 is vrBR=1 & BITS_0_1=3 { export xv97; }
-xenonB: xv98 is vrBR=2 & BITS_0_1=3 { export xv98; }
-xenonB: xv99 is vrBR=3 & BITS_0_1=3 { export xv99; }
-xenonB: xv100 is vrBR=4 & BITS_0_1=3 { export xv100; }
-xenonB: xv101 is vrBR=5 & BITS_0_1=3 { export xv101; }
-xenonB: xv102 is vrBR=6 & BITS_0_1=3 { export xv102; }
-xenonB: xv103 is vrBR=7 & BITS_0_1=3 { export xv103; }
-xenonB: xv104 is vrBR=8 & BITS_0_1=3 { export xv104; }
-xenonB: xv105 is vrBR=9 & BITS_0_1=3 { export xv105; }
-xenonB: xv106 is vrBR=10 & BITS_0_1=3 { export xv106; }
-xenonB: xv107 is vrBR=11 & BITS_0_1=3 { export xv107; }
-xenonB: xv108 is vrBR=12 & BITS_0_1=3 { export xv108; }
-xenonB: xv109 is vrBR=13 & BITS_0_1=3 { export xv109; }
-xenonB: xv110 is vrBR=14 & BITS_0_1=3 { export xv110; }
-xenonB: xv111 is vrBR=15 & BITS_0_1=3 { export xv111; }
-xenonB: xv112 is vrBR=16 & BITS_0_1=3 { export xv112; }
-xenonB: xv113 is vrBR=17 & BITS_0_1=3 { export xv113; }
-xenonB: xv114 is vrBR=18 & BITS_0_1=3 { export xv114; }
-xenonB: xv115 is vrBR=19 & BITS_0_1=3 { export xv115; }
-xenonB: xv116 is vrBR=20 & BITS_0_1=3 { export xv116; }
-xenonB: xv117 is vrBR=21 & BITS_0_1=3 { export xv117; }
-xenonB: xv118 is vrBR=22 & BITS_0_1=3 { export xv118; }
-xenonB: xv119 is vrBR=23 & BITS_0_1=3 { export xv119; }
-xenonB: xv120 is vrBR=24 & BITS_0_1=3 { export xv120; }
-xenonB: xv121 is vrBR=25 & BITS_0_1=3 { export xv121; }
-xenonB: xv122 is vrBR=26 & BITS_0_1=3 { export xv122; }
-xenonB: xv123 is vrBR=27 & BITS_0_1=3 { export xv123; }
-xenonB: xv124 is vrBR=28 & BITS_0_1=3 { export xv124; }
-xenonB: xv125 is vrBR=29 & BITS_0_1=3 { export xv125; }
-xenonB: xv126 is vrBR=30 & BITS_0_1=3 { export xv126; }
-xenonB: xv127 is vrBR=31 & BITS_0_1=3 { export xv127; }
+xenonB: "vs32" is vrBR=0 & BITS_0_1=0 { export vs32; }
+xenonB: "vs33" is vrBR=1 & BITS_0_1=0 { export vs33; }
+xenonB: "vs34" is vrBR=2 & BITS_0_1=0 { export vs34; }
+xenonB: "vs35" is vrBR=3 & BITS_0_1=0 { export vs35; }
+xenonB: "vs36" is vrBR=4 & BITS_0_1=0 { export vs36; }
+xenonB: "vs37" is vrBR=5 & BITS_0_1=0 { export vs37; }
+xenonB: "vs38" is vrBR=6 & BITS_0_1=0 { export vs38; }
+xenonB: "vs39" is vrBR=7 & BITS_0_1=0 { export vs39; }
+xenonB: "vs40" is vrBR=8 & BITS_0_1=0 { export vs40; }
+xenonB: "vs41" is vrBR=9 & BITS_0_1=0 { export vs41; }
+xenonB: "vs42" is vrBR=10 & BITS_0_1=0 { export vs42; }
+xenonB: "vs43" is vrBR=11 & BITS_0_1=0 { export vs43; }
+xenonB: "vs44" is vrBR=12 & BITS_0_1=0 { export vs44; }
+xenonB: "vs45" is vrBR=13 & BITS_0_1=0 { export vs45; }
+xenonB: "vs46" is vrBR=14 & BITS_0_1=0 { export vs46; }
+xenonB: "vs47" is vrBR=15 & BITS_0_1=0 { export vs47; }
+xenonB: "vs48" is vrBR=16 & BITS_0_1=0 { export vs48; }
+xenonB: "vs49" is vrBR=17 & BITS_0_1=0 { export vs49; }
+xenonB: "vs50" is vrBR=18 & BITS_0_1=0 { export vs50; }
+xenonB: "vs51" is vrBR=19 & BITS_0_1=0 { export vs51; }
+xenonB: "vs52" is vrBR=20 & BITS_0_1=0 { export vs52; }
+xenonB: "vs53" is vrBR=21 & BITS_0_1=0 { export vs53; }
+xenonB: "vs54" is vrBR=22 & BITS_0_1=0 { export vs54; }
+xenonB: "vs55" is vrBR=23 & BITS_0_1=0 { export vs55; }
+xenonB: "vs56" is vrBR=24 & BITS_0_1=0 { export vs56; }
+xenonB: "vs57" is vrBR=25 & BITS_0_1=0 { export vs57; }
+xenonB: "vs58" is vrBR=26 & BITS_0_1=0 { export vs58; }
+xenonB: "vs59" is vrBR=27 & BITS_0_1=0 { export vs59; }
+xenonB: "vs60" is vrBR=28 & BITS_0_1=0 { export vs60; }
+xenonB: "vs61" is vrBR=29 & BITS_0_1=0 { export vs61; }
+xenonB: "vs62" is vrBR=30 & BITS_0_1=0 { export vs62; }
+xenonB: "vs63" is vrBR=31 & BITS_0_1=0 { export vs63; }
+xenonB: "xv32" is vrBR=0 & BITS_0_1=1 { export xv32; }
+xenonB: "xv33" is vrBR=1 & BITS_0_1=1 { export xv33; }
+xenonB: "xv34" is vrBR=2 & BITS_0_1=1 { export xv34; }
+xenonB: "xv35" is vrBR=3 & BITS_0_1=1 { export xv35; }
+xenonB: "xv36" is vrBR=4 & BITS_0_1=1 { export xv36; }
+xenonB: "xv37" is vrBR=5 & BITS_0_1=1 { export xv37; }
+xenonB: "xv38" is vrBR=6 & BITS_0_1=1 { export xv38; }
+xenonB: "xv39" is vrBR=7 & BITS_0_1=1 { export xv39; }
+xenonB: "xv40" is vrBR=8 & BITS_0_1=1 { export xv40; }
+xenonB: "xv41" is vrBR=9 & BITS_0_1=1 { export xv41; }
+xenonB: "xv42" is vrBR=10 & BITS_0_1=1 { export xv42; }
+xenonB: "xv43" is vrBR=11 & BITS_0_1=1 { export xv43; }
+xenonB: "xv44" is vrBR=12 & BITS_0_1=1 { export xv44; }
+xenonB: "xv45" is vrBR=13 & BITS_0_1=1 { export xv45; }
+xenonB: "xv46" is vrBR=14 & BITS_0_1=1 { export xv46; }
+xenonB: "xv47" is vrBR=15 & BITS_0_1=1 { export xv47; }
+xenonB: "xv48" is vrBR=16 & BITS_0_1=1 { export xv48; }
+xenonB: "xv49" is vrBR=17 & BITS_0_1=1 { export xv49; }
+xenonB: "xv50" is vrBR=18 & BITS_0_1=1 { export xv50; }
+xenonB: "xv51" is vrBR=19 & BITS_0_1=1 { export xv51; }
+xenonB: "xv52" is vrBR=20 & BITS_0_1=1 { export xv52; }
+xenonB: "xv53" is vrBR=21 & BITS_0_1=1 { export xv53; }
+xenonB: "xv54" is vrBR=22 & BITS_0_1=1 { export xv54; }
+xenonB: "xv55" is vrBR=23 & BITS_0_1=1 { export xv55; }
+xenonB: "xv56" is vrBR=24 & BITS_0_1=1 { export xv56; }
+xenonB: "xv57" is vrBR=25 & BITS_0_1=1 { export xv57; }
+xenonB: "xv58" is vrBR=26 & BITS_0_1=1 { export xv58; }
+xenonB: "xv59" is vrBR=27 & BITS_0_1=1 { export xv59; }
+xenonB: "xv60" is vrBR=28 & BITS_0_1=1 { export xv60; }
+xenonB: "xv61" is vrBR=29 & BITS_0_1=1 { export xv61; }
+xenonB: "xv62" is vrBR=30 & BITS_0_1=1 { export xv62; }
+xenonB: "xv63" is vrBR=31 & BITS_0_1=1 { export xv63; }
+xenonB: "xv64" is vrBR=0 & BITS_0_1=2 { export xv64; }
+xenonB: "xv65" is vrBR=1 & BITS_0_1=2 { export xv65; }
+xenonB: "xv66" is vrBR=2 & BITS_0_1=2 { export xv66; }
+xenonB: "xv67" is vrBR=3 & BITS_0_1=2 { export xv67; }
+xenonB: "xv68" is vrBR=4 & BITS_0_1=2 { export xv68; }
+xenonB: "xv69" is vrBR=5 & BITS_0_1=2 { export xv69; }
+xenonB: "xv70" is vrBR=6 & BITS_0_1=2 { export xv70; }
+xenonB: "xv71" is vrBR=7 & BITS_0_1=2 { export xv71; }
+xenonB: "xv72" is vrBR=8 & BITS_0_1=2 { export xv72; }
+xenonB: "xv73" is vrBR=9 & BITS_0_1=2 { export xv73; }
+xenonB: "xv74" is vrBR=10 & BITS_0_1=2 { export xv74; }
+xenonB: "xv75" is vrBR=11 & BITS_0_1=2 { export xv75; }
+xenonB: "xv76" is vrBR=12 & BITS_0_1=2 { export xv76; }
+xenonB: "xv77" is vrBR=13 & BITS_0_1=2 { export xv77; }
+xenonB: "xv78" is vrBR=14 & BITS_0_1=2 { export xv78; }
+xenonB: "xv79" is vrBR=15 & BITS_0_1=2 { export xv79; }
+xenonB: "xv80" is vrBR=16 & BITS_0_1=2 { export xv80; }
+xenonB: "xv81" is vrBR=17 & BITS_0_1=2 { export xv81; }
+xenonB: "xv82" is vrBR=18 & BITS_0_1=2 { export xv82; }
+xenonB: "xv83" is vrBR=19 & BITS_0_1=2 { export xv83; }
+xenonB: "xv84" is vrBR=20 & BITS_0_1=2 { export xv84; }
+xenonB: "xv85" is vrBR=21 & BITS_0_1=2 { export xv85; }
+xenonB: "xv86" is vrBR=22 & BITS_0_1=2 { export xv86; }
+xenonB: "xv87" is vrBR=23 & BITS_0_1=2 { export xv87; }
+xenonB: "xv88" is vrBR=24 & BITS_0_1=2 { export xv88; }
+xenonB: "xv89" is vrBR=25 & BITS_0_1=2 { export xv89; }
+xenonB: "xv90" is vrBR=26 & BITS_0_1=2 { export xv90; }
+xenonB: "xv91" is vrBR=27 & BITS_0_1=2 { export xv91; }
+xenonB: "xv92" is vrBR=28 & BITS_0_1=2 { export xv92; }
+xenonB: "xv93" is vrBR=29 & BITS_0_1=2 { export xv93; }
+xenonB: "xv94" is vrBR=30 & BITS_0_1=2 { export xv94; }
+xenonB: "xv95" is vrBR=31 & BITS_0_1=2 { export xv95; }
+xenonB: "xv96" is vrBR=0 & BITS_0_1=3 { export xv96; }
+xenonB: "xv97" is vrBR=1 & BITS_0_1=3 { export xv97; }
+xenonB: "xv98" is vrBR=2 & BITS_0_1=3 { export xv98; }
+xenonB: "xv99" is vrBR=3 & BITS_0_1=3 { export xv99; }
+xenonB: "xv100" is vrBR=4 & BITS_0_1=3 { export xv100; }
+xenonB: "xv101" is vrBR=5 & BITS_0_1=3 { export xv101; }
+xenonB: "xv102" is vrBR=6 & BITS_0_1=3 { export xv102; }
+xenonB: "xv103" is vrBR=7 & BITS_0_1=3 { export xv103; }
+xenonB: "xv104" is vrBR=8 & BITS_0_1=3 { export xv104; }
+xenonB: "xv105" is vrBR=9 & BITS_0_1=3 { export xv105; }
+xenonB: "xv106" is vrBR=10 & BITS_0_1=3 { export xv106; }
+xenonB: "xv107" is vrBR=11 & BITS_0_1=3 { export xv107; }
+xenonB: "xv108" is vrBR=12 & BITS_0_1=3 { export xv108; }
+xenonB: "xv109" is vrBR=13 & BITS_0_1=3 { export xv109; }
+xenonB: "xv110" is vrBR=14 & BITS_0_1=3 { export xv110; }
+xenonB: "xv111" is vrBR=15 & BITS_0_1=3 { export xv111; }
+xenonB: "xv112" is vrBR=16 & BITS_0_1=3 { export xv112; }
+xenonB: "xv113" is vrBR=17 & BITS_0_1=3 { export xv113; }
+xenonB: "xv114" is vrBR=18 & BITS_0_1=3 { export xv114; }
+xenonB: "xv115" is vrBR=19 & BITS_0_1=3 { export xv115; }
+xenonB: "xv116" is vrBR=20 & BITS_0_1=3 { export xv116; }
+xenonB: "xv117" is vrBR=21 & BITS_0_1=3 { export xv117; }
+xenonB: "xv118" is vrBR=22 & BITS_0_1=3 { export xv118; }
+xenonB: "xv119" is vrBR=23 & BITS_0_1=3 { export xv119; }
+xenonB: "xv120" is vrBR=24 & BITS_0_1=3 { export xv120; }
+xenonB: "xv121" is vrBR=25 & BITS_0_1=3 { export xv121; }
+xenonB: "xv122" is vrBR=26 & BITS_0_1=3 { export xv122; }
+xenonB: "xv123" is vrBR=27 & BITS_0_1=3 { export xv123; }
+xenonB: "xv124" is vrBR=28 & BITS_0_1=3 { export xv124; }
+xenonB: "xv125" is vrBR=29 & BITS_0_1=3 { export xv125; }
+xenonB: "xv126" is vrBR=30 & BITS_0_1=3 { export xv126; }
+xenonB: "xv127" is vrBR=31 & BITS_0_1=3 { export xv127; }
 
 # Opcode 4, VX128_1: [OP:6][VD:5][RA:5][RB:5][OPC:7][VDh:2][11].
 # Seven-bit OPC is 12 for lvx128. Since stock token XOP_3_10 also
