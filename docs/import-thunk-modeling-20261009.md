@@ -1,3 +1,9 @@
+## Windows Python coverage baseline passed; Gradle/SLEIGH validation next (2026-10-10)
+
+- User reran the corrected suite from the repository root: `python -m unittest discover -s tools -p "test_xenon_isa_coverage_v1.py"`; **7 tests passed (OK) in 0.031 seconds**. Fixture test generated 336 words / 1,344 bytes in an automatically removed temporary directory, with **84 families: 31 native, 7 opaque, 46 missing**. The temporary test output is intentional; normal fixture generation writes to `build/xenon-isa-audit/`.
+- Targeted source review of the pending 21-family memory/ISA batch found no sufficiently evidenced new code change before compilation. Do not assume that source-level coverage means Ghidra/SLEIGH compilation or numerical p-code semantics passed. User-side **Gradle/SLEIGH build and newly imported Ghidra decoder fixture remain pending**.
+- Next from repository root: `python tools/audit_xenon_isa_coverage_v1.py`; `python tools/check_xenon_fixture_install_v1.py` (the latter can flag old compiled/packaged/installed SLAs). Then `cd XEXLoaderWV`; `gradle buildExtension`. Capture compiler diagnostics, if any. After a successful build and installation, restart Ghidra and use a **new** raw fixture Program; run `ghidra_scripts/AuditXenonIsaFixtureV1.java` with the freshly generated TSV. The last known old-language result was **64/336 correct mnemonics**; improvement is not established until a fresh Ghidra result is received.
+
 ## Xenon selector unit test incorrectly demanded unimplemented constructors (2026-10-10)
 
 - The user ran the seven-test Python suite; **six passed and one failed**, specifically `test_opcode4_memory_and_opcode31_xform_selectors` at `vsldoi128` with `AssertionError: [] is not true`. This was the test's mistake, not a SLEIGH compiler/runtime decode finding: `vsldoi128` is intentionally still in the Xenia inventory but remains one of **46 missing add-on definitions**.
