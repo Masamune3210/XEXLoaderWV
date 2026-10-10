@@ -79,8 +79,8 @@ def main() -> int:
         return 2
 
     from audit_xenon_isa_coverage_v1 import (
-        FILLS, INVENTORY, EXTRA_INVENTORY, parse_sleigh, read_inventory,
-        read_sleigh_source,
+        FILLS, INVENTORY, EXTRA_INVENTORY, decode_expectation, parse_sleigh,
+        read_inventory, read_sleigh_source,
     )
     combined_source = read_sleigh_source(SLEIGH)
     source_status, unused_ops = parse_sleigh(combined_source)
@@ -88,6 +88,12 @@ def main() -> int:
         records = list(csv.DictReader(f, delimiter="\t"))
     if len(records) != 336:
         print("ERROR: expected exactly 336 fixture rows; got", len(records))
+        return 2
+    required_columns = {
+        "offset", "word_be", "expected_mnemonic", "sleigh_status",
+        "variant", "decode_expectation"}
+    if not records or not required_columns.issubset(records[0]):
+        print("ERROR: old fixture manifest schema; regenerate via Gradle.")
         return 2
     data = FIXTURE.read_bytes()
     if len(data) != 1344:
@@ -126,10 +132,10 @@ def main() -> int:
                 f"0x{len(expected_samples) * 4:08X}", f"{word:08X}",
                 item["mnemonic"],
                 source_status.get(item["mnemonic"], "missing"),
-                variant,
+                variant, decode_expectation(item["mnemonic"], word),
             ))
     fields = ("offset", "word_be", "expected_mnemonic", "sleigh_status",
-              "variant")
+              "variant", "decode_expectation")
     for index, (actual, expected) in enumerate(zip(records, expected_samples)):
         if tuple(actual[field] for field in fields) != expected:
             errors.append("manifest sample %d does not match current inputs" %
