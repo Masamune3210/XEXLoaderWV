@@ -192,10 +192,10 @@ tasks.register("prepareXenonCommon") {
             throw new GradleException("Xenon embedded dcbzl exclusion failed")
         }
         xenonCommon.setText(
-            "# Generated from installed Ghidra ppc_common.sinc; do not edit.\\n" +
+            "# Generated from installed Ghidra ppc_common.sinc; do not edit.\n" +
             common, "UTF-8")
         xenonEmbedded.setText(
-            "# Generated from installed Ghidra ppc_embedded.sinc; do not edit.\\n" +
+            "# Generated from installed Ghidra ppc_embedded.sinc; do not edit.\n" +
             embedded, "UTF-8")
     }
 }
