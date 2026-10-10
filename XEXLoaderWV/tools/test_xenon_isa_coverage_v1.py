@@ -843,8 +843,7 @@ class XenonIsaInventoryTests(unittest.TestCase):
                       script)
         self.assertIn("!fixtureMatches(address, original)", script)
         self.assertNotIn("currentProgram.getMemory().setBytes(", script)
-        self.assertIn('if (pattern == 0)', script.replace(
-            "int start = pattern == 0 ?", "if (pattern == 0)"))
+        self.assertIn("int start = pattern == 0 ?", script)
 
         va_names = ("vs34", "xv34", "xv66", "xv98")
         for variant, va in enumerate(va_names):
