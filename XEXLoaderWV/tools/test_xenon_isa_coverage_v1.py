@@ -1080,6 +1080,9 @@ class XenonIsaInventoryTests(unittest.TestCase):
             for b in values:
                 for d in (-2048, -256, -17, 3, 71, 256, 2048):
                     for name in families:
+                        product = a * (d if name == "vmaddcfp128"
+                                       else b)
+                        self.assertEqual(f32(product), float(product))
                         answer = (a * b + d if name == "vmaddfp128"
                                   else a * d + b if name == "vmaddcfp128"
                                   else d - a * b)
