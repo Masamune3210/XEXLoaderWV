@@ -17,6 +17,11 @@ import ghidra.app.util.importer.MessageLog;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSet;
 import ghidra.program.model.address.AddressSetView;
+import ghidra.program.model.listing.Bookmark;
+import ghidra.program.model.listing.BookmarkManager;
+import ghidra.program.model.listing.BookmarkType;
+import ghidra.program.model.listing.FlowOverride;
+import ghidra.program.model.listing.Instruction;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.FunctionManager;
 import ghidra.program.model.listing.Listing;
@@ -461,6 +466,61 @@ public class Xbox360RetailKernelPdataAnalyzer extends AbstractAnalyzer {
             }
         }
 
+        // Correct the validated kernel's non-returning bugcheck edge before
+        // other analyzers follow its fall-through into KeLeaveUserMode's data.
+        // Do not change ANY unrelated function's return behavior.
+        int bugcheckNoReturnSet = 0, bugcheckCallOverrideSet = 0;
+        int stalePaddingBookmarksRemoved = 0, bugcheckFlowFailures = 0;
+        try {
+            monitor.checkCancelled();
+            Address bugcheckAddress = at(program, 0x800716E8L);
+            Address callAddress = at(program, 0x80073730L);
+            Address paddingAddress = at(program, 0x80073734L);
+            require(readU32(program.getMemory(), callAddress, true) == 0x4BFFDFB9L &&
+                    readU32(program.getMemory(), paddingAddress, true) == 0 &&
+                    metadata.codeExportsWithoutPdata.contains(0x80073690L),
+                "Unexpected KeLeaveUserMode/KeBugCheckEx call or padding");
+
+            Function bugcheck = functions.getFunctionAt(bugcheckAddress);
+            require(bugcheck != null, "KeBugCheckEx target function not registered");
+            if (!bugcheck.hasNoReturn()) {
+                bugcheck.setNoReturn(true);
+                bugcheckNoReturnSet++;
+            }
+
+            Instruction fatalCall = listing.getInstructionAt(callAddress);
+            require(fatalCall != null && fatalCall.getMnemonicString().equals("bl"),
+                "KeLeaveUserMode fatal call was not decoded as bl");
+            if (fatalCall.getFlowOverride() != FlowOverride.CALL_RETURN) {
+                fatalCall.setFlowOverride(FlowOverride.CALL_RETURN);
+                bugcheckCallOverrideSet++;
+            }
+
+            // A pre-existing database may retain a diagnostic produced before
+            // the flow override. Remove only this single precisely identified
+            // stale disassembler error, leaving the sixteen genuine Xenon
+            // vector decoder failures visible.
+            BookmarkManager bookmarks = program.getBookmarkManager();
+            for (Bookmark mark : bookmarks.getBookmarks(paddingAddress, BookmarkType.ERROR)) {
+                String comment = mark.getComment();
+                if ("Bad Instruction".equals(mark.getCategory()) && comment != null &&
+                        comment.toLowerCase(java.util.Locale.ROOT).contains(
+                            "unable to resolve constructor at 80073734") &&
+                        comment.toLowerCase(java.util.Locale.ROOT).contains(
+                            "flow from 80073730")) {
+                    bookmarks.removeBookmark(mark);
+                    stalePaddingBookmarksRemoved++;
+                }
+            }
+        }
+        catch (CancelledException ex) { throw ex; }
+        catch (Exception ex) {
+            bugcheckFlowFailures++;
+            if (failures.size() < 20) {
+                failures.add("KeBugCheckEx nonreturning edge @ 80073730: " + ex.getMessage());
+            }
+        }
+
         // Export addresses from the PE are real entrypoints, even when they
         // have no .pdata record. Do not guess their function sizes.
         for (long address : metadata.codeExportsWithoutPdata) {
@@ -502,14 +562,18 @@ public class Xbox360RetailKernelPdataAnalyzer extends AbstractAnalyzer {
             "skipped=%d, pending disassembly=%d, entry data conflicts=%d, " +
             "flow bodies updated=%d, flow failures=%d, truncated flows=%d, " +
             "export labels=%d, leaf entrypoints added=%d, already marked=%d, " +
-            "special export functions created=%d, special failures=%d",
+            "special export functions created=%d, special failures=%d, " +
+            "bugcheck noreturn set=%d, fatal call overrides=%d, " +
+            "stale padding bookmarks removed=%d, fatal-flow failures=%d",
             created, alreadyPresent, skipped, deferredDisassembly, blockedByDefinedData,
             flowBodiesSet, flowBodyFailures, flowBodyOutOfRange,
             newLabels, leafEntrypoints, previouslyMarkedEntrypoints,
-            specialExportFunctionsCreated, specialExportFunctionFailures));
+            specialExportFunctionsCreated, specialExportFunctionFailures,
+            bugcheckNoReturnSet, bugcheckCallOverrideSet,
+            stalePaddingBookmarksRemoved, bugcheckFlowFailures));
         for (String failure : failures) log.appendMsg("  " + failure);
         if (failures.size() >= 20)
             log.appendMsg("  (Additional failures or pending entries suppressed; see counts above)");
-        return skipped == 0 && flowBodyFailures == 0 && specialExportFunctionFailures == 0;
+        return skipped == 0 && flowBodyFailures == 0 && specialExportFunctionFailures == 0 && bugcheckFlowFailures == 0;
     }
 }
