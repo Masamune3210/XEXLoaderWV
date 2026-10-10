@@ -38,8 +38,8 @@ define pcodeop xenonVcmpbfp128;
 define pcodeop xenonVcmpequw128;
 define pcodeop xenonVmaxfp128;
 define pcodeop xenonVminfp128;
-define pcodeop xenonVupkhsb128;
-define pcodeop xenonVupklsb128;
+
+
 
 
 
@@ -2257,51 +2257,235 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 # vupkhsb128: opaque; Xenia mask/value fc0003d0/18000380
 :vupkhsb128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=14 & BITS_4_5=0
 {
-    result:16 = xenonVupkhsb128(xenonA, xenonB);
-    xenonD = result;
+    byteIn0:1 = xenonB(15);
+    extendedHalf0:2 = sext(byteIn0);
+    packedHalf0:16 = zext(extendedHalf0) << 112;
+    byteIn1:1 = xenonB(14);
+    extendedHalf1:2 = sext(byteIn1);
+    packedHalf1:16 = zext(extendedHalf1) << 96;
+    byteIn2:1 = xenonB(13);
+    extendedHalf2:2 = sext(byteIn2);
+    packedHalf2:16 = zext(extendedHalf2) << 80;
+    byteIn3:1 = xenonB(12);
+    extendedHalf3:2 = sext(byteIn3);
+    packedHalf3:16 = zext(extendedHalf3) << 64;
+    byteIn4:1 = xenonB(11);
+    extendedHalf4:2 = sext(byteIn4);
+    packedHalf4:16 = zext(extendedHalf4) << 48;
+    byteIn5:1 = xenonB(10);
+    extendedHalf5:2 = sext(byteIn5);
+    packedHalf5:16 = zext(extendedHalf5) << 32;
+    byteIn6:1 = xenonB(9);
+    extendedHalf6:2 = sext(byteIn6);
+    packedHalf6:16 = zext(extendedHalf6) << 16;
+    byteIn7:1 = xenonB(8);
+    extendedHalf7:2 = sext(byteIn7);
+    packedHalf7:16 = zext(extendedHalf7);
+    xenonD = packedHalf0 | packedHalf1 | packedHalf2 | packedHalf3 | packedHalf4 | packedHalf5 | packedHalf6 | packedHalf7;
 }
 
 :vupkhsb128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=14 & BITS_4_5=2
 {
-    result:16 = xenonVupkhsb128(xenonA, xenonB);
-    xenonD = result;
+    byteIn0:1 = xenonB(15);
+    extendedHalf0:2 = sext(byteIn0);
+    packedHalf0:16 = zext(extendedHalf0) << 112;
+    byteIn1:1 = xenonB(14);
+    extendedHalf1:2 = sext(byteIn1);
+    packedHalf1:16 = zext(extendedHalf1) << 96;
+    byteIn2:1 = xenonB(13);
+    extendedHalf2:2 = sext(byteIn2);
+    packedHalf2:16 = zext(extendedHalf2) << 80;
+    byteIn3:1 = xenonB(12);
+    extendedHalf3:2 = sext(byteIn3);
+    packedHalf3:16 = zext(extendedHalf3) << 64;
+    byteIn4:1 = xenonB(11);
+    extendedHalf4:2 = sext(byteIn4);
+    packedHalf4:16 = zext(extendedHalf4) << 48;
+    byteIn5:1 = xenonB(10);
+    extendedHalf5:2 = sext(byteIn5);
+    packedHalf5:16 = zext(extendedHalf5) << 32;
+    byteIn6:1 = xenonB(9);
+    extendedHalf6:2 = sext(byteIn6);
+    packedHalf6:16 = zext(extendedHalf6) << 16;
+    byteIn7:1 = xenonB(8);
+    extendedHalf7:2 = sext(byteIn7);
+    packedHalf7:16 = zext(extendedHalf7);
+    xenonD = packedHalf0 | packedHalf1 | packedHalf2 | packedHalf3 | packedHalf4 | packedHalf5 | packedHalf6 | packedHalf7;
 }
 
 :vupkhsb128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=30 & BITS_4_5=0
 {
-    result:16 = xenonVupkhsb128(xenonA, xenonB);
-    xenonD = result;
+    byteIn0:1 = xenonB(15);
+    extendedHalf0:2 = sext(byteIn0);
+    packedHalf0:16 = zext(extendedHalf0) << 112;
+    byteIn1:1 = xenonB(14);
+    extendedHalf1:2 = sext(byteIn1);
+    packedHalf1:16 = zext(extendedHalf1) << 96;
+    byteIn2:1 = xenonB(13);
+    extendedHalf2:2 = sext(byteIn2);
+    packedHalf2:16 = zext(extendedHalf2) << 80;
+    byteIn3:1 = xenonB(12);
+    extendedHalf3:2 = sext(byteIn3);
+    packedHalf3:16 = zext(extendedHalf3) << 64;
+    byteIn4:1 = xenonB(11);
+    extendedHalf4:2 = sext(byteIn4);
+    packedHalf4:16 = zext(extendedHalf4) << 48;
+    byteIn5:1 = xenonB(10);
+    extendedHalf5:2 = sext(byteIn5);
+    packedHalf5:16 = zext(extendedHalf5) << 32;
+    byteIn6:1 = xenonB(9);
+    extendedHalf6:2 = sext(byteIn6);
+    packedHalf6:16 = zext(extendedHalf6) << 16;
+    byteIn7:1 = xenonB(8);
+    extendedHalf7:2 = sext(byteIn7);
+    packedHalf7:16 = zext(extendedHalf7);
+    xenonD = packedHalf0 | packedHalf1 | packedHalf2 | packedHalf3 | packedHalf4 | packedHalf5 | packedHalf6 | packedHalf7;
 }
 
 :vupkhsb128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=30 & BITS_4_5=2 & A_BITS!=0
 {
-    result:16 = xenonVupkhsb128(xenonA, xenonB);
-    xenonD = result;
+    byteIn0:1 = xenonB(15);
+    extendedHalf0:2 = sext(byteIn0);
+    packedHalf0:16 = zext(extendedHalf0) << 112;
+    byteIn1:1 = xenonB(14);
+    extendedHalf1:2 = sext(byteIn1);
+    packedHalf1:16 = zext(extendedHalf1) << 96;
+    byteIn2:1 = xenonB(13);
+    extendedHalf2:2 = sext(byteIn2);
+    packedHalf2:16 = zext(extendedHalf2) << 80;
+    byteIn3:1 = xenonB(12);
+    extendedHalf3:2 = sext(byteIn3);
+    packedHalf3:16 = zext(extendedHalf3) << 64;
+    byteIn4:1 = xenonB(11);
+    extendedHalf4:2 = sext(byteIn4);
+    packedHalf4:16 = zext(extendedHalf4) << 48;
+    byteIn5:1 = xenonB(10);
+    extendedHalf5:2 = sext(byteIn5);
+    packedHalf5:16 = zext(extendedHalf5) << 32;
+    byteIn6:1 = xenonB(9);
+    extendedHalf6:2 = sext(byteIn6);
+    packedHalf6:16 = zext(extendedHalf6) << 16;
+    byteIn7:1 = xenonB(8);
+    extendedHalf7:2 = sext(byteIn7);
+    packedHalf7:16 = zext(extendedHalf7);
+    xenonD = packedHalf0 | packedHalf1 | packedHalf2 | packedHalf3 | packedHalf4 | packedHalf5 | packedHalf6 | packedHalf7;
 }
 
 # vupklsb128: opaque; Xenia mask/value fc0003d0/180003c0
 :vupklsb128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=15 & BITS_4_5=0
 {
-    result:16 = xenonVupklsb128(xenonA, xenonB);
-    xenonD = result;
+    byteIn0:1 = xenonB(7);
+    extendedHalf0:2 = sext(byteIn0);
+    packedHalf0:16 = zext(extendedHalf0) << 112;
+    byteIn1:1 = xenonB(6);
+    extendedHalf1:2 = sext(byteIn1);
+    packedHalf1:16 = zext(extendedHalf1) << 96;
+    byteIn2:1 = xenonB(5);
+    extendedHalf2:2 = sext(byteIn2);
+    packedHalf2:16 = zext(extendedHalf2) << 80;
+    byteIn3:1 = xenonB(4);
+    extendedHalf3:2 = sext(byteIn3);
+    packedHalf3:16 = zext(extendedHalf3) << 64;
+    byteIn4:1 = xenonB(3);
+    extendedHalf4:2 = sext(byteIn4);
+    packedHalf4:16 = zext(extendedHalf4) << 48;
+    byteIn5:1 = xenonB(2);
+    extendedHalf5:2 = sext(byteIn5);
+    packedHalf5:16 = zext(extendedHalf5) << 32;
+    byteIn6:1 = xenonB(1);
+    extendedHalf6:2 = sext(byteIn6);
+    packedHalf6:16 = zext(extendedHalf6) << 16;
+    byteIn7:1 = xenonB(0);
+    extendedHalf7:2 = sext(byteIn7);
+    packedHalf7:16 = zext(extendedHalf7);
+    xenonD = packedHalf0 | packedHalf1 | packedHalf2 | packedHalf3 | packedHalf4 | packedHalf5 | packedHalf6 | packedHalf7;
 }
 
 :vupklsb128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=15 & BITS_4_5=2
 {
-    result:16 = xenonVupklsb128(xenonA, xenonB);
-    xenonD = result;
+    byteIn0:1 = xenonB(7);
+    extendedHalf0:2 = sext(byteIn0);
+    packedHalf0:16 = zext(extendedHalf0) << 112;
+    byteIn1:1 = xenonB(6);
+    extendedHalf1:2 = sext(byteIn1);
+    packedHalf1:16 = zext(extendedHalf1) << 96;
+    byteIn2:1 = xenonB(5);
+    extendedHalf2:2 = sext(byteIn2);
+    packedHalf2:16 = zext(extendedHalf2) << 80;
+    byteIn3:1 = xenonB(4);
+    extendedHalf3:2 = sext(byteIn3);
+    packedHalf3:16 = zext(extendedHalf3) << 64;
+    byteIn4:1 = xenonB(3);
+    extendedHalf4:2 = sext(byteIn4);
+    packedHalf4:16 = zext(extendedHalf4) << 48;
+    byteIn5:1 = xenonB(2);
+    extendedHalf5:2 = sext(byteIn5);
+    packedHalf5:16 = zext(extendedHalf5) << 32;
+    byteIn6:1 = xenonB(1);
+    extendedHalf6:2 = sext(byteIn6);
+    packedHalf6:16 = zext(extendedHalf6) << 16;
+    byteIn7:1 = xenonB(0);
+    extendedHalf7:2 = sext(byteIn7);
+    packedHalf7:16 = zext(extendedHalf7);
+    xenonD = packedHalf0 | packedHalf1 | packedHalf2 | packedHalf3 | packedHalf4 | packedHalf5 | packedHalf6 | packedHalf7;
 }
 
 :vupklsb128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=31 & BITS_4_5=0
 {
-    result:16 = xenonVupklsb128(xenonA, xenonB);
-    xenonD = result;
+    byteIn0:1 = xenonB(7);
+    extendedHalf0:2 = sext(byteIn0);
+    packedHalf0:16 = zext(extendedHalf0) << 112;
+    byteIn1:1 = xenonB(6);
+    extendedHalf1:2 = sext(byteIn1);
+    packedHalf1:16 = zext(extendedHalf1) << 96;
+    byteIn2:1 = xenonB(5);
+    extendedHalf2:2 = sext(byteIn2);
+    packedHalf2:16 = zext(extendedHalf2) << 80;
+    byteIn3:1 = xenonB(4);
+    extendedHalf3:2 = sext(byteIn3);
+    packedHalf3:16 = zext(extendedHalf3) << 64;
+    byteIn4:1 = xenonB(3);
+    extendedHalf4:2 = sext(byteIn4);
+    packedHalf4:16 = zext(extendedHalf4) << 48;
+    byteIn5:1 = xenonB(2);
+    extendedHalf5:2 = sext(byteIn5);
+    packedHalf5:16 = zext(extendedHalf5) << 32;
+    byteIn6:1 = xenonB(1);
+    extendedHalf6:2 = sext(byteIn6);
+    packedHalf6:16 = zext(extendedHalf6) << 16;
+    byteIn7:1 = xenonB(0);
+    extendedHalf7:2 = sext(byteIn7);
+    packedHalf7:16 = zext(extendedHalf7);
+    xenonD = packedHalf0 | packedHalf1 | packedHalf2 | packedHalf3 | packedHalf4 | packedHalf5 | packedHalf6 | packedHalf7;
 }
 
 :vupklsb128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=31 & BITS_4_5=2 & A_BITS!=0
 {
-    result:16 = xenonVupklsb128(xenonA, xenonB);
-    xenonD = result;
+    byteIn0:1 = xenonB(7);
+    extendedHalf0:2 = sext(byteIn0);
+    packedHalf0:16 = zext(extendedHalf0) << 112;
+    byteIn1:1 = xenonB(6);
+    extendedHalf1:2 = sext(byteIn1);
+    packedHalf1:16 = zext(extendedHalf1) << 96;
+    byteIn2:1 = xenonB(5);
+    extendedHalf2:2 = sext(byteIn2);
+    packedHalf2:16 = zext(extendedHalf2) << 80;
+    byteIn3:1 = xenonB(4);
+    extendedHalf3:2 = sext(byteIn3);
+    packedHalf3:16 = zext(extendedHalf3) << 64;
+    byteIn4:1 = xenonB(3);
+    extendedHalf4:2 = sext(byteIn4);
+    packedHalf4:16 = zext(extendedHalf4) << 48;
+    byteIn5:1 = xenonB(2);
+    extendedHalf5:2 = sext(byteIn5);
+    packedHalf5:16 = zext(extendedHalf5) << 32;
+    byteIn6:1 = xenonB(1);
+    extendedHalf6:2 = sext(byteIn6);
+    packedHalf6:16 = zext(extendedHalf6) << 16;
+    byteIn7:1 = xenonB(0);
+    extendedHalf7:2 = sext(byteIn7);
+    packedHalf7:16 = zext(extendedHalf7);
+    xenonD = packedHalf0 | packedHalf1 | packedHalf2 | packedHalf3 | packedHalf4 | packedHalf5 | packedHalf6 | packedHalf7;
 }
 
 
