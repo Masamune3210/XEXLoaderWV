@@ -1045,6 +1045,33 @@ class XenonIsaInventoryTests(unittest.TestCase):
                     answer & destination_mask, expected,
                     (name, hex(encoded), hex(expected)))
 
+    def test_distinct_lane_ghidra_saturation_audit(self):
+        # Repeated VA == VB patterns can hide source-register and lane-order
+        # defects. The second Java audit explicitly exercises different
+        # source registers, distinct in-range lanes, and mixed saturation.
+        script = (audit.ROOT.parent / "ghidra_scripts" /
+                  "AuditXenonSaturatingPackV2.java").read_text(
+                      encoding="utf-8")
+        self.assertIn("class AuditXenonSaturatingPackV2", script)
+        self.assertIn('if ("55".equals(columns[4]))', script)
+        self.assertIn("va.equals(vb)", script)
+        self.assertIn("emulator.writeRegister(va, laneVector(a, pack.inputBits))",
+                      script)
+        self.assertIn("emulator.writeRegister(vb, laneVector(b, pack.inputBits))",
+                      script)
+        self.assertIn("output[i] = a[i];", script)
+        self.assertIn("output[half + i] = b[i];", script)
+        self.assertIn("output[0] = pack.positiveResult;", script)
+        self.assertIn("output[1] = pack.negativeResult;", script)
+        self.assertIn("output[2 * half - 1] = pack.positiveResult;", script)
+        self.assertIn("long initialVSCR = 0x10000L;", script)
+        self.assertIn("long expectedVSCR = initialVSCR | (saturating ? 1 : 0);",
+                      script)
+        self.assertIn("for (boolean saturating : new boolean[] {false, true})",
+                      script)
+        self.assertIn("emulator.step(monitor)", script)
+        self.assertIn("emulator.readRegister(destination)", script)
+
     def test_fixture_generation(self):
         with tempfile.TemporaryDirectory() as folder:
             out = Path(folder)
