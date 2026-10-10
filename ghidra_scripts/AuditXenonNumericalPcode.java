@@ -880,6 +880,261 @@ public class AuditXenonNumericalPcode extends GhidraScript {
         recordSuite("GUARDED-FP", passed, failed, problems);
     }
 
+
+    // Audits independent byte-accurate oracle implementations for two
+    // otherwise untested native Xenon shuffle families. Both operations
+    // use bit 5 (MBH) and bit 10 (OE) to extend the VA register index.
+    private static BigInteger vectorFromBytes(byte[] bytes) {
+        if (bytes.length != 16)
+            throw new IllegalArgumentException("Expected a 16-byte vector");
+        BigInteger value = BigInteger.ZERO;
+        for (byte b : bytes)
+            value = value.shiftLeft(8).or(
+                BigInteger.valueOf(b & 0xffL));
+        return value;
+    }
+
+    private static byte[] shuffleInput(int which, int pattern) {
+        byte[] bytes = new byte[16];
+        int start = pattern == 0 ? (which == 0 ? 0x10 : 0xa0)
+                                 : (which == 0 ? 0x80 : 0x05);
+        int step = pattern == 0 ? (which == 0 ? 1 : -1)
+                                : (which == 0 ? 7 : 11);
+        for (int i = 0; i < 16; i++)
+            bytes[i] = (byte) (start + i * step);
+        return bytes;
+    }
+
+    private static byte[] shuffleControl(int pattern) {
+        byte[] bytes = new byte[16];
+        for (int i = 0; i < 16; i++) {
+            int c;
+            switch (pattern) {
+                case 0: c = i; break;                         // A identity
+                case 1: c = 0x10 | i; break;                  // B identity
+                case 2: c = 0x20 | ((i & 1) << 4) |
+                                (15 - i); break;              // mixed reverse
+                case 3: c = 0xf0 | (15 - i); break;            // B reverse
+                case 4: c = 0x80 | ((i % 3 == 0) ? 0x10 : 0) |
+                                ((i * 7 + 3) & 15); break;    // scattered
+                case 5: c = 0x40 | ((i & 1) << 4); break;      // first byte
+                case 6: c = 0x6f; break;                     // A last byte
+                case 7: c = 0x9f; break;                     // B last byte
+                default: throw new IllegalArgumentException(
+                    "Invalid control pattern " + pattern);
+            }
+            bytes[i] = (byte) c;
+        }
+        return bytes;
+    }
+
+    private static BigInteger shiftOracle(byte[] a, byte[] b, int shift) {
+        byte[] result = new byte[16];
+        for (int i = 0; i < 16; i++)
+            result[i] = i + shift < 16 ?
+                a[i + shift] : b[i + shift - 16];
+        return vectorFromBytes(result);
+    }
+
+    private static BigInteger permuteOracle(byte[] a, byte[] b,
+                                             byte[] control) {
+        byte[] result = new byte[16];
+        for (int i = 0; i < 16; i++) {
+            int c = control[i] & 0xff;
+            result[i] = ((c & 0x10) != 0 ? b : a)[c & 0x0f];
+        }
+        return vectorFromBytes(result);
+    }
+
+    private static long shuffleWord(boolean permute, int variant,
+                                    int selector) {
+        if ((variant & ~3) != 0)
+            throw new IllegalArgumentException("Invalid VA variant");
+        if (selector < 0 || selector > (permute ? 7 : 15))
+            throw new IllegalArgumentException("Invalid shuffle selector");
+        // VD=vs33, VA=vs34/xv34/xv66/xv98, VB=vs35.
+        long word = (permute ? 0x14000000L : 0x10000010L) |
+            (1L << 21) | (2L << 16) | (3L << 11) |
+            (((long) selector) << 6) |
+            (((long) (variant & 1)) << 5) |
+            (((long) (variant & 2)) << 9);
+        long mask = permute ? 0xfc000210L : 0xfc000010L;
+        long expected = permute ? 0x14000000L : 0x10000010L;
+        if ((word & mask) != expected ||
+                ((word >>> 21) & 31) != 1 ||
+                ((word >>> 16) & 31) != 2 ||
+                ((word >>> 11) & 31) != 3 ||
+                ((word >>> 5) & 1) != (variant & 1) ||
+                ((word >>> 10) & 1) != ((variant >>> 1) & 1) ||
+                ((word >>> 6) & (permute ? 7 : 15)) != selector)
+            throw new IllegalArgumentException("Invalid shuffle opcode");
+        return word;
+    }
+
+    private String executeShuffle(boolean permute, Address address,
+                                  int variant, int pattern, int selector)
+            throws Exception {
+        String family = permute ? "vperm128" : "vsldoi128";
+        long word = shuffleWord(permute, variant, selector);
+        String label = family + " variant=" + variant +
+            " VA=" + guardedFpSourceAName(variant) +
+            " pattern=" + pattern + " selector=" + selector +
+            " word=" + String.format("%08X", word);
+        Register dest = vectorRegister("vs33");
+        Register aReg = vectorRegister(guardedFpSourceAName(variant));
+        Register bReg = vectorRegister("vs35");
+        Register cReg = permute ? vectorRegister("vs36") : null;
+        byte[] a = shuffleInput(0, pattern & 1);
+        byte[] b = shuffleInput(1, pattern & 1);
+        byte[] c = permute ? shuffleControl(pattern) : null;
+        BigInteger va = vectorFromBytes(a);
+        BigInteger vb = vectorFromBytes(b);
+        BigInteger vc = permute ? vectorFromBytes(c) : BigInteger.ZERO;
+        BigInteger wanted = permute ?
+            permuteOracle(a, b, c) : shiftOracle(a, b, selector);
+        EmulatorHelper emulator = new EmulatorHelper(currentProgram);
+        try {
+            byte[] opcode = wordBytes(word);
+            emulator.writeMemory(address, opcode);
+            if (!Arrays.equals(opcode, emulator.readMemory(address, 4)))
+                return label + ": private opcode mismatch";
+            emulator.writeRegister(aReg, va);
+            emulator.writeRegister(bReg, vb);
+            if (permute)
+                emulator.writeRegister(cReg, vc);
+            emulator.writeRegister(dest, MASK128);
+            emulator.writeRegister(
+                currentProgram.getLanguage().getProgramCounter(),
+                address.getOffset());
+            if (!emulator.step(monitor))
+                return label + ": emulator step failed: " +
+                    emulator.getLastError();
+            BigInteger got = emulator.readRegister(dest).and(MASK128);
+            BigInteger afterA = emulator.readRegister(aReg).and(MASK128);
+            BigInteger afterB = emulator.readRegister(bReg).and(MASK128);
+            BigInteger afterC = permute ?
+                emulator.readRegister(cReg).and(MASK128) : BigInteger.ZERO;
+            if (!wanted.equals(got) || !va.equals(afterA) ||
+                    !vb.equals(afterB) ||
+                    (permute && !vc.equals(afterC)))
+                return label + ": expectedD=" + hex128(wanted) +
+                    " actualD=" + hex128(got) +
+                    " expectedA=" + hex128(va) +
+                    " actualA=" + hex128(afterA) +
+                    " expectedB=" + hex128(vb) +
+                    " actualB=" + hex128(afterB) +
+                    (permute ? " expectedC=" + hex128(vc) +
+                     " actualC=" + hex128(afterC) : "");
+        }
+        finally {
+            emulator.dispose();
+        }
+        return null;
+    }
+
+    private void runShuffles(File manifest, Address base) throws Exception {
+        Map<String, Address> sites = new LinkedHashMap<>();
+        Map<String, Long> originalWords = new LinkedHashMap<>();
+        try (BufferedReader reader = Files.newBufferedReader(
+                manifest.toPath(), StandardCharsets.UTF_8)) {
+            String heading = reader.readLine();
+            if (heading == null ||
+                    !heading.startsWith("offset\\tword_be\\texpected_mnemonic\\t"))
+                throw new IllegalArgumentException(
+                    "Incorrect Xenon shuffle fixture manifest");
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] columns = line.split("\\t", -1);
+                if (columns.length != 6 ||
+                        !"decode".equals(columns[5]))
+                    continue;
+                String mnemonic = columns[2];
+                if (("vsldoi128".equals(mnemonic) ||
+                     "vperm128".equals(mnemonic)) &&
+                        !sites.containsKey(mnemonic)) {
+                    Address site = base.add(Long.parseUnsignedLong(
+                        columns[0].replaceFirst("^0x", ""), 16));
+                    sites.put(mnemonic, site);
+                    originalWords.put(mnemonic,
+                        Long.parseUnsignedLong(columns[1], 16));
+                }
+            }
+        }
+
+        List<String> problems = new ArrayList<>();
+        int passed = 0;
+        int failed = 0;
+        for (int familyIndex = 0; familyIndex < 2; familyIndex++) {
+            boolean permute = familyIndex == 1;
+            String mnemonic = permute ? "vperm128" : "vsldoi128";
+            Address address = sites.get(mnemonic);
+            Long original = originalWords.get(mnemonic);
+            long mask = permute ? 0xfc000210L : 0xfc000010L;
+            long value = permute ? 0x14000000L : 0x10000010L;
+            if (address == null || original == null ||
+                    (original & mask) != value ||
+                    !fixtureMatches(address, original)) {
+                problems.add(mnemonic +
+                    ": missing/mismatched original fixture bytes");
+                failed++;
+                continue;
+            }
+            Instruction inst = getInstructionAt(address);
+            if (inst == null) {
+                disassemble(address);
+                inst = getInstructionAt(address);
+            }
+            if (inst == null ||
+                    !mnemonic.equalsIgnoreCase(inst.getMnemonicString())) {
+                problems.add(mnemonic +
+                    ": fixture decoded to unexpected mnemonic at " + address);
+                failed++;
+                continue;
+            }
+            for (int variant = 0; variant < 4; variant++) {
+                for (int pattern = 0; pattern < (permute ? 8 : 2);
+                        pattern++) {
+                    int casesPerPattern = permute ? 1 : 16;
+                    for (int selector = 0; selector < casesPerPattern;
+                            selector++) {
+                        monitor.checkCancelled();
+                        try {
+                            String error = executeShuffle(permute,
+                                address, variant, pattern,
+                                permute ? 4 : selector);
+                            if (error == null) passed++;
+                            else {
+                                problems.add(error);
+                                failed++;
+                            }
+                        }
+                        catch (Exception error) {
+                            problems.add(mnemonic + " variant=" + variant +
+                                " pattern=" + pattern + " selector=" +
+                                selector + ": " + error);
+                            failed++;
+                        }
+                    }
+                }
+            }
+        }
+
+        println("");
+        println("============================================================");
+        println("XENON BYTE SHUFFLE NATIVE NUMERICAL P-CODE AUDIT");
+        println("============================================================");
+        println("Language: " + LANGUAGE);
+        println("Cases: " + (passed + failed) + "; passed: " +
+            passed + "; failed: " + failed);
+        println("vsldoi128: four VA banks, all 16 byte shifts, " +
+            "two independent source patterns (128 cases).");
+        println("vperm128: four VA banks, eight control patterns " +
+            "with independent VA/VB/VC (32 cases).");
+        println("Source register state and original Program bytes preserved.");
+        println("Unresolved details follow in combined result below.");
+        recordSuite("SHUFFLE", passed, failed, problems);
+    }
+
     @Override
     protected void run() throws Exception {
         String id = currentProgram.getLanguage().getLanguageID()
@@ -991,6 +1246,7 @@ public class AuditXenonNumericalPcode extends GhidraScript {
         // One script entry point and exactly one manifest selection.
         runSaturatingPacks(manifest, base);
         runGuardedFp(manifest, base);
+        runShuffles(manifest, base);
 
         println("");
         println("============================================================");
