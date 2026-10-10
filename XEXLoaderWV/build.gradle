@@ -80,8 +80,57 @@ tasks.register("prepareXenonLegacyAltivec") {
     }
 }
 
+// A2 / generic PPC ISA includes broad data-cache and external-PID vector
+// constructors that conflict with Xenon's actual opcodes. Keep a narrowly
+// altered copy in the variant ONLY. Fail closed if the installed source
+// changes rather than rewriting an unrelated or newer ISA file.
+def xenonStockIsa = new File(ghidraInstallDir,
+    "Ghidra/Processors/PowerPC/data/languages/ppc_isa.sinc")
+def xenonLegacyIsa = file("data/languages/xenon_ppc_isa.sinc")
+tasks.register("prepareXenonIsa") {
+    group = "verification"
+    description = "Restrict generic PPC/A2 instructions that overlap Xenon opcodes"
+    inputs.file(xenonStockIsa)
+    outputs.file(xenonLegacyIsa)
+    doLast {
+        String src = xenonStockIsa.getText("UTF-8")
+        String dcbzOld = ":dcbz A,B is $(NOTVLE) & OP=31 & A & B & XOP_1_10=1014"
+        String dcbzNew = ":dcbz A,B is $(NOTVLE) & OP=31 & BITS_21_25=0 & A & B & XOP_1_10=1014"
+        if (src.indexOf(dcbzOld) < 0 ||
+                src.indexOf(dcbzOld) != src.lastIndexOf(dcbzOld) ||
+                !src.contains("define pcodeop stvepxOp;") ||
+                !src.contains("define pcodeop stvepxlOp;")) {
+            throw new GradleException("Installed ppc_isa.sinc changed; cannot safely " +
+                "generate Xenon-only collision-free ISA variant")
+        }
+        src = src.replace(dcbzOld, dcbzNew)
+        for (String name : ["stvepx", "stvepxl"]) {
+            String userop = "define pcodeop " + name + "Op;"
+            String start = ":" + name + " S,RA_OR_ZERO,B is OP=31"
+            int declaration = src.indexOf(userop)
+            int constructor = src.indexOf(start, declaration)
+            int end = src.indexOf("}", constructor)
+            if (declaration < 0 || constructor < declaration ||
+                    end < constructor || src.indexOf(userop, declaration + 1) >= 0 ||
+                    src.indexOf(start, constructor + 1) >= 0) {
+                throw new GradleException("Unexpected " + name +
+                    " layout in installed PPC ISA source")
+            }
+            // Remove ONLY the exact A2 constructor and its unused pcodeop.
+            src = src.substring(0, declaration) + src.substring(end + 1)
+        }
+        if (!src.contains(dcbzNew) || src.contains("define pcodeop stvepxOp;") ||
+                src.contains("define pcodeop stvepxlOp;")) {
+            throw new GradleException("Xenon ISA collision filtering failed")
+        }
+        xenonLegacyIsa.setText(
+            "# Generated from installed Ghidra ppc_isa.sinc; do not edit.\\n" +
+            src, "UTF-8")
+    }
+}
+
 tasks.register("verifyXenonSleigh", Exec) {
-    dependsOn tasks.named("prepareXenonLegacyAltivec")
+    dependsOn tasks.named("prepareXenonLegacyAltivec"), tasks.named("prepareXenonIsa")
     group = "verification"
     description = "Compile Xenon SLEIGH with the installed Ghidra compiler before extension packaging"
     workingDir file("data")
