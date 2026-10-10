@@ -68,7 +68,7 @@ public class Xbox360RetailKernelPdataAnalyzer extends AbstractAnalyzer {
     }
 
     public Xbox360RetailKernelPdataAnalyzer() {
-        super("Xbox 360 Retail Kernel 17559 .pdata",
+        super("Xbox 360 Retail Kernel 17559 Pdata",
             "Seeds verified retail 17559 PowerPC kernel function boundaries before generic PE analysis",
             AnalyzerType.BYTE_ANALYZER);
         // PE sections are already mapped when this runs. The normal entry-point
