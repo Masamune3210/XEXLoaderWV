@@ -161,7 +161,7 @@ public class AuditXenonD3DUnpackNumericV1 extends GhidraScript {
         long word = syntheticWord(test.format, immediateLow, bank);
         String label = header(test, bank, immediateLow, word);
         Register destination = vector(bank == 0 ? "vs33" : "xv65");
-        Register source = vector("vs35");
+        Register sourceRegister = vector("vs35");
         BigInteger input = source(test);
         BigInteger wanted = expected(test);
         EmulatorHelper emulator = new EmulatorHelper(currentProgram);
@@ -170,7 +170,7 @@ public class AuditXenonD3DUnpackNumericV1 extends GhidraScript {
             emulator.writeMemory(address, bytes);
             if (!Arrays.equals(bytes, emulator.readMemory(address, 4)))
                 return label + ": emulator-private instruction mismatch";
-            emulator.writeRegister(source, input);
+            emulator.writeRegister(sourceRegister, input);
             emulator.writeRegister(destination, MASK128);
             emulator.writeRegister(
                 currentProgram.getLanguage().getProgramCounter(),
