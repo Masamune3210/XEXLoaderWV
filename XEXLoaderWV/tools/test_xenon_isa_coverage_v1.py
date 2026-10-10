@@ -1022,8 +1022,8 @@ class XenonIsaInventoryTests(unittest.TestCase):
                 r"\{\n([\s\S]*?)\n\}", source)
             self.assertEqual(len(bodies), 4, family)
             for body in bodies:
-                self.assertIn("lowerSafe:4 = 0xc3800000:4;", body)
-                self.assertIn("upperSafe:4 = 0x43800000:4;", body)
+                self.assertIn("lowerSafe:4 = 0xc5000000:4;", body)
+                self.assertIn("upperSafe:4 = 0x45000000:4;", body)
                 self.assertIn("goto <fp_opaque>;", body)
                 self.assertIn("goto <fp_done>;", body)
                 self.assertIn(
@@ -1075,10 +1075,10 @@ class XenonIsaInventoryTests(unittest.TestCase):
         def f32(value):
             return struct.unpack(">f", struct.pack(">f", value))[0]
 
-        values = [-256, -129, -31, -3, -1, 1, 7, 23, 127, 256]
+        values = [-2048, -1024, -129, -31, -3, -1, 1, 7, 23, 127, 1024, 2048]
         for a in values:
             for b in values:
-                for d in (-256, -17, 3, 71, 256):
+                for d in (-2048, -256, -17, 3, 71, 256, 2048):
                     for name in families:
                         answer = (a * b + d if name == "vmaddfp128"
                                   else a * d + b if name == "vmaddcfp128"
