@@ -44,10 +44,49 @@ class XenonIsaInventoryTests(unittest.TestCase):
         statuses = Counter(
             constructors.get(row["mnemonic"], "missing") for row in self.rows)
         self.assertEqual(statuses, Counter(
-            {"missing": 67, "native-pcode": 12, "opaque-userop": 5}))
+            {"missing": 46, "native-pcode": 31, "opaque-userop": 7}))
         self.assertIn("xenonVupkd3d128", custom_ops)
+        self.assertIn("xenonLvsl128", custom_ops)
+        self.assertIn("xenonLvsr128", custom_ops)
+        self.assertEqual(constructors.get("dcbz128"), "native-pcode")
         for name in ("vand128", "vandc128", "vnor128", "vxor128", "vsel128"):
             self.assertEqual(constructors.get(name), "native-pcode", name)
+
+    def test_opcode4_memory_and_opcode31_xform_selectors(self):
+        """All generated words match unique new SLEIGH selectors.
+
+        For opcode 31 X-forms, Rc=1 is deliberately excluded (hardware
+        validity unverified even though Xenia's decoder accepts it).
+        """
+        import re
+
+        source = audit.SLEIGH.read_text(encoding="utf-8")
+        for row in self.rows:
+            if row["primary"] not in (4, 31):
+                continue
+            rules = re.findall(
+                r"(?m)^:" + re.escape(row["mnemonic"]) +
+                r" [^\\n]+ is ([^\\n]+)", source)
+            self.assertTrue(rules, row["mnemonic"])
+            for fill in (0, 0xFFFFFFFF, 0x55555555, 0xAAAAAAAA):
+                word = row["value"] | (fill & (~row["mask"] & 0xFFFFFFFF))
+                if row["primary"] == 4:
+                    selector = (word >> 3) & 255
+                    matches = [p for p in rules
+                               if f"XOP_3_10={selector}" in p and
+                               f"BITS_0_1={word & 3}" in p]
+                    self.assertEqual(len(matches), 1,
+                                     (row["mnemonic"], hex(word)))
+                elif row["mnemonic"] == "dcbz128":
+                    self.assertEqual(len(rules), 1)
+                    self.assertIn("BITS_21_25=1", rules[0])
+                    self.assertIn("XOP_1_10=1014", rules[0])
+                elif (word & 1) == 0:
+                    matches = [p for p in rules
+                               if f"XOP_1_10={(word >> 1) & 1023}" in p and
+                               "Rc=0" in p]
+                    self.assertEqual(len(matches), 1,
+                                     (row["mnemonic"], hex(word)))
 
     def test_fixture_generation(self):
         with tempfile.TemporaryDirectory() as folder:
