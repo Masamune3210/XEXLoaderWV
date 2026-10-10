@@ -887,6 +887,8 @@ class XenonIsaInventoryTests(unittest.TestCase):
         self.assertIn("runLaneShifts(manifest, base);", script)
         self.assertIn("runLogicalOps(manifest, base);", script)
         self.assertIn("runWordMerges(manifest, base);", script)
+        self.assertIn("runWordPermutations(manifest, base);", script)
+        self.assertIn("XENON WORD PERMUTATION NATIVE NUMERICAL P-CODE AUDIT", script)
         self.assertIn("XENON WORD MERGE NATIVE NUMERICAL P-CODE AUDIT", script)
         self.assertIn("XENON VECTOR BITWISE NATIVE NUMERICAL P-CODE AUDIT", script)
         self.assertIn("XENON PER-LANE WORD SHIFT NATIVE NUMERICAL P-CODE AUDIT", script)
@@ -1426,6 +1428,110 @@ class XenonIsaInventoryTests(unittest.TestCase):
                     self.assertEqual(len(result_bytes), 16)
                     cases += 1
         self.assertEqual(cases, 96)
+
+    def test_native_word_permutation_exhaustive_immediates(self):
+        # Each instruction encodes an 8-bit 4-word selector via
+        # A_BITS[4:0] and the low 3 bits of BITS_6_10-8.
+        import re
+
+        script = (audit.ROOT.parent / "ghidra_scripts" /
+                  "AuditXenonNumericalPcode.java").read_text(
+                      encoding="utf-8")
+        sleigh = audit.SLEIGH.read_text(encoding="utf-8")
+        self.assertIn(
+            "private void runWordPermutations(File manifest, Address base)",
+            script)
+        self.assertIn("runWordPermutations(manifest, base);", script)
+        self.assertIn('recordSuite("WORD-PERMUTE", passed, failed, problems)',
+                      script)
+        self.assertIn(
+            "private static final long PERMUTE_WORD_MASK = 0xfc000630L;",
+            script)
+        self.assertIn(
+            "private static final long PERMUTE_WORD_SELECTOR = 0x18000210L;",
+            script)
+        self.assertIn('BigInteger initialD = expected.xor(MASK128);',
+                      script)
+        self.assertIn("emulator.writeRegister(source, b);", script)
+        self.assertIn("emulator.writeRegister(destination, initialD);",
+                      script)
+        self.assertIn("emulator.readRegister(source).and(MASK128)", script)
+        self.assertIn("!fixtureMatches(address, originalWord)", script)
+        self.assertIn("emulator.writeMemory(address, opcode);", script)
+        self.assertIn("emulator.readMemory(address, 4)", script)
+        self.assertNotIn("currentProgram.getMemory().setBytes(", script)
+        banks = re.search(
+            r'private static final String\[\] PERMUTE_WORD_B_BANKS = '
+            r'\{([\s\S]*?)\};', script)
+        self.assertIsNotNone(banks)
+        names = re.findall(r'"([^"]+)"', banks.group(1))
+        self.assertEqual(names, ["vs35", "xv35", "xv67", "xv99"])
+        for bank, name in enumerate(names):
+            self.assertIn(
+                f'xenonB: "{name}" is vrBR=3 & BITS_0_1={bank} '
+                f'{{ export {name}; }}', sleigh)
+
+        src = re.search(
+            r'private static final BigInteger\[\] PERMUTE_WORD_SOURCES = '
+            r'\{([\s\S]*?)\};', script)
+        self.assertIsNotNone(src)
+        vectors = re.findall(
+            r'new BigInteger\("([0-9a-f]{32})", 16\)',
+            src.group(1))
+        self.assertEqual(len(vectors), 2)
+        self.assertNotEqual(vectors[0], vectors[1])
+
+        rules = re.findall(
+            r'(?m)^:vpermwi128 [^\n]+\n'
+            r'\{\n([\s\S]*?)\n\}', sleigh)
+        self.assertEqual(len(rules), 8)
+        for extra, body in enumerate(rules):
+            self.assertIn(
+                f"permutation:4 = A_BITS:4 | {extra * 32}:4;", body)
+            for lane in range(4):
+                self.assertIn(
+                    f"pick{lane}:4 = (permutation >> {2 * lane}) & 3;",
+                    body)
+                self.assertIn(
+                    f"wordShift{lane}:4 = (3 - pick{lane}) * 32;",
+                    body)
+            self.assertIn(
+                "xenonD = packedWord3 | packedWord2 | packedWord1 | packedWord0;",
+                body)
+
+        count = 0
+        for bank in range(4):
+            for imm in range(256):
+                word = (0x18000210 | (1 << 21) | (3 << 11) |
+                        ((imm & 31) << 16) |
+                        ((imm >> 5) << 6) | bank)
+                self.assertEqual(word & 0xfc000630, 0x18000210)
+                self.assertEqual((word >> 16) & 31, imm & 31)
+                self.assertEqual((word >> 6) & 7, imm >> 5)
+                self.assertEqual(word & 3, bank)
+                self.assertEqual((word >> 2) & 3, 0)
+                self.assertEqual((word >> 11) & 31, 3)
+                for vector in vectors:
+                    source = bytes.fromhex(vector)
+                    # Reference uses MSB-indexed byte slices and populates
+                    # destination words from MSB to LSB, unlike the Java
+                    # BigInteger oracle's LSB-first reconstruction.
+                    source_words = [source[i:i+4] for i in (0, 4, 8, 12)]
+                    chosen = [
+                        source_words[(imm >> (6 - i * 2)) & 3]
+                        for i in range(4)]
+                    expected = b"".join(chosen)
+                    self.assertEqual(len(expected), 16)
+                    number = int.from_bytes(expected, "big")
+                    reference = sum(
+                        ((int.from_bytes(source_words[
+                            (imm >> (lane * 2)) & 3], "big"))
+                         << (lane * 32))
+                        for lane in range(4))
+                    self.assertEqual(number, reference)
+                    self.assertNotEqual(number ^ ((1 << 128) - 1), number)
+                    count += 1
+        self.assertEqual(count, 2048)
 
     def test_unified_numerical_script_is_only_entrypoint(self):
         from pathlib import Path
