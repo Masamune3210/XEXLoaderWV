@@ -458,29 +458,217 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
     xenonD = result;
 }
 
-# vpkuhum128: opaque; Xenia mask/value fc0003d0/14000300
+# vpkuhum128: native; Xenia mask/value fc0003d0/14000300
 :vpkuhum128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=12 & BITS_4_5=0
 {
-    result:16 = xenonVpkuhum128(xenonA, xenonB);
-    xenonD = result;
+    src0:2 = xenonA(14);
+    part0:1 = src0(0);
+    wide0:16 = zext(part0) << 120;
+    src1:2 = xenonA(12);
+    part1:1 = src1(0);
+    wide1:16 = zext(part1) << 112;
+    src2:2 = xenonA(10);
+    part2:1 = src2(0);
+    wide2:16 = zext(part2) << 104;
+    src3:2 = xenonA(8);
+    part3:1 = src3(0);
+    wide3:16 = zext(part3) << 96;
+    src4:2 = xenonA(6);
+    part4:1 = src4(0);
+    wide4:16 = zext(part4) << 88;
+    src5:2 = xenonA(4);
+    part5:1 = src5(0);
+    wide5:16 = zext(part5) << 80;
+    src6:2 = xenonA(2);
+    part6:1 = src6(0);
+    wide6:16 = zext(part6) << 72;
+    src7:2 = xenonA(0);
+    part7:1 = src7(0);
+    wide7:16 = zext(part7) << 64;
+    src8:2 = xenonB(14);
+    part8:1 = src8(0);
+    wide8:16 = zext(part8) << 56;
+    src9:2 = xenonB(12);
+    part9:1 = src9(0);
+    wide9:16 = zext(part9) << 48;
+    src10:2 = xenonB(10);
+    part10:1 = src10(0);
+    wide10:16 = zext(part10) << 40;
+    src11:2 = xenonB(8);
+    part11:1 = src11(0);
+    wide11:16 = zext(part11) << 32;
+    src12:2 = xenonB(6);
+    part12:1 = src12(0);
+    wide12:16 = zext(part12) << 24;
+    src13:2 = xenonB(4);
+    part13:1 = src13(0);
+    wide13:16 = zext(part13) << 16;
+    src14:2 = xenonB(2);
+    part14:1 = src14(0);
+    wide14:16 = zext(part14) << 8;
+    src15:2 = xenonB(0);
+    part15:1 = src15(0);
+    wide15:16 = zext(part15);
+    xenonD = wide0 | wide1 | wide2 | wide3 | wide4 | wide5 | wide6 | wide7 | wide8 | wide9 | wide10 | wide11 | wide12 | wide13 | wide14 | wide15;
 }
 
 :vpkuhum128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=12 & BITS_4_5=2
 {
-    result:16 = xenonVpkuhum128(xenonA, xenonB);
-    xenonD = result;
+    src0:2 = xenonA(14);
+    part0:1 = src0(0);
+    wide0:16 = zext(part0) << 120;
+    src1:2 = xenonA(12);
+    part1:1 = src1(0);
+    wide1:16 = zext(part1) << 112;
+    src2:2 = xenonA(10);
+    part2:1 = src2(0);
+    wide2:16 = zext(part2) << 104;
+    src3:2 = xenonA(8);
+    part3:1 = src3(0);
+    wide3:16 = zext(part3) << 96;
+    src4:2 = xenonA(6);
+    part4:1 = src4(0);
+    wide4:16 = zext(part4) << 88;
+    src5:2 = xenonA(4);
+    part5:1 = src5(0);
+    wide5:16 = zext(part5) << 80;
+    src6:2 = xenonA(2);
+    part6:1 = src6(0);
+    wide6:16 = zext(part6) << 72;
+    src7:2 = xenonA(0);
+    part7:1 = src7(0);
+    wide7:16 = zext(part7) << 64;
+    src8:2 = xenonB(14);
+    part8:1 = src8(0);
+    wide8:16 = zext(part8) << 56;
+    src9:2 = xenonB(12);
+    part9:1 = src9(0);
+    wide9:16 = zext(part9) << 48;
+    src10:2 = xenonB(10);
+    part10:1 = src10(0);
+    wide10:16 = zext(part10) << 40;
+    src11:2 = xenonB(8);
+    part11:1 = src11(0);
+    wide11:16 = zext(part11) << 32;
+    src12:2 = xenonB(6);
+    part12:1 = src12(0);
+    wide12:16 = zext(part12) << 24;
+    src13:2 = xenonB(4);
+    part13:1 = src13(0);
+    wide13:16 = zext(part13) << 16;
+    src14:2 = xenonB(2);
+    part14:1 = src14(0);
+    wide14:16 = zext(part14) << 8;
+    src15:2 = xenonB(0);
+    part15:1 = src15(0);
+    wide15:16 = zext(part15);
+    xenonD = wide0 | wide1 | wide2 | wide3 | wide4 | wide5 | wide6 | wide7 | wide8 | wide9 | wide10 | wide11 | wide12 | wide13 | wide14 | wide15;
 }
 
 :vpkuhum128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=28 & BITS_4_5=0
 {
-    result:16 = xenonVpkuhum128(xenonA, xenonB);
-    xenonD = result;
+    src0:2 = xenonA(14);
+    part0:1 = src0(0);
+    wide0:16 = zext(part0) << 120;
+    src1:2 = xenonA(12);
+    part1:1 = src1(0);
+    wide1:16 = zext(part1) << 112;
+    src2:2 = xenonA(10);
+    part2:1 = src2(0);
+    wide2:16 = zext(part2) << 104;
+    src3:2 = xenonA(8);
+    part3:1 = src3(0);
+    wide3:16 = zext(part3) << 96;
+    src4:2 = xenonA(6);
+    part4:1 = src4(0);
+    wide4:16 = zext(part4) << 88;
+    src5:2 = xenonA(4);
+    part5:1 = src5(0);
+    wide5:16 = zext(part5) << 80;
+    src6:2 = xenonA(2);
+    part6:1 = src6(0);
+    wide6:16 = zext(part6) << 72;
+    src7:2 = xenonA(0);
+    part7:1 = src7(0);
+    wide7:16 = zext(part7) << 64;
+    src8:2 = xenonB(14);
+    part8:1 = src8(0);
+    wide8:16 = zext(part8) << 56;
+    src9:2 = xenonB(12);
+    part9:1 = src9(0);
+    wide9:16 = zext(part9) << 48;
+    src10:2 = xenonB(10);
+    part10:1 = src10(0);
+    wide10:16 = zext(part10) << 40;
+    src11:2 = xenonB(8);
+    part11:1 = src11(0);
+    wide11:16 = zext(part11) << 32;
+    src12:2 = xenonB(6);
+    part12:1 = src12(0);
+    wide12:16 = zext(part12) << 24;
+    src13:2 = xenonB(4);
+    part13:1 = src13(0);
+    wide13:16 = zext(part13) << 16;
+    src14:2 = xenonB(2);
+    part14:1 = src14(0);
+    wide14:16 = zext(part14) << 8;
+    src15:2 = xenonB(0);
+    part15:1 = src15(0);
+    wide15:16 = zext(part15);
+    xenonD = wide0 | wide1 | wide2 | wide3 | wide4 | wide5 | wide6 | wide7 | wide8 | wide9 | wide10 | wide11 | wide12 | wide13 | wide14 | wide15;
 }
 
 :vpkuhum128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=28 & BITS_4_5=2
 {
-    result:16 = xenonVpkuhum128(xenonA, xenonB);
-    xenonD = result;
+    src0:2 = xenonA(14);
+    part0:1 = src0(0);
+    wide0:16 = zext(part0) << 120;
+    src1:2 = xenonA(12);
+    part1:1 = src1(0);
+    wide1:16 = zext(part1) << 112;
+    src2:2 = xenonA(10);
+    part2:1 = src2(0);
+    wide2:16 = zext(part2) << 104;
+    src3:2 = xenonA(8);
+    part3:1 = src3(0);
+    wide3:16 = zext(part3) << 96;
+    src4:2 = xenonA(6);
+    part4:1 = src4(0);
+    wide4:16 = zext(part4) << 88;
+    src5:2 = xenonA(4);
+    part5:1 = src5(0);
+    wide5:16 = zext(part5) << 80;
+    src6:2 = xenonA(2);
+    part6:1 = src6(0);
+    wide6:16 = zext(part6) << 72;
+    src7:2 = xenonA(0);
+    part7:1 = src7(0);
+    wide7:16 = zext(part7) << 64;
+    src8:2 = xenonB(14);
+    part8:1 = src8(0);
+    wide8:16 = zext(part8) << 56;
+    src9:2 = xenonB(12);
+    part9:1 = src9(0);
+    wide9:16 = zext(part9) << 48;
+    src10:2 = xenonB(10);
+    part10:1 = src10(0);
+    wide10:16 = zext(part10) << 40;
+    src11:2 = xenonB(8);
+    part11:1 = src11(0);
+    wide11:16 = zext(part11) << 32;
+    src12:2 = xenonB(6);
+    part12:1 = src12(0);
+    wide12:16 = zext(part12) << 24;
+    src13:2 = xenonB(4);
+    part13:1 = src13(0);
+    wide13:16 = zext(part13) << 16;
+    src14:2 = xenonB(2);
+    part14:1 = src14(0);
+    wide14:16 = zext(part14) << 8;
+    src15:2 = xenonB(0);
+    part15:1 = src15(0);
+    wide15:16 = zext(part15);
+    xenonD = wide0 | wide1 | wide2 | wide3 | wide4 | wide5 | wide6 | wide7 | wide8 | wide9 | wide10 | wide11 | wide12 | wide13 | wide14 | wide15;
 }
 
 # vpkuhus128: opaque; Xenia mask/value fc0003d0/14000340
@@ -508,54 +696,150 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
     xenonD = result;
 }
 
-# vpkuwum128: opaque; Xenia mask/value fc0003d0/14000380
+# vpkuwum128: native; Xenia mask/value fc0003d0/14000380
 :vpkuwum128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=14 & BITS_4_5=0
 {
-    result:16 = xenonVpkuwum128(xenonA, xenonB);
-    xenonD = result;
+    src0:4 = xenonA(12);
+    part0:2 = src0(0);
+    wide0:16 = zext(part0) << 112;
+    src1:4 = xenonA(8);
+    part1:2 = src1(0);
+    wide1:16 = zext(part1) << 96;
+    src2:4 = xenonA(4);
+    part2:2 = src2(0);
+    wide2:16 = zext(part2) << 80;
+    src3:4 = xenonA(0);
+    part3:2 = src3(0);
+    wide3:16 = zext(part3) << 64;
+    src4:4 = xenonB(12);
+    part4:2 = src4(0);
+    wide4:16 = zext(part4) << 48;
+    src5:4 = xenonB(8);
+    part5:2 = src5(0);
+    wide5:16 = zext(part5) << 32;
+    src6:4 = xenonB(4);
+    part6:2 = src6(0);
+    wide6:16 = zext(part6) << 16;
+    src7:4 = xenonB(0);
+    part7:2 = src7(0);
+    wide7:16 = zext(part7);
+    xenonD = wide0 | wide1 | wide2 | wide3 | wide4 | wide5 | wide6 | wide7;
 }
 
 :vpkuwum128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=14 & BITS_4_5=2
 {
-    result:16 = xenonVpkuwum128(xenonA, xenonB);
-    xenonD = result;
+    src0:4 = xenonA(12);
+    part0:2 = src0(0);
+    wide0:16 = zext(part0) << 112;
+    src1:4 = xenonA(8);
+    part1:2 = src1(0);
+    wide1:16 = zext(part1) << 96;
+    src2:4 = xenonA(4);
+    part2:2 = src2(0);
+    wide2:16 = zext(part2) << 80;
+    src3:4 = xenonA(0);
+    part3:2 = src3(0);
+    wide3:16 = zext(part3) << 64;
+    src4:4 = xenonB(12);
+    part4:2 = src4(0);
+    wide4:16 = zext(part4) << 48;
+    src5:4 = xenonB(8);
+    part5:2 = src5(0);
+    wide5:16 = zext(part5) << 32;
+    src6:4 = xenonB(4);
+    part6:2 = src6(0);
+    wide6:16 = zext(part6) << 16;
+    src7:4 = xenonB(0);
+    part7:2 = src7(0);
+    wide7:16 = zext(part7);
+    xenonD = wide0 | wide1 | wide2 | wide3 | wide4 | wide5 | wide6 | wide7;
 }
 
 :vpkuwum128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=30 & BITS_4_5=0
 {
-    result:16 = xenonVpkuwum128(xenonA, xenonB);
-    xenonD = result;
+    src0:4 = xenonA(12);
+    part0:2 = src0(0);
+    wide0:16 = zext(part0) << 112;
+    src1:4 = xenonA(8);
+    part1:2 = src1(0);
+    wide1:16 = zext(part1) << 96;
+    src2:4 = xenonA(4);
+    part2:2 = src2(0);
+    wide2:16 = zext(part2) << 80;
+    src3:4 = xenonA(0);
+    part3:2 = src3(0);
+    wide3:16 = zext(part3) << 64;
+    src4:4 = xenonB(12);
+    part4:2 = src4(0);
+    wide4:16 = zext(part4) << 48;
+    src5:4 = xenonB(8);
+    part5:2 = src5(0);
+    wide5:16 = zext(part5) << 32;
+    src6:4 = xenonB(4);
+    part6:2 = src6(0);
+    wide6:16 = zext(part6) << 16;
+    src7:4 = xenonB(0);
+    part7:2 = src7(0);
+    wide7:16 = zext(part7);
+    xenonD = wide0 | wide1 | wide2 | wide3 | wide4 | wide5 | wide6 | wide7;
 }
 
 :vpkuwum128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=30 & BITS_4_5=2
 {
-    result:16 = xenonVpkuwum128(xenonA, xenonB);
-    xenonD = result;
+    src0:4 = xenonA(12);
+    part0:2 = src0(0);
+    wide0:16 = zext(part0) << 112;
+    src1:4 = xenonA(8);
+    part1:2 = src1(0);
+    wide1:16 = zext(part1) << 96;
+    src2:4 = xenonA(4);
+    part2:2 = src2(0);
+    wide2:16 = zext(part2) << 80;
+    src3:4 = xenonA(0);
+    part3:2 = src3(0);
+    wide3:16 = zext(part3) << 64;
+    src4:4 = xenonB(12);
+    part4:2 = src4(0);
+    wide4:16 = zext(part4) << 48;
+    src5:4 = xenonB(8);
+    part5:2 = src5(0);
+    wide5:16 = zext(part5) << 32;
+    src6:4 = xenonB(4);
+    part6:2 = src6(0);
+    wide6:16 = zext(part6) << 16;
+    src7:4 = xenonB(0);
+    part7:2 = src7(0);
+    wide7:16 = zext(part7);
+    xenonD = wide0 | wide1 | wide2 | wide3 | wide4 | wide5 | wide6 | wide7;
 }
 
-# vslo128: opaque; Xenia mask/value fc0003d0/14000390
+# vslo128: native; Xenia mask/value fc0003d0/14000390
 :vslo128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=14 & BITS_4_5=1
 {
-    result:16 = xenonVslo128(xenonA, xenonB);
-    xenonD = result;
+    last:1 = xenonB(0);
+    shift:4 = zext(last & 0x78);
+    xenonD = xenonA << shift;
 }
 
 :vslo128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=14 & BITS_4_5=3
 {
-    result:16 = xenonVslo128(xenonA, xenonB);
-    xenonD = result;
+    last:1 = xenonB(0);
+    shift:4 = zext(last & 0x78);
+    xenonD = xenonA << shift;
 }
 
 :vslo128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=30 & BITS_4_5=1
 {
-    result:16 = xenonVslo128(xenonA, xenonB);
-    xenonD = result;
+    last:1 = xenonB(0);
+    shift:4 = zext(last & 0x78);
+    xenonD = xenonA << shift;
 }
 
 :vslo128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=30 & BITS_4_5=3
 {
-    result:16 = xenonVslo128(xenonA, xenonB);
-    xenonD = result;
+    last:1 = xenonB(0);
+    shift:4 = zext(last & 0x78);
+    xenonD = xenonA << shift;
 }
 
 # vpkuwus128: opaque; Xenia mask/value fc0003d0/140003c0
@@ -583,29 +867,33 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
     xenonD = result;
 }
 
-# vsro128: opaque; Xenia mask/value fc0003d0/140003d0
+# vsro128: native; Xenia mask/value fc0003d0/140003d0
 :vsro128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=15 & BITS_4_5=1
 {
-    result:16 = xenonVsro128(xenonA, xenonB);
-    xenonD = result;
+    last:1 = xenonB(0);
+    shift:4 = zext(last & 0x78);
+    xenonD = xenonA >> shift;
 }
 
 :vsro128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=15 & BITS_4_5=3
 {
-    result:16 = xenonVsro128(xenonA, xenonB);
-    xenonD = result;
+    last:1 = xenonB(0);
+    shift:4 = zext(last & 0x78);
+    xenonD = xenonA >> shift;
 }
 
 :vsro128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=31 & BITS_4_5=1
 {
-    result:16 = xenonVsro128(xenonA, xenonB);
-    xenonD = result;
+    last:1 = xenonB(0);
+    shift:4 = zext(last & 0x78);
+    xenonD = xenonA >> shift;
 }
 
 :vsro128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=31 & BITS_4_5=3
 {
-    result:16 = xenonVsro128(xenonA, xenonB);
-    xenonD = result;
+    last:1 = xenonB(0);
+    shift:4 = zext(last & 0x78);
+    xenonD = xenonA >> shift;
 }
 
 # vpkd3d128: opaque; Xenia mask/value fc000730/18000610
