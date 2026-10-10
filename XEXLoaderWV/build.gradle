@@ -200,7 +200,29 @@ tasks.register("prepareXenonCommon") {
     }
 }
 
+// Keep the Ghidra fixture and its classification manifest synchronized with
+// BOTH SLEIGH includes whenever the extension is built. This is deliberately
+// always run: generation is cheap, and an up-to-date Gradle stamp is not proof
+// that a manually replaced manifest is still current.
+tasks.register("generateXenonIsaFixture", Exec) {
+    group = "verification"
+    description = "Regenerate the 336-word Xenon ISA fixture and source coverage manifest"
+    workingDir projectDir
+    def onWindows = System.getProperty("os.name").toLowerCase(java.util.Locale.ROOT).contains("windows")
+    def pythonCommand = project.findProperty("XENON_PYTHON")?.toString() ?:
+        (onWindows ? "python" : "python3")
+    commandLine pythonCommand, "tools/audit_xenon_isa_coverage_v1.py"
+    inputs.files(
+        file("tools/audit_xenon_isa_coverage_v1.py"),
+        file("tools/data/xenia_vmx128_opcode_inventory_20261009.tsv"),
+        file("tools/data/xenia_xform_vector_opcode_inventory_20261009.tsv"),
+        file("data/languages/xenon_vector_v1.sinc"),
+        file("data/languages/xenon_vector_remaining_v1.sinc"))
+    // Intentionally no output cache/up-to-date declaration: always regenerate.
+}
+
 tasks.register("verifyXenonSleigh", Exec) {
+    dependsOn tasks.named("generateXenonIsaFixture")
     dependsOn tasks.named("prepareXenonLegacyAltivec"), tasks.named("prepareXenonIsa"), tasks.named("prepareXenonCommon")
     group = "verification"
     description = "Compile Xenon SLEIGH with the installed Ghidra compiler before extension packaging"
