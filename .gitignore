@@ -17,3 +17,5 @@ XEXLoaderWV/data/languages/xenon_ppc_isa.sinc
 XEXLoaderWV/tools/__pycache__/
 # Legacy fixture output generated before moving tools into the Gradle project
 build/xenon-isa-audit/
+XEXLoaderWV/data/languages/xenon_ppc_common.sinc
+XEXLoaderWV/data/languages/xenon_ppc_embedded.sinc
