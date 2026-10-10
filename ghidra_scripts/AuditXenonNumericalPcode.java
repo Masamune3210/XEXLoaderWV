@@ -1039,12 +1039,12 @@ public class AuditXenonNumericalPcode extends GhidraScript {
                 manifest.toPath(), StandardCharsets.UTF_8)) {
             String heading = reader.readLine();
             if (heading == null ||
-                    !heading.startsWith("offset\\tword_be\\texpected_mnemonic\\t"))
+                    !heading.startsWith("offset\tword_be\texpected_mnemonic\t"))
                 throw new IllegalArgumentException(
                     "Incorrect Xenon shuffle fixture manifest");
             String line;
             while ((line = reader.readLine()) != null) {
-                String[] columns = line.split("\\t", -1);
+                String[] columns = line.split("\t", -1);
                 if (columns.length != 6 ||
                         !"decode".equals(columns[5]))
                     continue;
