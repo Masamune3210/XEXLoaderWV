@@ -340,6 +340,9 @@ class XenonIsaInventoryTests(unittest.TestCase):
         self.assertIn('COVERAGE_TSV = "xenon_isa_coverage_v1.tsv"', source)
         self.assertIn("COVERAGE_TSV.equals(manifest.getName())", source)
         self.assertIn("FIXTURE_HEADER.equals(line)", source)
+        self.assertIn('"reserved-rc1".equals(expectation)', source)
+        self.assertIn("family.reservedPass++", source)
+        self.assertIn("int unresolved = checks - passes - reservedPasses", source)
         expected = ("offset", "word_be", "expected_mnemonic",
                     "sleigh_status", "variant", "decode_expectation")
         self.assertIn('"' + r"\t".join(expected) + '"', source)
