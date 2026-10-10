@@ -178,7 +178,7 @@ class XenonIsaInventoryTests(unittest.TestCase):
                 continue
             rules = re.findall(
                 r"(?m)^:" + re.escape(row["mnemonic"]) +
-                r" [^\\n]+ is ([^\\n]+)", rest)
+                r" [^\n]+ is ([^\n]+)", rest)
             self.assertTrue(rules, row["mnemonic"])
             for fill in (0, 0xFFFFFFFF, 0x55555555, 0xAAAAAAAA):
                 word = row["value"] | (fill & (~row["mask"] & 0xFFFFFFFF))
@@ -194,7 +194,7 @@ class XenonIsaInventoryTests(unittest.TestCase):
                         (m is None or int(m.group(1)) == value)
                         for field, value in checks.items()
                         for m in [re.search(
-                            r"(?:^| & )" + field + r"=(\\d+)(?: & |$)",
+                            r"(?:^| & )" + field + r"=(\d+)(?: & |$)",
                             rule)]
                     ):
                         matches.append(rule)
