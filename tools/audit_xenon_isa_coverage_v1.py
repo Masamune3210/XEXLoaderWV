@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit the 76 Xenia VMX128 selectors against local Xenon SLEIGH definitions.
+"""Audit 76 VMX128 and 8 non-suffixed Xenon vector selectors against SLEIGH.
 
 Generate a big-endian instruction fixture plus manifest for Ghidra runtime tests.
 This source-level audit NEVER treats a matching name as proof of decode correctness.
@@ -15,6 +15,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 INVENTORY = ROOT / "tools/data/xenia_vmx128_opcode_inventory_20261009.tsv"
+EXTRA_INVENTORY = ROOT / "tools/data/xenia_xform_vector_opcode_inventory_20261009.tsv"
+EXTRA_NAMES = frozenset(("lvlx", "lvrx", "stvlx", "stvrx",
+                         "lvlxl", "lvrxl", "stvlxl", "stvrxl"))
 SLEIGH = ROOT / "XEXLoaderWV/data/languages/xenon_vector_v1.sinc"
 OUTPUT = ROOT / "build/xenon-isa-audit"
 FILLS = (("zero", 0), ("ones", 0xFFFFFFFF),
@@ -31,7 +34,7 @@ def read_inventory(path: Path) -> list[dict]:
         raise ValueError("Empty inventory")
     for r in rows:
         name = r["mnemonic"]
-        if name in names or not name.endswith("128"):
+        if name in names or not (name.endswith("128") or name in EXTRA_NAMES):
             raise ValueError("Duplicate or unexpected name: " + name)
         names.add(name)
         for key in ("primary", "xenia_line"):
@@ -64,7 +67,7 @@ def parse_xenia_lookup(source: str) -> dict[str, tuple[int, int, int]]:
         if switch:
             selector = switch[1]
         hit = re.match(r"^\s+case 0b([01]+): PPC_DECODER_HIT\(([^)]+)\)", line)
-        if not hit or not hit[2].endswith("128"):
+        if not hit or not (hit[2].endswith("128") or hit[2] in EXTRA_NAMES):
             continue
         if primary is None or selector is None:
             raise ValueError(f"Unsupported decoder switch on line {line_num}")
@@ -160,8 +163,9 @@ def write_results(rows: list[dict], sleigh_path: Path, inventory_path: Path,
         "",
         "This is source coverage only, NOT verified runtime decoding, and",
         "native SLEIGH p-code does not necessarily mean correct semantics.",
-        "These are the Xenia decoder's *128 families; stock AltiVec/PowerPC",
-        "instruction coverage is outside scope.",
+        "These include 76 *128 families plus eight opcode-31 X-form variants.",
+        "Stock AltiVec/PowerPC coverage is outside scope. The inherited",
+        "Ghidra PPC language may already decode additional X-form cases.",
         "The implemented opcode-31 lvlx and lvrx are NOT opcode-4",
         "lvlx128 and lvrx128.",
         "",
@@ -193,13 +197,14 @@ def write_results(rows: list[dict], sleigh_path: Path, inventory_path: Path,
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--inventory", type=Path, default=INVENTORY)
+    ap.add_argument("--extra-inventory", type=Path, default=EXTRA_INVENTORY)
     ap.add_argument("--sleigh", type=Path, default=SLEIGH)
     ap.add_argument("--out-dir", type=Path, default=OUTPUT)
     ap.add_argument("--xenia-lookup", type=Path,
                     help="Optional local Xenia decoder source to recheck "
                          "every pinned opcode selector")
     args = ap.parse_args()
-    rows = read_inventory(args.inventory)
+    rows = read_inventory(args.inventory) + read_inventory(args.extra_inventory)
     if args.xenia_lookup:
         actual = parse_xenia_lookup(args.xenia_lookup.read_text(encoding="utf-8"))
         expected = {r["mnemonic"]: (r["primary"], r["mask"], r["value"])
