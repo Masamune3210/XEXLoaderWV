@@ -1,3 +1,9 @@
+## Regression assertion corrected for SLEIGH branch-local declaration fix (2026-10-10)
+
+- User ran the current **34-method** Python regression suite after pulling: 33 passed, one failed. `test_vector_float_rounding_modes_have_no_integer_cast_shortcut` still expected `roundOutput{i}:4 = floor(...)` and `roundOutput{i}:4 = ceil(...)`, even though the preceding SleighCompile repair intentionally uses **one typed initializer** `roundOutput{i}:4 = 0:4` and **unsized branch assignments** `roundOutput{i} = ...`.
+- Changed the regression to assert the single typed initializer plus bare `floor` and `ceil` assignments, while retaining its sign-condition assertion. Change `f20517c`. No SLEIGH instruction semantics, encodings, fixture words, or classifications changed. Source-level check confirmed all 2 `vrfiz128` constructor variants × 4 lanes match revised assertions; 34 test methods remain.
+- **Current verification:** user's pre-fix suite was 33/34; after assertion fix Python suite rerun is still pending. Current SleighCompile result following prior temp-declaration fix is not supplied. Do not describe this as a p-code or runtime regression.
+
 ## Fix: conditional p-code temporary redeclarations block SleighCompile (2026-10-10)
 
 - User's Ghidra 12.1.3 SleighCompile failed at `xenon_vector_remaining_v1.sinc:3988`: `symbol 'convertedInt0' (from ...:3985) redefined as variable declaration/assignment`. The subsequent Java `NullPointerException` is compiler error-path fallout, **not** an independent problem to fix.
