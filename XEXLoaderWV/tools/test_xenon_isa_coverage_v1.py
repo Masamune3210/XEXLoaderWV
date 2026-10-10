@@ -42,7 +42,7 @@ class XenonIsaInventoryTests(unittest.TestCase):
         # Decoder fixture deliberately uses homogeneous fills. Numerical
         # tests must not treat those samples as independent VA / VB sources.
         source = (audit.ROOT.parent /
-                  "ghidra_scripts/AuditXenonSaturatingPackV3.java").read_text(
+                  "ghidra_scripts/AuditXenonNumericalPcode.java").read_text(
                       encoding="utf-8")
         self.assertIn("getDefaultOperandRepresentation(index)", source)
         self.assertIn("currentProgram.getRegister(rendered)", source)
@@ -78,7 +78,7 @@ class XenonIsaInventoryTests(unittest.TestCase):
         import re
 
         source = (audit.ROOT.parent /
-                  "ghidra_scripts/AuditXenonD3DUnpackNumericV1.java").read_text(
+                  "ghidra_scripts/AuditXenonNumericalPcode.java").read_text(
                       encoding="utf-8")
         self.assertIn("emulator.writeMemory(address, bytes);", source)
         self.assertIn("emulator.readMemory(address, 4)", source)
@@ -149,7 +149,7 @@ class XenonIsaInventoryTests(unittest.TestCase):
         import struct
 
         source = (audit.ROOT.parent /
-                  "ghidra_scripts/AuditXenonGuardedFusedFloatNumeric.java"
+                  "ghidra_scripts/AuditXenonNumericalPcode.java"
                   ).read_text(encoding="utf-8")
         families = re.findall(
             r'new Family\("([^"]+)",\s*(0x[0-9a-fA-F]+)L,\s*(\d+)\)',
@@ -778,26 +778,44 @@ class XenonIsaInventoryTests(unittest.TestCase):
         self.assertNotIn("outputs.", body)
 
     def test_java_fixture_manifest_header(self):
-        java_path = (audit.ROOT.parent / "ghidra_scripts" /
-                     "AuditXenonIsaFixtureV1.java")
-        source = java_path.read_text(encoding="utf-8")
-        self.assertIn('FIXTURE_TSV = "xenon_isa_fixture_v1.tsv"', source)
-        self.assertIn('COVERAGE_TSV = "xenon_isa_coverage_v1.tsv"', source)
-        self.assertIn("COVERAGE_TSV.equals(manifest.getName())", source)
-        self.assertIn("FIXTURE_HEADER.equals(line)", source)
-        self.assertIn('"reserved-rc1".equals(expectation)', source)
-        self.assertIn("family.reservedPass++", source)
-        self.assertIn("int unresolved = checks - passes - reservedPasses", source)
+        # Numerical checks share one script and the existing 344-word fixture.
+        source = (audit.ROOT.parent / "ghidra_scripts" /
+                  "AuditXenonNumericalPcode.java").read_text(
+                      encoding="utf-8")
+        self.assertIn("public class AuditXenonNumericalPcode", source)
+        self.assertIn('offset\\tword_be\\texpected_mnemonic\\t', source)
+        self.assertIn('line.split("\\t", -1)', source)
+        self.assertIn('"decode".equals(columns[5])', source)
+        self.assertIn("originalFixtureMatches(address, originalWord)", source)
+        self.assertIn("fixtureWordMatches(address, fixtureWords.get(address))",
+                      source)
         expected = ("offset", "word_be", "expected_mnemonic",
                     "sleigh_status", "variant", "decode_expectation")
-        self.assertIn('"' + r"\t".join(expected) + '"', source)
         with tempfile.TemporaryDirectory() as folder:
             out = Path(folder)
             audit.write_results(self.rows, audit.SLEIGH, audit.INVENTORY, out)
             with (out / "xenon_isa_fixture_v1.tsv").open(
                     encoding="utf-8", newline="") as handle:
-                self.assertEqual(tuple(handle.readline().strip().split("\t")),
+                self.assertEqual(tuple(handle.readline().strip().split("\\t")),
                                  expected)
+
+    def test_unified_numerical_script_is_only_entrypoint(self):
+        from pathlib import Path
+
+        root = audit.ROOT.parent / "ghidra_scripts"
+        script = (root / "AuditXenonNumericalPcode.java").read_text(
+            encoding="utf-8")
+        self.assertEqual(script.count("protected void run()"), 1)
+        self.assertIn("runSaturatingPacks(manifest, base);", script)
+        self.assertIn("runGuardedFp(manifest, base);", script)
+        self.assertIn("XENON D3D UNPACK NATIVE NUMERICAL P-CODE AUDIT", script)
+        self.assertIn("XENON NATIVE PACK NUMERICAL P-CODE AUDIT", script)
+        self.assertIn("XENON GUARDED FP NATIVE NUMERICAL P-CODE AUDIT", script)
+        self.assertNotIn("currentProgram.getMemory().setBytes(", script)
+        self.assertEqual(
+            sorted(p.name for p in root.glob("AuditXenon*.java")),
+            ["AuditXenonNumericalPcode.java"])
+        self.assertEqual(script.count('askFile('), 1)
 
     def test_opcode31_rc1_reserved_fixtures_are_preserved(self):
         # Cell Vector/SIMD PEM v2.07c X-form encodings fix bit 31 to 0,
@@ -1481,7 +1499,7 @@ class XenonIsaInventoryTests(unittest.TestCase):
         import re
 
         script = (audit.ROOT.parent / "ghidra_scripts" /
-                  "AuditXenonSaturatingPackV1.java").read_text(
+                  "AuditXenonNumericalPcode.java").read_text(
                       encoding="utf-8")
         self.assertIn("new EmulatorHelper(currentProgram)", script)
         self.assertIn("emulator.step(monitor)", script)
@@ -1521,15 +1539,17 @@ class XenonIsaInventoryTests(unittest.TestCase):
                     (name, hex(encoded), hex(expected)))
 
     def test_distinct_lane_ghidra_saturation_audit(self):
-        # Repeated VA == VB patterns can hide source-register and lane-order
-        # defects. The second Java audit explicitly exercises different
-        # source registers, distinct in-range lanes, and mixed saturation.
+        # The original homogeneous decoder fixture cannot exercise VA/VB
+        # independently. Preserve the proven emulator-private override.
         script = (audit.ROOT.parent / "ghidra_scripts" /
-                  "AuditXenonSaturatingPackV2.java").read_text(
+                  "AuditXenonNumericalPcode.java").read_text(
                       encoding="utf-8")
-        self.assertIn("class AuditXenonSaturatingPackV2", script)
+        self.assertIn("class AuditXenonNumericalPcode", script)
         self.assertIn('if ("55".equals(columns[4]))', script)
-        self.assertIn("va.equals(vb)", script)
+        self.assertIn('requireVectorRegister("vs33")', script)
+        self.assertIn('requireVectorRegister("vs34")', script)
+        self.assertIn('requireVectorRegister("vs35")', script)
+        self.assertIn("emulator.writeMemory(address, syntheticBytes)", script)
         self.assertIn("emulator.writeRegister(va, laneVector(a, pack.inputBits))",
                       script)
         self.assertIn("emulator.writeRegister(vb, laneVector(b, pack.inputBits))",
@@ -1547,8 +1567,10 @@ class XenonIsaInventoryTests(unittest.TestCase):
         self.assertIn("emulator.step(monitor)", script)
         self.assertIn("emulator.readRegister(destination)", script)
         self.assertIn("Map<Address, Long> fixtureWords", script)
-        self.assertIn("!fixtureWordMatches(address, fixtureWords.get(address))", script)
-        self.assertIn("!fixtureWordMatches(patternAddress, fixtureWords.get(patternAddress))", script)
+        self.assertIn("!fixtureWordMatches(address, fixtureWords.get(address))",
+                      script)
+        self.assertIn("!fixtureWordMatches(patternAddress, fixtureWords.get(patternAddress))",
+                      script)
 
     def test_fixture_generation(self):
         with tempfile.TemporaryDirectory() as folder:
