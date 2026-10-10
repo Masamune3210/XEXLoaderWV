@@ -141,6 +141,23 @@ class XenonIsaInventoryTests(unittest.TestCase):
         self.assertNotRegex("part0:16 = zext(octet0);", invalid_constant)
         self.assertIn("zeroVec:16 = zext(0:8);", sleigh)
 
+    def test_vector_pcode_temporaries_do_not_shadow_ppc_registers(self):
+        # r0-r31 are real PowerPC registers in ppc_common.sinc. A local
+        # declaration such as r0:4 = ... is a SleighCompile symbol error.
+        import re
+
+        source = audit.read_sleigh_source(audit.SLEIGH)
+        declarations = re.findall(
+            r"(?m)^\s*([A-Za-z_][A-Za-z_0-9]*):\d+\s*=", source)
+        reserved = [
+            name for name in declarations
+            if re.fullmatch(r"(?:r|f)(?:[0-9]|[12][0-9]|3[01])", name)
+        ]
+        self.assertEqual(reserved, [],
+                         "Native vector locals shadow PowerPC registers")
+        for lane in range(4):
+            self.assertIn(f"xenonResultLane{lane}:4 =", source)
+
     def test_embedded_dcbzl_collision_filter_wiring(self):
         # Stock ppc_common includes the embedded dcbzl alias, which has the
         # same opcode selector as Xenon's dcbz128. Only the Xenon variant
