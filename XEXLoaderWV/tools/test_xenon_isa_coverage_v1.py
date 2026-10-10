@@ -44,7 +44,7 @@ class XenonIsaInventoryTests(unittest.TestCase):
         statuses = Counter(
             constructors.get(row["mnemonic"], "missing") for row in self.rows)
         self.assertEqual(statuses, Counter(
-            {"native-pcode": 40, "opaque-userop": 44}))
+            {"native-pcode": 44, "opaque-userop": 40}))
         self.assertIn("xenonVupkd3d128", custom_ops)
         self.assertIn("xenonLvsl128", custom_ops)
         self.assertIn("xenonLvsr128", custom_ops)
@@ -165,7 +165,7 @@ class XenonIsaInventoryTests(unittest.TestCase):
         former_missing, ops = audit.parse_sleigh(rest)
         self.assertEqual(len(former_missing), 46)
         self.assertEqual(Counter(former_missing.values()), Counter(
-            {"native-pcode": 9, "opaque-userop": 37}))
+            {"native-pcode": 13, "opaque-userop": 33}))
         original, _ = audit.parse_sleigh(
             audit.SLEIGH.read_text(encoding="utf-8"))
         self.assertEqual(set(former_missing) & set(original), set())
@@ -200,6 +200,26 @@ class XenonIsaInventoryTests(unittest.TestCase):
                         matches.append(rule)
                 self.assertEqual(len(matches), 1,
                                  (row["mnemonic"], hex(word), matches))
+
+    def test_native_byte_shift_and_unsigned_pack_semantics(self):
+        # Xenia uses the last vector byte's 0x78 bits for whole-vector
+        # byte shifts, and packs unsigned lanes modulo their output width.
+        source = audit.ADDITIONAL_SLEIGH.read_text(encoding="utf-8")
+        for name, operator in (("vslo128", "<<"), ("vsro128", ">>")):
+            self.assertIn("last:1 = xenonB(0);", source)
+            self.assertIn("xenonD = xenonA " + operator + " shift;", source)
+        for name, dst_width, count in (
+                ("vpkuhum128", 1, 16), ("vpkuwum128", 2, 8)):
+            import re
+            rules = re.findall(
+                r"(?m)^:" + name + r" [^\n]+ is [^\n]+\n"
+                r"\{\n([\s\S]*?)\n\}", source)
+            self.assertEqual(len(rules), 4)
+            for body in rules:
+                self.assertEqual(len(re.findall(
+                    r"(?m)^    part\d+:" + str(dst_width) + r" = ", body)),
+                    count)
+                self.assertNotIn("xenonVpk", body)
 
     def test_fixture_generation(self):
         with tempfile.TemporaryDirectory() as folder:
