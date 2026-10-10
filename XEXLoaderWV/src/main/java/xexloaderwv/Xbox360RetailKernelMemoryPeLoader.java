@@ -3,7 +3,6 @@ package xexloaderwv;
 import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -26,6 +25,7 @@ import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressOverflowException;
 import ghidra.program.model.address.AddressSpace;
 import ghidra.program.model.listing.Program;
+import ghidra.program.model.mem.MemoryBlock;
 import ghidra.util.task.TaskMonitor;
 
 /**
@@ -115,9 +115,12 @@ public class Xbox360RetailKernelMemoryPeLoader extends PeLoader {
             throw new IllegalStateException("Unexpected retail kernel memory-image header");
         }
 
-        MemoryBlockUtils.createInitializedBlock(program, false, HEADERS,
-            space.getAddress(imageBase), fileBytes, 0, headersSize,
+        MemoryBlock headerBlock = MemoryBlockUtils.createInitializedBlock(program, false,
+            HEADERS, space.getAddress(imageBase), fileBytes, 0, headersSize,
             "", "", true, false, false, log);
+        if (headerBlock == null) {
+            throw new IllegalStateException("Could not map kernel PE headers");
+        }
 
         for (int i = 0; i < sections.length; i++) {
             if (monitor.isCancelled()) break;
@@ -141,9 +144,12 @@ public class Xbox360RetailKernelMemoryPeLoader extends PeLoader {
             // Unlike FILE-layout PE loading, the entire virtual section is
             // physically present in the full memory snapshot (including the
             // zeroed .data tail). Keep its initialized contents exactly.
-            MemoryBlockUtils.createInitializedBlock(program, false, name,
+            MemoryBlock mapped = MemoryBlockUtils.createInitializedBlock(program, false, name,
                 address, fileBytes, rva, virtualSize, "", "",
                 readable, writable, executable, log);
+            if (mapped == null) {
+                throw new IllegalStateException("Could not map kernel section " + name);
+            }
             result.put(section, address);
         }
         log.appendMsg("Xbox 360 kernel 17559: sections loaded from their actual memory-image RVAs");
