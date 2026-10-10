@@ -116,7 +116,7 @@ def parse_sleigh(source: str) -> tuple[dict[str, str], list[str]]:
 
 
 def write_results(rows: list[dict], sleigh_path: Path, inventory_path: Path,
-                  output: Path) -> None:
+                  output: Path, extra_inventory_path: Path = EXTRA_INVENTORY) -> None:
     source = read_sleigh_source(sleigh_path)
     implemented, custom_ops = parse_sleigh(source)
     output.mkdir(parents=True, exist_ok=True)
@@ -168,6 +168,10 @@ def write_results(rows: list[dict], sleigh_path: Path, inventory_path: Path,
             inventory_path.read_bytes()).hexdigest() + tick,
         "SLEIGH SHA-256: " + tick + hashlib.sha256(
             source.encode("utf-8")).hexdigest() + tick,
+        "Extra inventory SHA-256: " + tick + hashlib.sha256(
+            extra_inventory_path.read_bytes()).hexdigest() + tick,
+        "Generator SHA-256: " + tick + hashlib.sha256(
+            Path(__file__).read_bytes()).hexdigest() + tick,
         "",
         f"Families: **{len(rows)}**. Native p-code bodies: "
         f"**{counts['native-pcode']}**. Opaque custom userops: "
@@ -231,7 +235,8 @@ def main() -> None:
                              str(missing) + " added=" + str(added) +
                              " changed=" + str(changed))
         print("Verified against Xenia source: " + str(len(actual)) + " selectors")
-    write_results(rows, args.sleigh, args.inventory, args.out_dir)
+    write_results(rows, args.sleigh, args.inventory, args.out_dir,
+                  args.extra_inventory)
 
 
 if __name__ == "__main__":
