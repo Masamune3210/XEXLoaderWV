@@ -40,6 +40,8 @@ define pcodeop xenonVmaxfp128;
 define pcodeop xenonVminfp128;
 define pcodeop xenonVupkhsb128;
 define pcodeop xenonVupklsb128;
+define pcodeop xenonVupkhsh128;
+define pcodeop xenonVupklsh128;
 
 # vsldoi128: native; Xenia mask/value fc000010/10000010
 :vsldoi128 xenonD,xenonA,xenonB,BITS_6_10 is OP=4 & xenonD & xenonA & xenonB & BITS_6_10 & BITS_4_5=1
@@ -2271,7 +2273,7 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
     xenonD = result;
 }
 
-:vupkhsb128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=30 & BITS_4_5=2
+:vupkhsb128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=30 & BITS_4_5=2 & A_BITS!=0
 {
     result:16 = xenonVupkhsb128(xenonA, xenonB);
     xenonD = result;
@@ -2296,9 +2298,27 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
     xenonD = result;
 }
 
-:vupklsb128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=31 & BITS_4_5=2
+:vupklsb128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=31 & BITS_4_5=2 & A_BITS!=0
 {
     result:16 = xenonVupklsb128(xenonA, xenonB);
     xenonD = result;
 }
 
+
+
+# The original Biallas Rev. 1.2 missed these signed-HALFWORD unpack forms.
+# powerpc-rs independently records mask fc1f07f0 with 180007a0/180007e0.
+# VA128=0x60 (A_BITS=0 and both extended VA bits set) is NOT a byte unpack.
+# Xenia's byte-unpack decoder hides this distinction in its emitter.
+# Preserve numeric uncertainty with separate opaque result-producing userops.
+:vupkhsh128 xenonD,xenonB is OP=6 & xenonD & A_BITS=0 & xenonB & BITS_6_10=30 & BITS_4_5=2
+{
+    result:16 = xenonVupkhsh128(xenonB);
+    xenonD = result;
+}
+
+:vupklsh128 xenonD,xenonB is OP=6 & xenonD & A_BITS=0 & xenonB & BITS_6_10=31 & BITS_4_5=2
+{
+    result:16 = xenonVupklsh128(xenonB);
+    xenonD = result;
+}
