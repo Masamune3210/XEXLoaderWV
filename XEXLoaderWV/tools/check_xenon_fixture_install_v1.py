@@ -42,6 +42,8 @@ EXPECTED = {
     "vperm128": "native-pcode",
     "vmsum3fp128": "native-pcode",
     "vmsum4fp128": "native-pcode",
+    "vupkhsh128": "opaque-userop",
+    "vupklsh128": "opaque-userop",
 }
 
 
@@ -84,15 +86,16 @@ def main() -> int:
         return 2
 
     from audit_xenon_isa_coverage_v1 import (
-        FILLS, INVENTORY, EXTRA_INVENTORY, decode_expectation, parse_sleigh,
+        FILLS, INVENTORY, EXTRA_INVENTORY, CORRECTION_INVENTORY,
+        decode_expectation, parse_sleigh,
         read_inventory, read_sleigh_source,
     )
     combined_source = read_sleigh_source(SLEIGH)
     source_status, unused_ops = parse_sleigh(combined_source)
     with MANIFEST.open(encoding="utf-8", newline="") as f:
         records = list(csv.DictReader(f, delimiter="\t"))
-    if len(records) != 336:
-        print("ERROR: expected exactly 336 fixture rows; got", len(records))
+    if len(records) != 344:
+        print("ERROR: expected exactly 344 fixture rows; got", len(records))
         return 2
     required_columns = {
         "offset", "word_be", "expected_mnemonic", "sleigh_status",
@@ -101,8 +104,8 @@ def main() -> int:
         print("ERROR: old fixture manifest schema; regenerate via Gradle.")
         return 2
     data = FIXTURE.read_bytes()
-    if len(data) != 1344:
-        print("ERROR: fixture is not 1344 bytes:", len(data))
+    if len(data) != 1376:
+        print("ERROR: fixture is not 1376 bytes:", len(data))
         return 2
     labels = {}
     errors = []
@@ -111,6 +114,8 @@ def main() -> int:
         ("SLEIGH SHA-256", digest(combined_source.encode("utf-8"))),
         ("Inventory SHA-256", digest(INVENTORY.read_bytes())),
         ("Extra inventory SHA-256", digest(EXTRA_INVENTORY.read_bytes())),
+        ("Unpack correction inventory SHA-256",
+         digest(CORRECTION_INVENTORY.read_bytes())),
         ("Language specification SHA-256", digest(
             (LANG / "xenon_64_be.slaspec").read_bytes())),
         ("Generator SHA-256", digest(
@@ -128,7 +133,8 @@ def main() -> int:
     # name classifications. The fixture words remain unchanged when only
     # p-code semantics change; the report fingerprint catches those edits.
     source_rows = (read_inventory(INVENTORY) +
-                   read_inventory(EXTRA_INVENTORY))
+                   read_inventory(EXTRA_INVENTORY) +
+                   read_inventory(CORRECTION_INVENTORY))
     expected_samples = []
     for item in source_rows:
         for variant, fill in FILLS:
