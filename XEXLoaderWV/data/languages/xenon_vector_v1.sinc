@@ -512,7 +512,7 @@ xenonA: "xv127" is vrAR=31 & MBH=1 & OE=1 { export xv127; }
     shortY:4 = 0x40400000:4 | lowHalf;
     placeX:16 = zext(shortX) << 96;
     placeY:16 = zext(shortY) << 64;
-    shortOne:16 = zext(0x3f800000:4);
+    shortOne:16 = 0x3f800000:16;
     xenonD = placeX | placeY | shortOne;
     goto <unpack_done>;
 <unpack_opaque>
@@ -560,7 +560,7 @@ xenonA: "xv127" is vrAR=31 & MBH=1 & OE=1 { export xv127; }
     shortY:4 = 0x40400000:4 | lowHalf;
     placeX:16 = zext(shortX) << 96;
     placeY:16 = zext(shortY) << 64;
-    shortOne:16 = zext(0x3f800000:4);
+    shortOne:16 = 0x3f800000:16;
     xenonD = placeX | placeY | shortOne;
     goto <unpack_done>;
 <unpack_opaque>
