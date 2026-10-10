@@ -93,12 +93,13 @@ public class AuditXenonSaturatingPackV1 extends GhidraScript {
                 + instruction.toString();
         }
 
-        try (EmulatorHelper emulator = new EmulatorHelper(currentProgram)) {
+        EmulatorHelper emulator = new EmulatorHelper(currentProgram);
+        try {
             BigInteger input = repeated(sourceUnit, pack.inputBits);
             emulator.writeRegister(left, input);
             emulator.writeRegister(right, input);
             emulator.writeRegister("xenonVSCR", initialVSCR);
-            emulator.writeRegister(currentProgram.getProgramCounter(),
+            emulator.writeRegister(currentProgram.getLanguage().getProgramCounter(),
                                    instruction.getAddress().getOffset());
 
             if (!emulator.step(monitor))
@@ -118,6 +119,9 @@ public class AuditXenonSaturatingPackV1 extends GhidraScript {
                     + ", actual vector=" + actual.toString(16)
                     + " vscr=" + Long.toHexString(vscr);
             }
+        }
+        finally {
+            emulator.dispose();
         }
         return null;
     }
