@@ -61,12 +61,18 @@ class XenonIsaInventoryTests(unittest.TestCase):
         import re
 
         source = audit.SLEIGH.read_text(encoding="utf-8")
+        constructors, _ = audit.parse_sleigh(source)
         for row in self.rows:
             if row["primary"] not in (4, 31):
                 continue
             rules = re.findall(
                 r"(?m)^:" + re.escape(row["mnemonic"]) +
                 r" [^\n]+ is ([^\n]+)", source)
+            if row["mnemonic"] not in constructors:
+                # The inventory intentionally includes still-unimplemented
+                # instructions such as vsldoi128 and vperm128.
+                self.assertFalse(rules, row["mnemonic"])
+                continue
             self.assertTrue(rules, row["mnemonic"])
             for fill in (0, 0xFFFFFFFF, 0x55555555, 0xAAAAAAAA):
                 word = row["value"] | (fill & (~row["mask"] & 0xFFFFFFFF))
