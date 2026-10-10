@@ -238,7 +238,7 @@ tasks.register("prepareXenonCommon") {
 // that a manually replaced manifest is still current.
 tasks.register("generateXenonIsaFixture", Exec) {
     group = "verification"
-    description = "Regenerate the 336-word Xenon ISA fixture and source coverage manifest"
+    description = "Regenerate the 344-word Xenon ISA fixture and source coverage manifest"
     workingDir projectDir
     def onWindows = System.getProperty("os.name").toLowerCase(java.util.Locale.ROOT).contains("windows")
     def pythonCommand = project.findProperty("XENON_PYTHON")?.toString() ?:
