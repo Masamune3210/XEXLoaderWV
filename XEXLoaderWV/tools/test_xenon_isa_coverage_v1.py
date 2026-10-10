@@ -556,6 +556,150 @@ class XenonIsaInventoryTests(unittest.TestCase):
                 self.assertEqual(len(re.findall(
                     r"(?m)^    dotLane\d+:16", body)), 4)
 
+    def test_all_corrected_families_and_pcode_classification(self):
+        # Unlike the pinned Xenia subset, the combined inventory includes
+        # two signed-halfword aliases omitted from Xenia's decoder.
+        corrected = audit.read_inventory(audit.CORRECTION_INVENTORY)
+        rows = self.rows + corrected
+        statuses, operators = audit.parse_sleigh(
+            audit.read_sleigh_source(audit.SLEIGH))
+        self.assertEqual(len(rows), 86)
+        self.assertEqual(len({row["mnemonic"] for row in rows}), 86)
+        self.assertEqual(Counter(statuses[row["mnemonic"]] for row in rows),
+                         Counter({"native-pcode": 67, "opaque-userop": 19}))
+        self.assertEqual(
+            [statuses[row["mnemonic"]] for row in corrected],
+            ["native-pcode", "native-pcode"])
+        self.assertIn("xenonSetVscrSatIf", operators)
+
+    def test_signed_byte_unpacks_widen_eight_correct_lanes(self):
+        import re
+
+        sleigh = audit.ADDITIONAL_SLEIGH.read_text(encoding="utf-8")
+        for name, first_byte in (("vupkhsb128", 0), ("vupklsb128", 8)):
+            bodies = re.findall(
+                r"(?m)^:" + name + r" [^\n]+ is [^\n]+\n"
+                r"\{\n([\s\S]*?)\n\}", sleigh)
+            self.assertEqual(len(bodies), 4, name)
+            for body in bodies:
+                for i in range(8):
+                    offset = 15 - first_byte - i
+                    shift = 112 - 16 * i
+                    self.assertIn(
+                        f"byteIn{i}:1 = xenonB({offset});", body)
+                    self.assertIn(
+                        f"extendedHalf{i}:2 = sext(byteIn{i});", body)
+                    self.assertIn(
+                        f"packedHalf{i}:16 = zext(extendedHalf{i})" +
+                        (f" << {shift}" if shift else "") + ";", body)
+                self.assertIn("xenonD = " + " | ".join(
+                    f"packedHalf{i}" for i in range(8)) + ";", body)
+                self.assertNotIn("xenonVupk", body)
+
+    def test_vector_comparisons_mask_and_record_cr6_paths(self):
+        import re
+
+        sleigh = audit.ADDITIONAL_SLEIGH.read_text(encoding="utf-8")
+        for name, predicate in (
+                ("vcmpeqfp128", "f=="),
+                ("vcmpgefp128", "f>="),
+                ("vcmpgtfp128", "f>"),
+                ("vcmpequw128", "==")):
+            bodies = re.findall(
+                r"(?m)^:" + name + r" [^\n]+ is [^\n]+\n"
+                r"\{\n([\s\S]*?)\n\}", sleigh)
+            self.assertEqual(len(bodies), 8, name)
+            for i, body in enumerate(bodies):
+                for lane in range(4):
+                    self.assertIn(
+                        f"predicate{lane}:1 = compareA{lane} "
+                        f"{predicate} compareB{lane};", body)
+                    self.assertIn(
+                        f"expandedResult{lane}:4 = 0:4 - "
+                        f"zext(predicate{lane});", body)
+                has_record = i % 4 in (2, 3)
+                self.assertEqual("cr6 =" in body, has_record,
+                                 (name, i))
+                if has_record:
+                    self.assertIn("allTrue:1 =", body)
+                    self.assertIn("noneTrue:1 =", body)
+                    self.assertIn(
+                        "cr6 = (allTrue << 3) | (noneTrue << 1);",
+                        body)
+        bounds = re.findall(
+            r"(?m)^:vcmpbfp128 [^\n]+ is [^\n]+\n"
+            r"\{\n([\s\S]*?)\n\}", sleigh)
+        self.assertEqual(len(bounds), 8)
+        for index, body in enumerate(bounds):
+            for lane in range(4):
+                self.assertIn(
+                    f"bfpNan{lane}:1 = nan(bfpA{lane}) | "
+                    f"nan(bfpB{lane});", body)
+                self.assertIn(
+                    f"highBit{lane}:4 = zext(bfpAbove{lane}) << 31;",
+                    body)
+                self.assertIn(
+                    f"lowerBit{lane}:4 = zext(bfpBelow{lane}) << 30;",
+                    body)
+            self.assertEqual("cr6 =" in body, index % 4 in (2, 3))
+
+    def test_saturating_pack_clamps_and_tracks_vscr_dependency(self):
+        import re
+
+        sleigh = audit.ADDITIONAL_SLEIGH.read_text(encoding="utf-8")
+        families = (
+            ("vpkshss128", 2, 1, True, -128, 127),
+            ("vpkshus128", 2, 1, True, 0, 255),
+            ("vpkswss128", 4, 2, True, -32768, 32767),
+            ("vpkswus128", 4, 2, True, 0, 65535),
+            ("vpkuhus128", 2, 1, False, 0, 255),
+            ("vpkuwus128", 4, 2, False, 0, 65535),
+        )
+        for name, src_bytes, dst_bytes, signed, lo, hi in families:
+            bodies = re.findall(
+                r"(?m)^:" + name + r" [^\n]+ is [^\n]+\n"
+                r"\{\n([\s\S]*?)\n\}", sleigh)
+            self.assertEqual(len(bodies), 4, name)
+            lane_count = 16 // dst_bytes
+            per_source = 16 // src_bytes
+            for body in bodies:
+                for i in range(lane_count):
+                    register = "xenonA" if i < per_source else "xenonB"
+                    offset = (per_source - 1 - i % per_source) * src_bytes
+                    self.assertIn(
+                        f"packInput{i}:{src_bytes} = "
+                        f"{register}({offset});", body)
+                    self.assertIn(
+                        f"clipped{i}:{src_bytes} =", body)
+                    self.assertIn(
+                        f"packed{i}:{dst_bytes} = clipped{i}(0);",
+                        body)
+                    self.assertIn(
+                        f"widened{i}:16 = zext(packed{i})", body)
+                self.assertIn(
+                    "xenonD = " + " | ".join(
+                        f"widened{i}" for i in range(lane_count)) + ";",
+                    body)
+                self.assertIn(
+                    "xenonSetVscrSatIf(saturatedAny);", body)
+                self.assertNotIn("pack_unresolved_saturation", body)
+            # Independent scalar golden values for boundary interpretation,
+            # not a claim that Ghidra's numerical p-code has executed.
+            raw_inputs = [lo - 1, lo, lo + 1, hi - 1, hi, hi + 1]
+            input_bits = src_bytes * 8
+            for raw in raw_inputs:
+                if not signed and raw < 0:
+                    continue
+                mask = (1 << input_bits) - 1
+                encoded = raw & mask
+                decoded = (encoded - (1 << input_bits)
+                           if signed and encoded & (1 << (input_bits - 1))
+                           else encoded)
+                clamped = max(lo, min(hi, decoded))
+                self.assertTrue(lo <= clamped <= hi)
+                if lo <= decoded <= hi:
+                    self.assertEqual(clamped, decoded)
+
     def test_fixture_generation(self):
         with tempfile.TemporaryDirectory() as folder:
             out = Path(folder)
