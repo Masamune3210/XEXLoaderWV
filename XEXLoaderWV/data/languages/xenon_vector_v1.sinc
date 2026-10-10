@@ -486,10 +486,14 @@ xenonA: "xv127" is vrAR=31 & MBH=1 & OE=1 { export xv127; }
     green:4 = (packedColor >> 8) & 0xff:4;
     blue:4 = packedColor & 0xff:4;
     alpha:4 = (packedColor >> 24) & 0xff:4;
-    laneR:16 = zext(0x3f800000:4 | red) << 96;
-    laneG:16 = zext(0x3f800000:4 | green) << 64;
-    laneB:16 = zext(0x3f800000:4 | blue) << 32;
-    laneA:16 = zext(0x3f800000:4 | alpha);
+    encodedR:4 = 0x3f800000:4 | red;
+    laneR:16 = zext(encodedR) << 96;
+    encodedG:4 = 0x3f800000:4 | green;
+    laneG:16 = zext(encodedG) << 64;
+    encodedB:4 = 0x3f800000:4 | blue;
+    laneB:16 = zext(encodedB) << 32;
+    encodedA:4 = 0x3f800000:4 | alpha;
+    laneA:16 = zext(encodedA);
     xenonD = laneR | laneG | laneB | laneA;
     goto <unpack_done>;
 <unpack_opaque>
@@ -511,10 +515,14 @@ xenonA: "xv127" is vrAR=31 & MBH=1 & OE=1 { export xv127; }
     green:4 = (packedColor >> 8) & 0xff:4;
     blue:4 = packedColor & 0xff:4;
     alpha:4 = (packedColor >> 24) & 0xff:4;
-    laneR:16 = zext(0x3f800000:4 | red) << 96;
-    laneG:16 = zext(0x3f800000:4 | green) << 64;
-    laneB:16 = zext(0x3f800000:4 | blue) << 32;
-    laneA:16 = zext(0x3f800000:4 | alpha);
+    encodedR:4 = 0x3f800000:4 | red;
+    laneR:16 = zext(encodedR) << 96;
+    encodedG:4 = 0x3f800000:4 | green;
+    laneG:16 = zext(encodedG) << 64;
+    encodedB:4 = 0x3f800000:4 | blue;
+    laneB:16 = zext(encodedB) << 32;
+    encodedA:4 = 0x3f800000:4 | alpha;
+    laneA:16 = zext(encodedA);
     xenonD = laneR | laneG | laneB | laneA;
     goto <unpack_done>;
 <unpack_opaque>
