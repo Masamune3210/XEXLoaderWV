@@ -1000,6 +1000,53 @@ class XenonIsaInventoryTests(unittest.TestCase):
                      "vrfim128", "vrfip128", "vrfiz128"):
             self.assertEqual(expected[name], "native-pcode")
 
+    def test_vupkd3d_d3dcolor_integer_lane_mapping(self):
+        # Xenia pinned tests: 0x04010203 maps to RGBA 01,02,03,04;
+        # 0x80506070 maps to R/G/B/A 50,60,70,80.
+        import re
+
+        source = audit.SLEIGH.read_text(encoding="utf-8")
+        bodies = re.findall(
+            r"(?m)^:vupkd3d128 [^\n]+ is [^\n]+\n"
+            r"\{\n([\s\S]*?)\n\}", source)
+        self.assertEqual(len(bodies), 2)
+        for body in bodies:
+            self.assertIn("unpackType:4 = A_BITS:4 >> 2;", body)
+            self.assertIn("if (unpackType == 0:4) goto <unpack_color>;", body)
+            self.assertIn("goto <unpack_opaque>;", body)
+            self.assertIn("packedColor:4 = xenonB(0);", body)
+            for name, shift in (("red", 16), ("green", 8),
+                                ("alpha", 24)):
+                self.assertIn(
+                    f"{name}:4 = (packedColor >> {shift}) & 0xff:4;",
+                    body)
+            self.assertIn("blue:4 = packedColor & 0xff:4;", body)
+            for name, shift in (("R", 96), ("G", 64),
+                                ("B", 32), ("A", 0)):
+                tail = f" << {shift}" if shift else ""
+                self.assertIn(
+                    f"lane{name}:16 = zext(0x3f800000:4 | " +
+                    {"R": "red", "G": "green",
+                     "B": "blue", "A": "alpha"}[name] + f"){tail};",
+                    body)
+            self.assertIn("xenonD = laneR | laneG | laneB | laneA;", body)
+            self.assertIn(
+                "unpacked:16 = xenonVupkd3d128(xenonB, A_BITS:4);",
+                body)
+            self.assertIn("xenonD = unpacked;", body)
+        examples = {
+            0x04010203: [0x3f800001, 0x3f800002,
+                         0x3f800003, 0x3f800004],
+            0x80506070: [0x3f800050, 0x3f800060,
+                         0x3f800070, 0x3f800080],
+            0x00000000: [0x3f800000] * 4,
+            0xffffffff: [0x3f8000ff] * 4,
+        }
+        for argb, expected in examples.items():
+            rgb = [(argb >> bits) & 0xff for bits in (16, 8, 0, 24)]
+            self.assertEqual([0x3f800000 | value for value in rgb],
+                             expected)
+
     def test_vmadd_finite_exact_pcode_paths_preserve_operand_order(self):
         # Native floating-point multiplication followed by addition is NOT
         # generally a fused multiply-add. Verify that the p-code only uses
