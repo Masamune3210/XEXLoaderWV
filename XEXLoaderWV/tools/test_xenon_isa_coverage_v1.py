@@ -141,6 +141,75 @@ class XenonIsaInventoryTests(unittest.TestCase):
                     self.assertEqual((word >> 16) & 31, fmt * 4 + low)
                     self.assertEqual((word >> 3) & 1, bank)
 
+    def test_guarded_fused_float_numeric_probe_matrix(self):
+        # Native semantics can only be asserted for nonzero integral f32
+        # inputs in [-2048, 2048] and exact, nonzero output lanes.
+        # Keep the three distinct operand formulas and all four encodings.
+        import re
+        import struct
+
+        source = (audit.ROOT.parent /
+                  "ghidra_scripts/AuditXenonGuardedFusedFloatNumeric.java"
+                  ).read_text(encoding="utf-8")
+        families = re.findall(
+            r'new Family\("([^"]+)",\s*(0x[0-9a-fA-F]+)L,\s*(\d+)\)',
+            source)
+        self.assertEqual(
+            families,
+            [("vmaddfp128", "0x140000d0", "0"),
+             ("vmaddcfp128", "0x14000110", "1"),
+             ("vnmsubfp128", "0x14000150", "2")])
+        patterns = re.findall(
+            r'new Pattern\("([^"]+)",\s*'
+            r'new int\[\] \{([^}]*)\},\s*'
+            r'new int\[\] \{([^}]*)\},\s*'
+            r'new int\[\] \{([^}]*)\}\)',
+            source)
+        self.assertEqual(len(patterns), 6)
+
+        self.assertIn("emulator.writeMemory(address, op);", source)
+        self.assertIn("emulator.readMemory(address, 4)", source)
+        self.assertIn("fixtureMatches(address, word)", source)
+        self.assertNotIn("currentProgram.getMemory().setBytes(", source)
+        self.assertIn('vectorRegister("vs33")', source)
+        self.assertIn('vectorRegister("vs34")', source)
+        self.assertIn('vectorRegister("vs35")', source)
+        self.assertIn("emulator.readRegister(a)", source)
+        self.assertIn("emulator.readRegister(b)", source)
+
+        def bits(value):
+            return int.from_bytes(struct.pack(">f", float(value)), "big")
+
+        for _, selector_string, formula_string in families:
+            selector, formula = int(selector_string, 16), int(formula_string)
+            for variant in range(4):
+                word = (selector | (1 << 21) | (2 << 16) |
+                        (3 << 11) | ((variant & 1) << 5) |
+                        ((variant & 2) << 9))
+                self.assertEqual(word & 0xfc0003d0, selector)
+                self.assertEqual(((word >> 21) & 31,
+                                  (word >> 16) & 31,
+                                  (word >> 11) & 31),
+                                 (1, 2, 3))
+            for label, a_string, b_string, d_string in patterns:
+                a, b, d = ([
+                    int(x.strip()) for x in values.split(",")]
+                    for values in (a_string, b_string, d_string))
+                self.assertEqual((len(a), len(b), len(d)), (4, 4, 4),
+                                 label)
+                for av, bv, dv in zip(a, b, d):
+                    self.assertTrue(
+                        all(0 < abs(x) <= 2048 for x in (av, bv, dv)),
+                        (label, av, bv, dv))
+                    value = ((av * bv + dv) if formula == 0
+                             else (av * dv + bv) if formula == 1
+                             else (dv - av * bv))
+                    self.assertTrue(0 < abs(value) < (1 << 24),
+                                    (label, formula, value))
+                    self.assertEqual(
+                        struct.unpack(">f", struct.pack(">I", bits(value)))[0],
+                        float(value))
+
     def test_sleigh_semantics_reject_cpp_style_comments(self):
         # C++ // comments inside Sleigh constructor actions are NOT valid.
         # A single such comment can make the parser reject all subsequent
