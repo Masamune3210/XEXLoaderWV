@@ -104,6 +104,17 @@ tasks.register("prepareXenonIsa") {
                 "generate Xenon-only collision-free ISA variant")
         }
         src = src.replace(dcbzOld, dcbzNew)
+        // The copied ISA lives in our extension's data/languages directory.
+        // Preserve the stock Ghidra-relative VSX include by anchoring it to
+        // the installed PowerPC processor's source directory instead.
+        String stockVsxInclude = '@include "vsx.sinc"'
+        String resolvedVsxInclude = '@include "$(PowerPC)/data/languages/vsx.sinc"'
+        if (src.indexOf(stockVsxInclude) < 0 ||
+                src.indexOf(stockVsxInclude) != src.lastIndexOf(stockVsxInclude)) {
+            throw new GradleException(
+                "Unexpected vsx.sinc include layout in installed ppc_isa.sinc")
+        }
+        src = src.replace(stockVsxInclude, resolvedVsxInclude)
         for (String name : ["stvepx", "stvepxl"]) {
             String userop = "define pcodeop " + name + "Op;"
             String start = ":" + name + " S,RA_OR_ZERO,B is OP=31"
