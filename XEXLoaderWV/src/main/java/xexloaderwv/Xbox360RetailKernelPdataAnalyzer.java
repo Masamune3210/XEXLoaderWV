@@ -347,7 +347,6 @@ public class Xbox360RetailKernelPdataAnalyzer extends AbstractAnalyzer {
                     flowBodiesSet++;
                 }
             }
-            catch (CancelledException ex) { throw ex; }
             catch (Exception ex) {
                 flowBodyFailures++;
                 if (failures.size() < 20)
