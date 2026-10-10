@@ -1804,6 +1804,276 @@ public class AuditXenonNumericalPcode extends GhidraScript {
         recordSuite("LANE-SHIFT", passed, failed, problems);
     }
 
+
+    // Full 128-bit Boolean operations, including vsel's old destination
+    // as a bit-mask operand. Each case preserves independent source state.
+    private static final class LogicalOp {
+        final String name;
+        final long opcode;
+        final int kind;
+
+        LogicalOp(String name, long opcode, int kind) {
+            this.name = name;
+            this.opcode = opcode;
+            this.kind = kind;
+        }
+    }
+
+    private static final LogicalOp[] LOGICAL_OPS = {
+        new LogicalOp("vand128",  0x14000210L, 0),
+        new LogicalOp("vandc128", 0x14000250L, 1),
+        new LogicalOp("vnor128",  0x14000290L, 2),
+        new LogicalOp("vor128",   0x140002d0L, 3),
+        new LogicalOp("vxor128",  0x14000310L, 4),
+        new LogicalOp("vsel128",  0x14000350L, 5),
+    };
+
+    private static final class LogicalPattern {
+        final String label;
+        final BigInteger a;
+        final BigInteger b;
+        final BigInteger mask;
+
+        LogicalPattern(String label, String a, String b, String mask) {
+            this.label = label;
+            this.a = new BigInteger(a, 16);
+            this.b = new BigInteger(b, 16);
+            this.mask = new BigInteger(mask, 16);
+            if (a.length() != 32 || b.length() != 32 ||
+                    mask.length() != 32)
+                throw new IllegalArgumentException(
+                    "Logical pattern must use exactly 128 bits: " + label);
+        }
+    }
+
+    private static final LogicalPattern[] LOGICAL_PATTERNS = {
+        new LogicalPattern("all-zero",
+            "00000000000000000000000000000000",
+            "00000000000000000000000000000000",
+            "00000000000000000000000000000000"),
+        new LogicalPattern("all-one",
+            "ffffffffffffffffffffffffffffffff",
+            "ffffffffffffffffffffffffffffffff",
+            "ffffffffffffffffffffffffffffffff"),
+        new LogicalPattern("a-only",
+            "0123456789abcdeffedcba9876543210",
+            "00000000000000000000000000000000",
+            "00000000000000000000000000000000"),
+        new LogicalPattern("b-only",
+            "00000000000000000000000000000000",
+            "fedcba98765432100123456789abcdef",
+            "ffffffffffffffffffffffffffffffff"),
+        new LogicalPattern("opposite-checkers",
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "55555555555555555555555555555555",
+            "0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f"),
+        new LogicalPattern("reversed-checkers",
+            "55555555555555555555555555555555",
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0"),
+        new LogicalPattern("nibble-mix",
+            "f00ff00ff00ff00ff00ff00ff00ff00f",
+            "33cc33cc33cc33cc33cc33cc33cc33cc",
+            "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"),
+        new LogicalPattern("endpoint-bits",
+            "80000000000000000000000000000001",
+            "00000001000000000000000080000000",
+            "80000000000000000000000000000001"),
+        new LogicalPattern("asymmetric-lanes",
+            "deadbeef0123456789abcdeff0f0f0f0",
+            "01020304fedcba9855aa55aa0f0f0f0f",
+            "0000ffff00ff00ffff0000ff5a5aa5a5"),
+        new LogicalPattern("sparse-mask",
+            "aa55aa55aa55aa55aa55aa55aa55aa55",
+            "55aa55aa55aa55aa55aa55aa55aa55aa",
+            "01010101010101010101010101010101"),
+        new LogicalPattern("dense-mask",
+            "00112233445566778899aabbccddeeff",
+            "ffeeddccbbaa99887766554433221100",
+            "fefefefefefefefefefefefefefefefe"),
+        new LogicalPattern("equal-sources",
+            "89abcdef0123456789abcdef01234567",
+            "89abcdef0123456789abcdef01234567",
+            "13579bdf2468ace013579bdf2468ace0"),
+    };
+
+    private static BigInteger logicOracle(LogicalOp operation,
+                                            LogicalPattern pattern) {
+        BigInteger a = pattern.a, b = pattern.b;
+        switch (operation.kind) {
+            case 0:
+                return a.and(b);
+            case 1:
+                return a.and(b.xor(MASK128));
+            case 2:
+                return a.or(b).xor(MASK128);
+            case 3:
+                return a.or(b);
+            case 4:
+                return a.xor(b);
+            case 5:
+                return a.and(pattern.mask.xor(MASK128))
+                    .or(b.and(pattern.mask));
+            default:
+                throw new IllegalArgumentException(
+                    "Unsupported logical operation: " + operation.name);
+        }
+    }
+
+    private static long logicWord(LogicalOp operation, int variant) {
+        if ((variant & ~3) != 0)
+            throw new IllegalArgumentException("Invalid VA variant");
+        long word = operation.opcode | (1L << 21) | (2L << 16) |
+            (3L << 11) | ((long) (variant & 1) << 5) |
+            ((long) (variant & 2) << 9);
+        if ((word & FP_SELECTOR_MASK) != operation.opcode ||
+                ((word >>> 21) & 31) != 1 ||
+                ((word >>> 16) & 31) != 2 ||
+                ((word >>> 11) & 31) != 3 ||
+                ((word >>> 5) & 1) != (variant & 1) ||
+                ((word >>> 10) & 1) != ((variant >>> 1) & 1))
+            throw new IllegalArgumentException(
+                "Incorrect VMX128 logical encoding");
+        return word;
+    }
+
+    private String executeLogic(LogicalOp operation, Address address,
+                                int variant, LogicalPattern pattern)
+            throws Exception {
+        long word = logicWord(operation, variant);
+        String label = operation.name + " variant=" + variant +
+            " VA=" + guardedFpSourceAName(variant) +
+            " pattern=" + pattern.label + " word=" +
+            String.format("%08X", word);
+        Register destination = vectorRegister("vs33");
+        Register aReg = vectorRegister(guardedFpSourceAName(variant));
+        Register bReg = vectorRegister("vs35");
+        BigInteger expected = logicOracle(operation, pattern);
+        EmulatorHelper emulator = new EmulatorHelper(currentProgram);
+        try {
+            byte[] opcode = wordBytes(word);
+            emulator.writeMemory(address, opcode);
+            if (!Arrays.equals(opcode, emulator.readMemory(address, 4)))
+                return label + ": emulator-private opcode mismatch";
+            emulator.writeRegister(aReg, pattern.a);
+            emulator.writeRegister(bReg, pattern.b);
+            emulator.writeRegister(destination, pattern.mask);
+            emulator.writeRegister(
+                currentProgram.getLanguage().getProgramCounter(),
+                address.getOffset());
+            if (!emulator.step(monitor))
+                return label + ": emulator step failed: " +
+                    emulator.getLastError();
+            BigInteger actual = emulator.readRegister(destination).and(MASK128);
+            BigInteger afterA = emulator.readRegister(aReg).and(MASK128);
+            BigInteger afterB = emulator.readRegister(bReg).and(MASK128);
+            if (!expected.equals(actual) ||
+                    !pattern.a.equals(afterA) ||
+                    !pattern.b.equals(afterB))
+                return label + ": expectedD=" + hex128(expected) +
+                    " actualD=" + hex128(actual) +
+                    " initialD=" + hex128(pattern.mask) +
+                    " expectedA=" + hex128(pattern.a) +
+                    " actualA=" + hex128(afterA) +
+                    " expectedB=" + hex128(pattern.b) +
+                    " actualB=" + hex128(afterB);
+        }
+        finally {
+            emulator.dispose();
+        }
+        return null;
+    }
+
+    private void runLogicalOps(File manifest, Address base)
+            throws Exception {
+        Map<String, Address> sites = new LinkedHashMap<>();
+        Map<String, Long> originalWords = new LinkedHashMap<>();
+        try (BufferedReader reader = Files.newBufferedReader(
+                manifest.toPath(), StandardCharsets.UTF_8)) {
+            String heading = reader.readLine();
+            if (heading == null ||
+                    !heading.startsWith("offset\tword_be\texpected_mnemonic\t"))
+                throw new IllegalArgumentException(
+                    "Incorrect Xenon logical-op fixture manifest");
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] columns = line.split("\t", -1);
+                if (columns.length != 6 ||
+                        !"decode".equals(columns[5]))
+                    continue;
+                for (LogicalOp operation : LOGICAL_OPS) {
+                    if (operation.name.equals(columns[2]) &&
+                            !sites.containsKey(operation.name)) {
+                        Address addr = base.add(Long.parseUnsignedLong(
+                            columns[0].replaceFirst("^0x", ""), 16));
+                        sites.put(operation.name, addr);
+                        originalWords.put(operation.name,
+                            Long.parseUnsignedLong(columns[1], 16));
+                    }
+                }
+            }
+        }
+        int passed = 0, failed = 0;
+        List<String> problems = new ArrayList<>();
+        for (LogicalOp operation : LOGICAL_OPS) {
+            Address address = sites.get(operation.name);
+            Long originalWord = originalWords.get(operation.name);
+            if (address == null || originalWord == null ||
+                    (originalWord & FP_SELECTOR_MASK) != operation.opcode ||
+                    !fixtureMatches(address, originalWord)) {
+                failed++;
+                problems.add(operation.name +
+                    ": missing/mismatched original fixture bytes");
+                continue;
+            }
+            Instruction instruction = getInstructionAt(address);
+            if (instruction == null) {
+                disassemble(address);
+                instruction = getInstructionAt(address);
+            }
+            if (instruction == null ||
+                    !operation.name.equalsIgnoreCase(
+                        instruction.getMnemonicString())) {
+                failed++;
+                problems.add(operation.name +
+                    ": unexpected original fixture mnemonic at " + address);
+                continue;
+            }
+            for (int variant = 0; variant < 4; variant++) {
+                for (LogicalPattern pattern : LOGICAL_PATTERNS) {
+                    monitor.checkCancelled();
+                    try {
+                        String issue = executeLogic(operation,
+                            address, variant, pattern);
+                        if (issue == null) passed++;
+                        else {
+                            failed++;
+                            problems.add(issue);
+                        }
+                    }
+                    catch (Exception error) {
+                        failed++;
+                        problems.add(operation.name + " variant=" + variant +
+                            " pattern=" + pattern.label + ": " + error);
+                    }
+                }
+            }
+        }
+        println("");
+        println("============================================================");
+        println("XENON VECTOR BITWISE NATIVE NUMERICAL P-CODE AUDIT");
+        println("============================================================");
+        println("Language: " + LANGUAGE);
+        println("Cases: " + (passed + failed) + "; passed: " +
+            passed + "; failed: " + failed);
+        println("vand128, vandc128, vnor128, vor128, vxor128, vsel128.");
+        println("Four VA banks, 12 full-width A/B/old-D input patterns;");
+        println("vsel128 reads the original destination as a bit mask.");
+        println("Source registers and original fixture bytes unchanged.");
+        println("Unresolved details follow in combined result below.");
+        recordSuite("LOGIC", passed, failed, problems);
+    }
+
     @Override
     protected void run() throws Exception {
         String id = currentProgram.getLanguage().getLanguageID()
@@ -1919,6 +2189,7 @@ public class AuditXenonNumericalPcode extends GhidraScript {
         runDotProducts(manifest, base);
         runWholeVectorShifts(manifest, base);
         runLaneShifts(manifest, base);
+        runLogicalOps(manifest, base);
 
         println("");
         println("============================================================");
