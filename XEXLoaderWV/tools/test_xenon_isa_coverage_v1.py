@@ -885,6 +885,8 @@ class XenonIsaInventoryTests(unittest.TestCase):
         self.assertIn("runDotProducts(manifest, base);", script)
         self.assertIn("runWholeVectorShifts(manifest, base);", script)
         self.assertIn("runLaneShifts(manifest, base);", script)
+        self.assertIn("runLogicalOps(manifest, base);", script)
+        self.assertIn("XENON VECTOR BITWISE NATIVE NUMERICAL P-CODE AUDIT", script)
         self.assertIn("XENON PER-LANE WORD SHIFT NATIVE NUMERICAL P-CODE AUDIT", script)
         self.assertIn("XENON WHOLE-VECTOR SHIFT NATIVE NUMERICAL P-CODE AUDIT", script)
         self.assertIn("XENON FP DOT PRODUCT NATIVE NUMERICAL P-CODE AUDIT", script)
@@ -1249,6 +1251,95 @@ class XenonIsaInventoryTests(unittest.TestCase):
                         self.assertEqual(len(expected_bytes), 16)
                         count += 1
         self.assertEqual(count, 320)
+
+    def test_native_vector_logical_numerical_matrix(self):
+        # Verify the independent A/B operands and old-D-as-mask in vsel,
+        # including complementary, sparse, dense and high-bit patterns.
+        import re
+
+        script = (audit.ROOT.parent / "ghidra_scripts" /
+                  "AuditXenonNumericalPcode.java").read_text(
+                      encoding="utf-8")
+        sleigh = audit.SLEIGH.read_text(encoding="utf-8")
+        operations = (
+            ("vand128", 0x14000210, 0, "xenonD = xenonA & xenonB;"),
+            ("vandc128", 0x14000250, 1, "xenonD = xenonA & ~xenonB;"),
+            ("vnor128", 0x14000290, 2, "xenonD = ~(xenonA | xenonB);"),
+            ("vor128", 0x140002d0, 3, "xenonD = xenonA | xenonB;"),
+            ("vxor128", 0x14000310, 4, "xenonD = xenonA ^ xenonB;"),
+            ("vsel128", 0x14000350, 5,
+             "xenonD = (xenonA & ~xenonD) | (xenonB & xenonD);"),
+        )
+        declared = re.findall(
+            r'new LogicalOp\("([^"]+)",\s*(0x[0-9a-fA-F]+)L,\s*(\d+)\)',
+            script)
+        self.assertEqual(
+            declared,
+            [(name, f"0x{opcode:08x}", str(kind))
+             for name, opcode, kind, _ in operations])
+
+        patterns = re.findall(
+            r'new LogicalPattern\("([^"]+)",\s*'
+            r'"([0-9a-f]{32})",\s*"([0-9a-f]{32})",\s*'
+            r'"([0-9a-f]{32})"\)', script)
+        self.assertEqual(len(patterns), 12)
+        self.assertEqual(len({p[0] for p in patterns}), 12)
+        self.assertIn("runLogicalOps(manifest, base);", script)
+        self.assertIn('recordSuite("LOGIC", passed, failed, problems)',
+                      script)
+        self.assertIn("emulator.writeRegister(destination, pattern.mask);",
+                      script)
+        self.assertIn("emulator.readRegister(destination).and(MASK128)",
+                      script)
+        self.assertIn("!pattern.a.equals(afterA)", script)
+        self.assertIn("!pattern.b.equals(afterB)", script)
+        self.assertIn("!fixtureMatches(address, originalWord)", script)
+        self.assertIn("emulator.writeMemory(address, opcode);", script)
+        self.assertIn("emulator.readMemory(address, 4)", script)
+        self.assertNotIn("currentProgram.getMemory().setBytes(", script)
+
+        mask128 = (1 << 128) - 1
+        cases = 0
+        for name, opcode, kind, semantics in operations:
+            constructors = re.findall(
+                r"(?m)^:" + name + r" [^\n]+\n"
+                r"\{\n([\s\S]*?)\n\}", sleigh)
+            self.assertEqual(len(constructors), 4, name)
+            self.assertTrue(all(semantics in body for body in constructors))
+            for variant in range(4):
+                word = (opcode | (1 << 21) | (2 << 16) |
+                        (3 << 11) | ((variant & 1) << 5) |
+                        ((variant >> 1) << 10))
+                self.assertEqual(word & 0xfc0003d0, opcode)
+                self.assertEqual((word >> 5) & 1, variant & 1)
+                self.assertEqual((word >> 10) & 1, variant >> 1)
+                for _, text_a, text_b, text_mask in patterns:
+                    a, b, old_d = (int(text_a, 16),
+                                   int(text_b, 16),
+                                   int(text_mask, 16))
+                    if kind == 0:
+                        result = a & b
+                    elif kind == 1:
+                        result = a & (~b & mask128)
+                    elif kind == 2:
+                        result = ~(a | b) & mask128
+                    elif kind == 3:
+                        result = a | b
+                    elif kind == 4:
+                        result = a ^ b
+                    else:
+                        result = (a & (~old_d & mask128)) | (b & old_d)
+                    self.assertEqual(len(result.to_bytes(16, "big")), 16)
+                    self.assertTrue(0 <= result <= mask128)
+                    if kind == 5:
+                        # Bitwise independent truth table, checking old D.
+                        for bit in range(128):
+                            expected_bit = (((b if (old_d >> bit) & 1
+                                              else a) >> bit) & 1)
+                            self.assertEqual((result >> bit) & 1,
+                                             expected_bit)
+                    cases += 1
+        self.assertEqual(cases, 288)
 
     def test_unified_numerical_script_is_only_entrypoint(self):
         from pathlib import Path
