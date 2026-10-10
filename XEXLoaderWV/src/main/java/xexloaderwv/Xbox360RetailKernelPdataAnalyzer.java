@@ -32,11 +32,15 @@ import ghidra.util.task.TaskMonitor;
 /**
  * Early metadata pass for the SHA256-verified retail 17559 Xbox 360 kernel PE.
  *
- * The standard Ghidra PE loader still maps the executable. This analyzer runs
- * before normal function discovery, using verified big-endian
- * PowerPC .pdata entries to seed function entry points and bound disassembly.
- * Ghidra function bodies represent reachable instructions, not contiguous
- * .pdata byte spans; each verified span is separately recorded as a comment.
+ * The original full kernel capture uses MEMORY layout, where the section
+ * content bytes occur at their VirtualAddress (RVA), NOT their on-disk
+ * PointerToRawData. The original must be imported through
+ * Xbox360RetailKernelMemoryPeLoader, or through the standard Ghidra PE
+ * loader after normalizing those section raw pointers. Never annotate a
+ * memory image that Ghidra mapped using incorrect FILE-layout offsets.
+ *
+ * This analyzer runs before generic function discovery, using validated
+ * .pdata entrypoints and flow-bounded function-body discovery.
  * It also adds ordinal-export names and leaf-entry seeds. It never rewrites
  * code/data bytes or fabricates function signatures.
  *
@@ -45,8 +49,16 @@ import ghidra.util.task.TaskMonitor;
  */
 public class Xbox360RetailKernelPdataAnalyzer extends AbstractAnalyzer {
     private static final long BASE = 0x80040000L;
-    private static final String SHA256 =
+    // Original firmware split is a memory image, NOT an on-disk PE.
+    // Never analyze it if imported by Ghidra's FILE-layout PE loader,
+    // because .text would then be mapped 0x4c00 bytes out of position.
+    private static final String MEMORY_IMAGE_SHA256 =
         "e1d1c87dbcbec01c71c5400cc129a462fa46738d267e29151a91c5354bdf6cb8";
+    // Same original section contents; only five section PointerToRawData
+    // DWORDs changed to equal their virtual addresses. Suitable for the
+    // standard PE loader.
+    private static final String NORMALIZED_PE_SHA256 =
+        "1c6113602af25b0762fb10dfb0d7ad5c7fef1c7268826982188979b9bb2e4d85";
     private static final String LANGUAGE = "PowerPC:BE:64:A2ALT-32addr";
     private static final long PDATA_START = BASE + 0xFA00L;
     private static final int PDATA_COUNT = 3188;
@@ -82,11 +94,17 @@ public class Xbox360RetailKernelPdataAnalyzer extends AbstractAnalyzer {
 
     @Override
     public boolean canAnalyze(Program program) {
-        return program != null &&
-            LANGUAGE.equals(program.getLanguageID().getIdAsString()) &&
-            program.getImageBase().getOffset() == BASE &&
-            SHA256.equalsIgnoreCase(program.getExecutableSHA256()) &&
-            "Portable Executable (PE)".equals(program.getExecutableFormat());
+        if (program == null ||
+                !LANGUAGE.equals(program.getLanguageID().getIdAsString()) ||
+                program.getImageBase().getOffset() != BASE) {
+            return false;
+        }
+        String format = program.getExecutableFormat();
+        String hash = program.getExecutableSHA256();
+        return (Xbox360RetailKernelMemoryPeLoader.LOADER_NAME.equals(format) &&
+                MEMORY_IMAGE_SHA256.equalsIgnoreCase(hash)) ||
+            ("Portable Executable (PE)".equals(format) &&
+                NORMALIZED_PE_SHA256.equalsIgnoreCase(hash));
     }
 
     private static Address at(Program program, long value) {
