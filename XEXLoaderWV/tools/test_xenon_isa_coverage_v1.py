@@ -44,7 +44,7 @@ class XenonIsaInventoryTests(unittest.TestCase):
         statuses = Counter(
             constructors.get(row["mnemonic"], "missing") for row in self.rows)
         self.assertEqual(statuses, Counter(
-            {"native-pcode": 65, "opaque-userop": 19}))
+            {"native-pcode": 71, "opaque-userop": 13}))
         self.assertIn("xenonVupkd3d128", custom_ops)
         self.assertNotIn("xenonVmulfp128", custom_ops)
         self.assertEqual(constructors.get("vmulfp128"), "native-pcode")
@@ -291,7 +291,7 @@ class XenonIsaInventoryTests(unittest.TestCase):
         former_missing, ops = audit.parse_sleigh(rest)
         self.assertEqual(len(former_missing), 48)
         self.assertEqual(Counter(former_missing.values()), Counter(
-            {"native-pcode": 30, "opaque-userop": 18}))
+            {"native-pcode": 36, "opaque-userop": 12}))
         original, _ = audit.parse_sleigh(
             audit.SLEIGH.read_text(encoding="utf-8"))
         self.assertEqual(set(former_missing) & set(original), set())
@@ -622,11 +622,11 @@ class XenonIsaInventoryTests(unittest.TestCase):
         self.assertEqual(len(rows), 86)
         self.assertEqual(len({row["mnemonic"] for row in rows}), 86)
         self.assertEqual(Counter(statuses[row["mnemonic"]] for row in rows),
-                         Counter({"native-pcode": 67, "opaque-userop": 19}))
+                         Counter({"native-pcode": 73, "opaque-userop": 13}))
         self.assertEqual(
             [statuses[row["mnemonic"]] for row in corrected],
             ["native-pcode", "native-pcode"])
-        self.assertIn("xenonSetVscrSatIf", operators)
+        self.assertNotIn("xenonSetVscrSatIf", operators)
 
     def test_signed_byte_unpacks_widen_eight_correct_lanes(self):
         import re
@@ -737,7 +737,7 @@ class XenonIsaInventoryTests(unittest.TestCase):
                         f"widened{i}" for i in range(lane_count)) + ";",
                     body)
                 self.assertIn(
-                    "xenonSetVscrSatIf(saturatedAny);", body)
+                    "xenonVSCR = xenonVSCR | zext(saturatedAny);", body)
                 self.assertNotIn("pack_unresolved_saturation", body)
             # Independent scalar golden values for boundary interpretation,
             # not a claim that Ghidra's numerical p-code has executed.
@@ -848,7 +848,7 @@ class XenonIsaInventoryTests(unittest.TestCase):
                 self.assertIn("upperBound:4 = " + top + ":4;", body)
                 self.assertIn("lowerBound:4 = " + bottom + ":4;", body)
                 self.assertIn(
-                    "xenonSetVscrSatIf(conversionSaturated);", body)
+                    "xenonVSCR = xenonVSCR | zext(conversionSaturated);", body)
                 self.assertIn("if (anyNaN) goto <conversion_nan_opaque>;",
                               body)
                 self.assertIn("xenonD = unresolvedNaN;", body)
@@ -926,9 +926,10 @@ class XenonIsaInventoryTests(unittest.TestCase):
         self.assertGreaterEqual(len(expected), 35)
         for name, classification in expected.items():
             self.assertEqual(statuses.get(name), classification, name)
-        for name in ("vpkshss128", "vpkuwus128",
-                     "vcfpsxws128", "vcfpuxws128"):
+        for name in ("vcfpsxws128", "vcfpuxws128"):
             self.assertEqual(expected[name], "opaque-userop")
+        for name in ("vpkshss128", "vpkuwus128"):
+            self.assertEqual(expected[name], "native-pcode")
         for name in ("vupkhsh128", "vupklsh128", "vcmpbfp128",
                      "vrfim128", "vrfip128", "vrfiz128"):
             self.assertEqual(expected[name], "native-pcode")
