@@ -1000,6 +1000,51 @@ class XenonIsaInventoryTests(unittest.TestCase):
                      "vrfim128", "vrfip128", "vrfiz128"):
             self.assertEqual(expected[name], "native-pcode")
 
+    def test_ghidra_numerical_pack_audit_vectors_are_consistent(self):
+        # The companion Ghidra Java script actually steps native p-code.
+        # Validate its independent boundary-case oracle without Ghidra.
+        import re
+
+        script = (audit.ROOT.parent / "ghidra_scripts" /
+                  "AuditXenonSaturatingPackV1.java").read_text(
+                      encoding="utf-8")
+        self.assertIn("new EmulatorHelper(currentProgram)", script)
+        self.assertIn("emulator.step(monitor)", script)
+        self.assertIn('emulator.readRegister("xenonVSCR")', script)
+        self.assertIn("emulator.readRegister(destination)", script)
+        self.assertIn("emulator.dispose();", script)
+        cases = re.findall(
+            r'new Pack\("(\w+)",\s*(\d+),\s*(\d+),\s*'
+            r'(0x[0-9a-fA-F]+L?),\s*(0x[0-9a-fA-F]+L?),\s*'
+            r'(0x[0-9a-fA-F]+L?),\s*(0x[0-9a-fA-F]+L?)\s*\)',
+            script)
+        self.assertEqual(
+            {record[0] for record in cases},
+            {"vpkshss128", "vpkshus128", "vpkswss128",
+             "vpkswus128", "vpkuhus128", "vpkuwus128"})
+
+        for name, in_width, out_width, *values in cases:
+            src_bits, dst_bits = int(in_width), int(out_width)
+            signed_input = not name.startswith("vpku")
+            signed_output = name.endswith("ss128")
+            smallest = -(1 << (dst_bits - 1)) if signed_output else 0
+            largest = ((1 << (dst_bits - 1)) - 1
+                       if signed_output else (1 << dst_bits) - 1)
+            source_mask = (1 << src_bits) - 1
+            destination_mask = (1 << dst_bits) - 1
+            positive, expected_positive, negative, expected_negative = (
+                int(text.rstrip("L"), 0) for text in values)
+            for encoded, expected in (
+                    (positive, expected_positive),
+                    (negative, expected_negative)):
+                source = encoded & source_mask
+                if signed_input and source & (1 << (src_bits - 1)):
+                    source -= 1 << src_bits
+                answer = max(smallest, min(largest, source))
+                self.assertEqual(
+                    answer & destination_mask, expected,
+                    (name, hex(encoded), hex(expected)))
+
     def test_fixture_generation(self):
         with tempfile.TemporaryDirectory() as folder:
             out = Path(folder)
