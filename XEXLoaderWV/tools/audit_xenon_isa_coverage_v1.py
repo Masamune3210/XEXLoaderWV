@@ -18,7 +18,7 @@ INVENTORY = ROOT / "tools/data/xenia_vmx128_opcode_inventory_20261009.tsv"
 EXTRA_INVENTORY = ROOT / "tools/data/xenia_xform_vector_opcode_inventory_20261009.tsv"
 EXTRA_NAMES = frozenset(("lvlx", "lvrx", "stvlx", "stvrx",
                          "lvlxl", "lvrxl", "stvlxl", "stvrxl"))
-SLEIGH = ROOT / "XEXLoaderWV/data/languages/xenon_vector_v1.sinc"
+SLEIGH = ROOT / "data/languages/xenon_vector_v1.sinc"
 OUTPUT = ROOT / "build/xenon-isa-audit"
 FILLS = (("zero", 0), ("ones", 0xFFFFFFFF),
          ("55", 0x55555555), ("aa", 0xAAAAAAAA))

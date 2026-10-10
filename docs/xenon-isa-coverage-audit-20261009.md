@@ -1,3 +1,16 @@
+## Tool location (updated 2026-10-10)
+
+All Xenon ISA Python tools and their pinned TSV inventories have moved from repository-root `tools/` into the **Gradle extension project** at `XEXLoaderWV/tools/` and `XEXLoaderWV/tools/data/`. Run everything from `XEXLoaderWV/` (the directory with `build.gradle`), without changing directories:
+
+```powershell
+python -m unittest discover -s tools -p "test_xenon_isa_coverage_v1.py"
+python tools/audit_xenon_isa_coverage_v1.py
+gradle buildExtension
+python tools/check_xenon_fixture_install_v1.py
+```
+
+Generated fixtures now live in `XEXLoaderWV/build/xenon-isa-audit/`; the Java Ghidra fixture auditor remains in repository-root `ghidra_scripts/`. Earlier command examples in this document describe **historical layout** and are superseded by these paths.
+
 ## Second Ghidra fixture and VX128/X-form memory batch (2026-10-10)
 
 **Observed, installed Xenon SLEIGH (before the changes below):** the user ran a new 336-word Ghidra fixture audit. **64 correct**, **0 unreadable**, **15 families 4/4**, **2 partial** (`lvlx`/`lvrx`, 2/4), and **67 without any correct mnemonic** (64 no-decode-only, 3 wrong-mnemonic-only). The prior audit had 43 correct, 9 fully decoded, 3 partial and 16 wrong-mnemonic-only families. Eliminating POWER 2.07/3.0 definitions stopped the earlier false AltiVec decodes. Remaining wrong aliases in the new report: `dcbz128` as `dcbz/dcbzl`, `lvlxl` as `stvepxl`, `lvrxl` as `stvepx`.

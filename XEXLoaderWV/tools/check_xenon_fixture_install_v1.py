@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 r"""Check Xenon fixture freshness and compare compiled/packaged/installed .sla.
 
-Run from the repository root:
+Run from the XEXLoaderWV Gradle extension project directory:
   python tools/check_xenon_fixture_install_v1.py
 Optional:
   python tools/check_xenon_fixture_install_v1.py --installed-sla "C:\path\xenon_64_be.sla"
@@ -18,13 +18,13 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-LANG = ROOT / "XEXLoaderWV" / "data" / "languages"
+LANG = ROOT / "data" / "languages"
 OUT = ROOT / "build" / "xenon-isa-audit"
 MANIFEST = OUT / "xenon_isa_fixture_v1.tsv"
 FIXTURE = OUT / "xenon_isa_fixture_v1.bin"
 SLEIGH = LANG / "xenon_vector_v1.sinc"
 BUILT = LANG / "xenon_64_be.sla"
-DIST = ROOT / "XEXLoaderWV" / "dist"
+DIST = ROOT / "dist"
 EXPECTED = {
     "lvsl128": "opaque-userop",
     "lvsr128": "opaque-userop",

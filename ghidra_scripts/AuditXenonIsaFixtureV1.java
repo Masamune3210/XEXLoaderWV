@@ -1,10 +1,10 @@
 // Audit the generated Xenia VMX128 fixture against the installed Xenon language.
 // @category Xbox360
 //
-// Generate fixture:
+// From the XEXLoaderWV Gradle extension project directory, generate fixture:
 //   python tools/audit_xenon_isa_coverage_v1.py
 //
-// Import build/xenon-isa-audit/xenon_isa_fixture_v1.bin as a flat binary
+// Import XEXLoaderWV/build/xenon-isa-audit/xenon_isa_fixture_v1.bin as a flat binary
 // with PowerPC:BE:64:XENON-32addr, big endian. Run this script in that
 // Program and select the generated xenon_isa_fixture_v1.tsv.
 //

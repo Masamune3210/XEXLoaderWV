@@ -103,7 +103,7 @@ class XenonIsaInventoryTests(unittest.TestCase):
         diagnostic = (HERE / "check_xenon_fixture_install_v1.py").read_text(
             encoding="utf-8")
         ast.parse(diagnostic, filename="check_xenon_fixture_install_v1.py")
-        gradle = (audit.ROOT / "XEXLoaderWV" / "build.gradle").read_text(
+        gradle = (audit.ROOT / "build.gradle").read_text(
             encoding="utf-8")
         for symbol in ("dcbzOld", "dcbzNew"):
             self.assertIn(

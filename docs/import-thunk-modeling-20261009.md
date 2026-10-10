@@ -1,3 +1,9 @@
+## Single-working-directory Xenon audit tools (2026-10-10)
+
+- User explicitly required all active Python tooling to run **from the Gradle project directory**, not a repository-root workflow interspersed with `cd` / `Push-Location` and Gradle.
+- Moved current Xenon ISA Python scripts to `XEXLoaderWV/tools/`: `audit_xenon_isa_coverage_v1.py`, `check_xenon_fixture_install_v1.py`, `test_xenon_isa_coverage_v1.py`. Moved both pinned `xenia_*_opcode_inventory_20261009.tsv` files to `XEXLoaderWV/tools/data/`. **Old repository-root versions deleted**. Updated path constants in generator, checker, tests; Java script help comment and coverage audit doc updated. Generated output now `XEXLoaderWV/build/xenon-isa-audit/`, covered by existing `.gitignore` (`XEXLoaderWV/build/`). Existing other historical repository-root utilities remain untouched.
+- From the **inner** `XEXLoaderWV/` directory only: `python -m unittest discover -s tools -p "test_xenon_isa_coverage_v1.py"`; `python tools/audit_xenon_isa_coverage_v1.py`; `gradle buildExtension`; `python tools/check_xenon_fixture_install_v1.py`. Earlier handoff command locations are historical and superseded. Previous source state passed 7/7 Windows unit tests; relocation still requires rerunning them and Ghidra/Gradle build verification.
+
 ## Windows Python coverage baseline passed; Gradle/SLEIGH validation next (2026-10-10)
 
 - User reran the corrected suite from the repository root: `python -m unittest discover -s tools -p "test_xenon_isa_coverage_v1.py"`; **7 tests passed (OK) in 0.031 seconds**. Fixture test generated 336 words / 1,344 bytes in an automatically removed temporary directory, with **84 families: 31 native, 7 opaque, 46 missing**. The temporary test output is intentional; normal fixture generation writes to `build/xenon-isa-audit/`.
