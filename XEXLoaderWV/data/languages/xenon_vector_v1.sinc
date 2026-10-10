@@ -848,3 +848,285 @@ define pcodeop xenonVrlimi128;
 {
     xenonD = (xenonA & ~xenonD) | (xenonB & xenonD);
 }
+
+# ---- Xenon opcode-4 VX128_1 indexed vector memory families ----
+# Selectors from pinned Xenia generated decoder. XOP_3_10 contains a
+# high destination bit and must be split into two patterns per family.
+# 128-bit right loads and stores at a 16-byte aligned address access NO
+# memory, as required by Xenia's memcpy-tail handling.
+
+:lvewx128 xenonD,RA_OR_ZERO,B is OP=4 & xenonD & RA_OR_ZERO & B & XOP_3_10=16 & BITS_0_1=3
+{
+    build RA_OR_ZERO;
+    ea:$(REGISTER_SIZE) = (RA_OR_ZERO + B) & 0xfffffffffffffff0;
+    xenonD = *[ram]:16 ea;
+}
+
+:lvewx128 xenonD,RA_OR_ZERO,B is OP=4 & xenonD & RA_OR_ZERO & B & XOP_3_10=17 & BITS_0_1=3
+{
+    build RA_OR_ZERO;
+    ea:$(REGISTER_SIZE) = (RA_OR_ZERO + B) & 0xfffffffffffffff0;
+    xenonD = *[ram]:16 ea;
+}
+
+:lvxl128 xenonD,RA_OR_ZERO,B is OP=4 & xenonD & RA_OR_ZERO & B & XOP_3_10=88 & BITS_0_1=3
+{
+    build RA_OR_ZERO;
+    ea:$(REGISTER_SIZE) = (RA_OR_ZERO + B) & 0xfffffffffffffff0;
+    xenonD = *[ram]:16 ea;
+}
+
+:lvxl128 xenonD,RA_OR_ZERO,B is OP=4 & xenonD & RA_OR_ZERO & B & XOP_3_10=89 & BITS_0_1=3
+{
+    build RA_OR_ZERO;
+    ea:$(REGISTER_SIZE) = (RA_OR_ZERO + B) & 0xfffffffffffffff0;
+    xenonD = *[ram]:16 ea;
+}
+
+:stvxl128 xenonD,RA_OR_ZERO,B is OP=4 & xenonD & RA_OR_ZERO & B & XOP_3_10=120 & BITS_0_1=3
+{
+    build RA_OR_ZERO;
+    ea:$(REGISTER_SIZE) = (RA_OR_ZERO + B) & 0xfffffffffffffff0;
+    *[ram]:16 ea = xenonD;
+}
+
+:stvxl128 xenonD,RA_OR_ZERO,B is OP=4 & xenonD & RA_OR_ZERO & B & XOP_3_10=121 & BITS_0_1=3
+{
+    build RA_OR_ZERO;
+    ea:$(REGISTER_SIZE) = (RA_OR_ZERO + B) & 0xfffffffffffffff0;
+    *[ram]:16 ea = xenonD;
+}
+
+:stvewx128 xenonD,RA_OR_ZERO,B is OP=4 & xenonD & RA_OR_ZERO & B & XOP_3_10=48 & BITS_0_1=3
+{
+    build RA_OR_ZERO;
+    addr:$(REGISTER_SIZE) = RA_OR_ZERO + B;
+    ea:$(REGISTER_SIZE) = addr & 0xfffffffffffffffc;
+    shift:$(REGISTER_SIZE) = (12 - (ea & 12)) * 8;
+    data:16 = xenonD >> shift;
+    word:4 = data(0);
+    *[ram]:4 ea = word;
+}
+
+:stvewx128 xenonD,RA_OR_ZERO,B is OP=4 & xenonD & RA_OR_ZERO & B & XOP_3_10=49 & BITS_0_1=3
+{
+    build RA_OR_ZERO;
+    addr:$(REGISTER_SIZE) = RA_OR_ZERO + B;
+    ea:$(REGISTER_SIZE) = addr & 0xfffffffffffffffc;
+    shift:$(REGISTER_SIZE) = (12 - (ea & 12)) * 8;
+    data:16 = xenonD >> shift;
+    word:4 = data(0);
+    *[ram]:4 ea = word;
+}
+
+:lvlx128 xenonD,RA_OR_ZERO,B is OP=4 & xenonD & RA_OR_ZERO & B & XOP_3_10=128 & BITS_0_1=3
+{
+    build RA_OR_ZERO;
+    addr:$(REGISTER_SIZE) = RA_OR_ZERO + B;
+    shift:$(REGISTER_SIZE) = (addr & 15) * 8;
+    aligned:$(REGISTER_SIZE) = addr & 0xfffffffffffffff0;
+    data:16 = *[ram]:16 aligned;
+    xenonD = data << shift;
+}
+
+:lvlx128 xenonD,RA_OR_ZERO,B is OP=4 & xenonD & RA_OR_ZERO & B & XOP_3_10=129 & BITS_0_1=3
+{
+    build RA_OR_ZERO;
+    addr:$(REGISTER_SIZE) = RA_OR_ZERO + B;
+    shift:$(REGISTER_SIZE) = (addr & 15) * 8;
+    aligned:$(REGISTER_SIZE) = addr & 0xfffffffffffffff0;
+    data:16 = *[ram]:16 aligned;
+    xenonD = data << shift;
+}
+
+:lvlxl128 xenonD,RA_OR_ZERO,B is OP=4 & xenonD & RA_OR_ZERO & B & XOP_3_10=192 & BITS_0_1=3
+{
+    build RA_OR_ZERO;
+    addr:$(REGISTER_SIZE) = RA_OR_ZERO + B;
+    shift:$(REGISTER_SIZE) = (addr & 15) * 8;
+    aligned:$(REGISTER_SIZE) = addr & 0xfffffffffffffff0;
+    data:16 = *[ram]:16 aligned;
+    xenonD = data << shift;
+}
+
+:lvlxl128 xenonD,RA_OR_ZERO,B is OP=4 & xenonD & RA_OR_ZERO & B & XOP_3_10=193 & BITS_0_1=3
+{
+    build RA_OR_ZERO;
+    addr:$(REGISTER_SIZE) = RA_OR_ZERO + B;
+    shift:$(REGISTER_SIZE) = (addr & 15) * 8;
+    aligned:$(REGISTER_SIZE) = addr & 0xfffffffffffffff0;
+    data:16 = *[ram]:16 aligned;
+    xenonD = data << shift;
+}
+
+:lvrx128 xenonD,RA_OR_ZERO,B is OP=4 & xenonD & RA_OR_ZERO & B & XOP_3_10=136 & BITS_0_1=3
+{
+    build RA_OR_ZERO;
+    addr:$(REGISTER_SIZE) = RA_OR_ZERO + B;
+    off:$(REGISTER_SIZE) = addr & 15;
+    if (off == 0) goto <no_load>;
+    aligned:$(REGISTER_SIZE) = addr & 0xfffffffffffffff0;
+    data:16 = *[ram]:16 aligned;
+    shift:$(REGISTER_SIZE) = (16 - off) * 8;
+    xenonD = data >> shift;
+    goto <done>;
+<no_load>
+    xenonD = 0:16;
+<done>
+}
+
+:lvrx128 xenonD,RA_OR_ZERO,B is OP=4 & xenonD & RA_OR_ZERO & B & XOP_3_10=137 & BITS_0_1=3
+{
+    build RA_OR_ZERO;
+    addr:$(REGISTER_SIZE) = RA_OR_ZERO + B;
+    off:$(REGISTER_SIZE) = addr & 15;
+    if (off == 0) goto <no_load>;
+    aligned:$(REGISTER_SIZE) = addr & 0xfffffffffffffff0;
+    data:16 = *[ram]:16 aligned;
+    shift:$(REGISTER_SIZE) = (16 - off) * 8;
+    xenonD = data >> shift;
+    goto <done>;
+<no_load>
+    xenonD = 0:16;
+<done>
+}
+
+:lvrxl128 xenonD,RA_OR_ZERO,B is OP=4 & xenonD & RA_OR_ZERO & B & XOP_3_10=200 & BITS_0_1=3
+{
+    build RA_OR_ZERO;
+    addr:$(REGISTER_SIZE) = RA_OR_ZERO + B;
+    off:$(REGISTER_SIZE) = addr & 15;
+    if (off == 0) goto <no_load>;
+    aligned:$(REGISTER_SIZE) = addr & 0xfffffffffffffff0;
+    data:16 = *[ram]:16 aligned;
+    shift:$(REGISTER_SIZE) = (16 - off) * 8;
+    xenonD = data >> shift;
+    goto <done>;
+<no_load>
+    xenonD = 0:16;
+<done>
+}
+
+:lvrxl128 xenonD,RA_OR_ZERO,B is OP=4 & xenonD & RA_OR_ZERO & B & XOP_3_10=201 & BITS_0_1=3
+{
+    build RA_OR_ZERO;
+    addr:$(REGISTER_SIZE) = RA_OR_ZERO + B;
+    off:$(REGISTER_SIZE) = addr & 15;
+    if (off == 0) goto <no_load>;
+    aligned:$(REGISTER_SIZE) = addr & 0xfffffffffffffff0;
+    data:16 = *[ram]:16 aligned;
+    shift:$(REGISTER_SIZE) = (16 - off) * 8;
+    xenonD = data >> shift;
+    goto <done>;
+<no_load>
+    xenonD = 0:16;
+<done>
+}
+
+:stvlx128 xenonD,RA_OR_ZERO,B is OP=4 & xenonD & RA_OR_ZERO & B & XOP_3_10=160 & BITS_0_1=3
+{
+    build RA_OR_ZERO;
+    addr:$(REGISTER_SIZE) = RA_OR_ZERO + B;
+    shift:$(REGISTER_SIZE) = (addr & 15) * 8;
+    aligned:$(REGISTER_SIZE) = addr & 0xfffffffffffffff0;
+    mask:16 = ~(0:16) >> shift;
+    oldValue:16 = *[ram]:16 aligned;
+    newValue:16 = xenonD >> shift;
+    *[ram]:16 aligned = (oldValue & ~mask) | (newValue & mask);
+}
+
+:stvlx128 xenonD,RA_OR_ZERO,B is OP=4 & xenonD & RA_OR_ZERO & B & XOP_3_10=161 & BITS_0_1=3
+{
+    build RA_OR_ZERO;
+    addr:$(REGISTER_SIZE) = RA_OR_ZERO + B;
+    shift:$(REGISTER_SIZE) = (addr & 15) * 8;
+    aligned:$(REGISTER_SIZE) = addr & 0xfffffffffffffff0;
+    mask:16 = ~(0:16) >> shift;
+    oldValue:16 = *[ram]:16 aligned;
+    newValue:16 = xenonD >> shift;
+    *[ram]:16 aligned = (oldValue & ~mask) | (newValue & mask);
+}
+
+:stvlxl128 xenonD,RA_OR_ZERO,B is OP=4 & xenonD & RA_OR_ZERO & B & XOP_3_10=224 & BITS_0_1=3
+{
+    build RA_OR_ZERO;
+    addr:$(REGISTER_SIZE) = RA_OR_ZERO + B;
+    shift:$(REGISTER_SIZE) = (addr & 15) * 8;
+    aligned:$(REGISTER_SIZE) = addr & 0xfffffffffffffff0;
+    mask:16 = ~(0:16) >> shift;
+    oldValue:16 = *[ram]:16 aligned;
+    newValue:16 = xenonD >> shift;
+    *[ram]:16 aligned = (oldValue & ~mask) | (newValue & mask);
+}
+
+:stvlxl128 xenonD,RA_OR_ZERO,B is OP=4 & xenonD & RA_OR_ZERO & B & XOP_3_10=225 & BITS_0_1=3
+{
+    build RA_OR_ZERO;
+    addr:$(REGISTER_SIZE) = RA_OR_ZERO + B;
+    shift:$(REGISTER_SIZE) = (addr & 15) * 8;
+    aligned:$(REGISTER_SIZE) = addr & 0xfffffffffffffff0;
+    mask:16 = ~(0:16) >> shift;
+    oldValue:16 = *[ram]:16 aligned;
+    newValue:16 = xenonD >> shift;
+    *[ram]:16 aligned = (oldValue & ~mask) | (newValue & mask);
+}
+
+:stvrx128 xenonD,RA_OR_ZERO,B is OP=4 & xenonD & RA_OR_ZERO & B & XOP_3_10=168 & BITS_0_1=3
+{
+    build RA_OR_ZERO;
+    addr:$(REGISTER_SIZE) = RA_OR_ZERO + B;
+    off:$(REGISTER_SIZE) = addr & 15;
+    if (off == 0) goto <done>;
+    aligned:$(REGISTER_SIZE) = addr & 0xfffffffffffffff0;
+    shift:$(REGISTER_SIZE) = (16 - off) * 8;
+    mask:16 = ~(~(0:16) >> shift);
+    oldValue:16 = *[ram]:16 aligned;
+    newValue:16 = xenonD << shift;
+    *[ram]:16 aligned = (oldValue & ~mask) | (newValue & mask);
+<done>
+}
+
+:stvrx128 xenonD,RA_OR_ZERO,B is OP=4 & xenonD & RA_OR_ZERO & B & XOP_3_10=169 & BITS_0_1=3
+{
+    build RA_OR_ZERO;
+    addr:$(REGISTER_SIZE) = RA_OR_ZERO + B;
+    off:$(REGISTER_SIZE) = addr & 15;
+    if (off == 0) goto <done>;
+    aligned:$(REGISTER_SIZE) = addr & 0xfffffffffffffff0;
+    shift:$(REGISTER_SIZE) = (16 - off) * 8;
+    mask:16 = ~(~(0:16) >> shift);
+    oldValue:16 = *[ram]:16 aligned;
+    newValue:16 = xenonD << shift;
+    *[ram]:16 aligned = (oldValue & ~mask) | (newValue & mask);
+<done>
+}
+
+:stvrxl128 xenonD,RA_OR_ZERO,B is OP=4 & xenonD & RA_OR_ZERO & B & XOP_3_10=232 & BITS_0_1=3
+{
+    build RA_OR_ZERO;
+    addr:$(REGISTER_SIZE) = RA_OR_ZERO + B;
+    off:$(REGISTER_SIZE) = addr & 15;
+    if (off == 0) goto <done>;
+    aligned:$(REGISTER_SIZE) = addr & 0xfffffffffffffff0;
+    shift:$(REGISTER_SIZE) = (16 - off) * 8;
+    mask:16 = ~(~(0:16) >> shift);
+    oldValue:16 = *[ram]:16 aligned;
+    newValue:16 = xenonD << shift;
+    *[ram]:16 aligned = (oldValue & ~mask) | (newValue & mask);
+<done>
+}
+
+:stvrxl128 xenonD,RA_OR_ZERO,B is OP=4 & xenonD & RA_OR_ZERO & B & XOP_3_10=233 & BITS_0_1=3
+{
+    build RA_OR_ZERO;
+    addr:$(REGISTER_SIZE) = RA_OR_ZERO + B;
+    off:$(REGISTER_SIZE) = addr & 15;
+    if (off == 0) goto <done>;
+    aligned:$(REGISTER_SIZE) = addr & 0xfffffffffffffff0;
+    shift:$(REGISTER_SIZE) = (16 - off) * 8;
+    mask:16 = ~(~(0:16) >> shift);
+    oldValue:16 = *[ram]:16 aligned;
+    newValue:16 = xenonD << shift;
+    *[ram]:16 aligned = (oldValue & ~mask) | (newValue & mask);
+<done>
+}
