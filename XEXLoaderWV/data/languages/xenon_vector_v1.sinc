@@ -494,9 +494,10 @@ xenonA: "xv127" is vrAR=31 & MBH=1 & OE=1 { export xv127; }
 # The fixed instruction selector occupies bits 6..9 and bit 4.
 # BITS_6_10 includes bit 10, and BITS_4_5 includes bit 5, so the
 # four high-A combinations need disjoint SLEIGH pattern alternatives.
+# Native VX128_P word swizzle and VX128_4 rotate-left-mask-insert follow pinned Xenia 95a5c3ee250f80c3b9d139658649d9ffb6db3eec.
 define pcodeop xenonVmsum4fp128;
-define pcodeop xenonVpermwi128;
-define pcodeop xenonVrlimi128;
+
+
 :vmulfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=2 & BITS_4_5=1
 {
     xenonInputALane0:4 = xenonA(0);
@@ -637,43 +638,203 @@ define pcodeop xenonVrlimi128;
 # verified word-lane implementation.
 :vpermwi128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & BITS_4_5=1 & BITS_6_10=8
 {
-    out:16 = xenonVpermwi128(xenonB, A_BITS:4, 0:4);
-    xenonD = out;
+    permutation:4 = A_BITS:4 | 0:4;
+    pick0:4 = (permutation >> 0) & 3;
+    wordShift0:4 = (3 - pick0) * 32;
+    wordWindow0:16 = xenonB >> wordShift0;
+    chosenWord0:4 = wordWindow0(0);
+    packedWord0:16 = zext(chosenWord0);
+    pick1:4 = (permutation >> 2) & 3;
+    wordShift1:4 = (3 - pick1) * 32;
+    wordWindow1:16 = xenonB >> wordShift1;
+    chosenWord1:4 = wordWindow1(0);
+    packedWord1:16 = zext(chosenWord1) << 32;
+    pick2:4 = (permutation >> 4) & 3;
+    wordShift2:4 = (3 - pick2) * 32;
+    wordWindow2:16 = xenonB >> wordShift2;
+    chosenWord2:4 = wordWindow2(0);
+    packedWord2:16 = zext(chosenWord2) << 64;
+    pick3:4 = (permutation >> 6) & 3;
+    wordShift3:4 = (3 - pick3) * 32;
+    wordWindow3:16 = xenonB >> wordShift3;
+    chosenWord3:4 = wordWindow3(0);
+    packedWord3:16 = zext(chosenWord3) << 96;
+    xenonD = packedWord3 | packedWord2 | packedWord1 | packedWord0;
 }
 :vpermwi128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & BITS_4_5=1 & BITS_6_10=9
 {
-    out:16 = xenonVpermwi128(xenonB, A_BITS:4, 1:4);
-    xenonD = out;
+    permutation:4 = A_BITS:4 | 32:4;
+    pick0:4 = (permutation >> 0) & 3;
+    wordShift0:4 = (3 - pick0) * 32;
+    wordWindow0:16 = xenonB >> wordShift0;
+    chosenWord0:4 = wordWindow0(0);
+    packedWord0:16 = zext(chosenWord0);
+    pick1:4 = (permutation >> 2) & 3;
+    wordShift1:4 = (3 - pick1) * 32;
+    wordWindow1:16 = xenonB >> wordShift1;
+    chosenWord1:4 = wordWindow1(0);
+    packedWord1:16 = zext(chosenWord1) << 32;
+    pick2:4 = (permutation >> 4) & 3;
+    wordShift2:4 = (3 - pick2) * 32;
+    wordWindow2:16 = xenonB >> wordShift2;
+    chosenWord2:4 = wordWindow2(0);
+    packedWord2:16 = zext(chosenWord2) << 64;
+    pick3:4 = (permutation >> 6) & 3;
+    wordShift3:4 = (3 - pick3) * 32;
+    wordWindow3:16 = xenonB >> wordShift3;
+    chosenWord3:4 = wordWindow3(0);
+    packedWord3:16 = zext(chosenWord3) << 96;
+    xenonD = packedWord3 | packedWord2 | packedWord1 | packedWord0;
 }
 :vpermwi128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & BITS_4_5=1 & BITS_6_10=10
 {
-    out:16 = xenonVpermwi128(xenonB, A_BITS:4, 2:4);
-    xenonD = out;
+    permutation:4 = A_BITS:4 | 64:4;
+    pick0:4 = (permutation >> 0) & 3;
+    wordShift0:4 = (3 - pick0) * 32;
+    wordWindow0:16 = xenonB >> wordShift0;
+    chosenWord0:4 = wordWindow0(0);
+    packedWord0:16 = zext(chosenWord0);
+    pick1:4 = (permutation >> 2) & 3;
+    wordShift1:4 = (3 - pick1) * 32;
+    wordWindow1:16 = xenonB >> wordShift1;
+    chosenWord1:4 = wordWindow1(0);
+    packedWord1:16 = zext(chosenWord1) << 32;
+    pick2:4 = (permutation >> 4) & 3;
+    wordShift2:4 = (3 - pick2) * 32;
+    wordWindow2:16 = xenonB >> wordShift2;
+    chosenWord2:4 = wordWindow2(0);
+    packedWord2:16 = zext(chosenWord2) << 64;
+    pick3:4 = (permutation >> 6) & 3;
+    wordShift3:4 = (3 - pick3) * 32;
+    wordWindow3:16 = xenonB >> wordShift3;
+    chosenWord3:4 = wordWindow3(0);
+    packedWord3:16 = zext(chosenWord3) << 96;
+    xenonD = packedWord3 | packedWord2 | packedWord1 | packedWord0;
 }
 :vpermwi128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & BITS_4_5=1 & BITS_6_10=11
 {
-    out:16 = xenonVpermwi128(xenonB, A_BITS:4, 3:4);
-    xenonD = out;
+    permutation:4 = A_BITS:4 | 96:4;
+    pick0:4 = (permutation >> 0) & 3;
+    wordShift0:4 = (3 - pick0) * 32;
+    wordWindow0:16 = xenonB >> wordShift0;
+    chosenWord0:4 = wordWindow0(0);
+    packedWord0:16 = zext(chosenWord0);
+    pick1:4 = (permutation >> 2) & 3;
+    wordShift1:4 = (3 - pick1) * 32;
+    wordWindow1:16 = xenonB >> wordShift1;
+    chosenWord1:4 = wordWindow1(0);
+    packedWord1:16 = zext(chosenWord1) << 32;
+    pick2:4 = (permutation >> 4) & 3;
+    wordShift2:4 = (3 - pick2) * 32;
+    wordWindow2:16 = xenonB >> wordShift2;
+    chosenWord2:4 = wordWindow2(0);
+    packedWord2:16 = zext(chosenWord2) << 64;
+    pick3:4 = (permutation >> 6) & 3;
+    wordShift3:4 = (3 - pick3) * 32;
+    wordWindow3:16 = xenonB >> wordShift3;
+    chosenWord3:4 = wordWindow3(0);
+    packedWord3:16 = zext(chosenWord3) << 96;
+    xenonD = packedWord3 | packedWord2 | packedWord1 | packedWord0;
 }
 :vpermwi128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & BITS_4_5=1 & BITS_6_10=12
 {
-    out:16 = xenonVpermwi128(xenonB, A_BITS:4, 4:4);
-    xenonD = out;
+    permutation:4 = A_BITS:4 | 128:4;
+    pick0:4 = (permutation >> 0) & 3;
+    wordShift0:4 = (3 - pick0) * 32;
+    wordWindow0:16 = xenonB >> wordShift0;
+    chosenWord0:4 = wordWindow0(0);
+    packedWord0:16 = zext(chosenWord0);
+    pick1:4 = (permutation >> 2) & 3;
+    wordShift1:4 = (3 - pick1) * 32;
+    wordWindow1:16 = xenonB >> wordShift1;
+    chosenWord1:4 = wordWindow1(0);
+    packedWord1:16 = zext(chosenWord1) << 32;
+    pick2:4 = (permutation >> 4) & 3;
+    wordShift2:4 = (3 - pick2) * 32;
+    wordWindow2:16 = xenonB >> wordShift2;
+    chosenWord2:4 = wordWindow2(0);
+    packedWord2:16 = zext(chosenWord2) << 64;
+    pick3:4 = (permutation >> 6) & 3;
+    wordShift3:4 = (3 - pick3) * 32;
+    wordWindow3:16 = xenonB >> wordShift3;
+    chosenWord3:4 = wordWindow3(0);
+    packedWord3:16 = zext(chosenWord3) << 96;
+    xenonD = packedWord3 | packedWord2 | packedWord1 | packedWord0;
 }
 :vpermwi128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & BITS_4_5=1 & BITS_6_10=13
 {
-    out:16 = xenonVpermwi128(xenonB, A_BITS:4, 5:4);
-    xenonD = out;
+    permutation:4 = A_BITS:4 | 160:4;
+    pick0:4 = (permutation >> 0) & 3;
+    wordShift0:4 = (3 - pick0) * 32;
+    wordWindow0:16 = xenonB >> wordShift0;
+    chosenWord0:4 = wordWindow0(0);
+    packedWord0:16 = zext(chosenWord0);
+    pick1:4 = (permutation >> 2) & 3;
+    wordShift1:4 = (3 - pick1) * 32;
+    wordWindow1:16 = xenonB >> wordShift1;
+    chosenWord1:4 = wordWindow1(0);
+    packedWord1:16 = zext(chosenWord1) << 32;
+    pick2:4 = (permutation >> 4) & 3;
+    wordShift2:4 = (3 - pick2) * 32;
+    wordWindow2:16 = xenonB >> wordShift2;
+    chosenWord2:4 = wordWindow2(0);
+    packedWord2:16 = zext(chosenWord2) << 64;
+    pick3:4 = (permutation >> 6) & 3;
+    wordShift3:4 = (3 - pick3) * 32;
+    wordWindow3:16 = xenonB >> wordShift3;
+    chosenWord3:4 = wordWindow3(0);
+    packedWord3:16 = zext(chosenWord3) << 96;
+    xenonD = packedWord3 | packedWord2 | packedWord1 | packedWord0;
 }
 :vpermwi128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & BITS_4_5=1 & BITS_6_10=14
 {
-    out:16 = xenonVpermwi128(xenonB, A_BITS:4, 6:4);
-    xenonD = out;
+    permutation:4 = A_BITS:4 | 192:4;
+    pick0:4 = (permutation >> 0) & 3;
+    wordShift0:4 = (3 - pick0) * 32;
+    wordWindow0:16 = xenonB >> wordShift0;
+    chosenWord0:4 = wordWindow0(0);
+    packedWord0:16 = zext(chosenWord0);
+    pick1:4 = (permutation >> 2) & 3;
+    wordShift1:4 = (3 - pick1) * 32;
+    wordWindow1:16 = xenonB >> wordShift1;
+    chosenWord1:4 = wordWindow1(0);
+    packedWord1:16 = zext(chosenWord1) << 32;
+    pick2:4 = (permutation >> 4) & 3;
+    wordShift2:4 = (3 - pick2) * 32;
+    wordWindow2:16 = xenonB >> wordShift2;
+    chosenWord2:4 = wordWindow2(0);
+    packedWord2:16 = zext(chosenWord2) << 64;
+    pick3:4 = (permutation >> 6) & 3;
+    wordShift3:4 = (3 - pick3) * 32;
+    wordWindow3:16 = xenonB >> wordShift3;
+    chosenWord3:4 = wordWindow3(0);
+    packedWord3:16 = zext(chosenWord3) << 96;
+    xenonD = packedWord3 | packedWord2 | packedWord1 | packedWord0;
 }
 :vpermwi128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & BITS_4_5=1 & BITS_6_10=15
 {
-    out:16 = xenonVpermwi128(xenonB, A_BITS:4, 7:4);
-    xenonD = out;
+    permutation:4 = A_BITS:4 | 224:4;
+    pick0:4 = (permutation >> 0) & 3;
+    wordShift0:4 = (3 - pick0) * 32;
+    wordWindow0:16 = xenonB >> wordShift0;
+    chosenWord0:4 = wordWindow0(0);
+    packedWord0:16 = zext(chosenWord0);
+    pick1:4 = (permutation >> 2) & 3;
+    wordShift1:4 = (3 - pick1) * 32;
+    wordWindow1:16 = xenonB >> wordShift1;
+    chosenWord1:4 = wordWindow1(0);
+    packedWord1:16 = zext(chosenWord1) << 32;
+    pick2:4 = (permutation >> 4) & 3;
+    wordShift2:4 = (3 - pick2) * 32;
+    wordWindow2:16 = xenonB >> wordShift2;
+    chosenWord2:4 = wordWindow2(0);
+    packedWord2:16 = zext(chosenWord2) << 64;
+    pick3:4 = (permutation >> 6) & 3;
+    wordShift3:4 = (3 - pick3) * 32;
+    wordWindow3:16 = xenonB >> wordShift3;
+    chosenWord3:4 = wordWindow3(0);
+    packedWord3:16 = zext(chosenWord3) << 96;
+    xenonD = packedWord3 | packedWord2 | packedWord1 | packedWord0;
 }
 
 # VX128_4 rotate-left-immediate/mask-insert: bits 10:8=111,
@@ -681,23 +842,83 @@ define pcodeop xenonVrlimi128;
 # This writes back a blend of prior VD and rotated VB.
 :vrlimi128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & BITS_4_5=1 & BITS_6_10=28
 {
-    out:16 = xenonVrlimi128(xenonD, xenonB, A_BITS:4, 0:4);
-    xenonD = out;
+    rotated:16 = xenonB;
+    maskBit0:4 = (A_BITS:4 >> 0) & 1;
+    laneMask0:4 = 0:4 - maskBit0;
+    expandedMask0:16 = zext(laneMask0);
+    maskBit1:4 = (A_BITS:4 >> 1) & 1;
+    laneMask1:4 = 0:4 - maskBit1;
+    expandedMask1:16 = zext(laneMask1) << 32;
+    maskBit2:4 = (A_BITS:4 >> 2) & 1;
+    laneMask2:4 = 0:4 - maskBit2;
+    expandedMask2:16 = zext(laneMask2) << 64;
+    maskBit3:4 = (A_BITS:4 >> 3) & 1;
+    laneMask3:4 = 0:4 - maskBit3;
+    expandedMask3:16 = zext(laneMask3) << 96;
+    selectMask:16 = expandedMask3 | expandedMask2 | expandedMask1 | expandedMask0;
+    fromNew:16 = rotated & selectMask;
+    fromOld:16 = xenonD & ~selectMask;
+    xenonD = fromNew | fromOld;
 }
 :vrlimi128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & BITS_4_5=1 & BITS_6_10=29
 {
-    out:16 = xenonVrlimi128(xenonD, xenonB, A_BITS:4, 1:4);
-    xenonD = out;
+    rotated:16 = (xenonB << 32) | (xenonB >> 96);
+    maskBit0:4 = (A_BITS:4 >> 0) & 1;
+    laneMask0:4 = 0:4 - maskBit0;
+    expandedMask0:16 = zext(laneMask0);
+    maskBit1:4 = (A_BITS:4 >> 1) & 1;
+    laneMask1:4 = 0:4 - maskBit1;
+    expandedMask1:16 = zext(laneMask1) << 32;
+    maskBit2:4 = (A_BITS:4 >> 2) & 1;
+    laneMask2:4 = 0:4 - maskBit2;
+    expandedMask2:16 = zext(laneMask2) << 64;
+    maskBit3:4 = (A_BITS:4 >> 3) & 1;
+    laneMask3:4 = 0:4 - maskBit3;
+    expandedMask3:16 = zext(laneMask3) << 96;
+    selectMask:16 = expandedMask3 | expandedMask2 | expandedMask1 | expandedMask0;
+    fromNew:16 = rotated & selectMask;
+    fromOld:16 = xenonD & ~selectMask;
+    xenonD = fromNew | fromOld;
 }
 :vrlimi128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & BITS_4_5=1 & BITS_6_10=30
 {
-    out:16 = xenonVrlimi128(xenonD, xenonB, A_BITS:4, 2:4);
-    xenonD = out;
+    rotated:16 = (xenonB << 64) | (xenonB >> 64);
+    maskBit0:4 = (A_BITS:4 >> 0) & 1;
+    laneMask0:4 = 0:4 - maskBit0;
+    expandedMask0:16 = zext(laneMask0);
+    maskBit1:4 = (A_BITS:4 >> 1) & 1;
+    laneMask1:4 = 0:4 - maskBit1;
+    expandedMask1:16 = zext(laneMask1) << 32;
+    maskBit2:4 = (A_BITS:4 >> 2) & 1;
+    laneMask2:4 = 0:4 - maskBit2;
+    expandedMask2:16 = zext(laneMask2) << 64;
+    maskBit3:4 = (A_BITS:4 >> 3) & 1;
+    laneMask3:4 = 0:4 - maskBit3;
+    expandedMask3:16 = zext(laneMask3) << 96;
+    selectMask:16 = expandedMask3 | expandedMask2 | expandedMask1 | expandedMask0;
+    fromNew:16 = rotated & selectMask;
+    fromOld:16 = xenonD & ~selectMask;
+    xenonD = fromNew | fromOld;
 }
 :vrlimi128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & BITS_4_5=1 & BITS_6_10=31
 {
-    out:16 = xenonVrlimi128(xenonD, xenonB, A_BITS:4, 3:4);
-    xenonD = out;
+    rotated:16 = (xenonB << 96) | (xenonB >> 32);
+    maskBit0:4 = (A_BITS:4 >> 0) & 1;
+    laneMask0:4 = 0:4 - maskBit0;
+    expandedMask0:16 = zext(laneMask0);
+    maskBit1:4 = (A_BITS:4 >> 1) & 1;
+    laneMask1:4 = 0:4 - maskBit1;
+    expandedMask1:16 = zext(laneMask1) << 32;
+    maskBit2:4 = (A_BITS:4 >> 2) & 1;
+    laneMask2:4 = 0:4 - maskBit2;
+    expandedMask2:16 = zext(laneMask2) << 64;
+    maskBit3:4 = (A_BITS:4 >> 3) & 1;
+    laneMask3:4 = 0:4 - maskBit3;
+    expandedMask3:16 = zext(laneMask3) << 96;
+    selectMask:16 = expandedMask3 | expandedMask2 | expandedMask1 | expandedMask0;
+    fromNew:16 = rotated & selectMask;
+    fromOld:16 = xenonD & ~selectMask;
+    xenonD = fromNew | fromOld;
 }
 
 # VX128 word merges, observed at 800BD280 and 800BD35C in retail
