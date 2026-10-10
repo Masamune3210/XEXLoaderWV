@@ -1165,6 +1165,204 @@ public class AuditXenonNumericalPcode extends GhidraScript {
         recordSuite("SHUFFLE", passed, failed, problems);
     }
 
+
+    // Exact dot-product paths in the existing native VMX128 SLEIGH.
+    // Each output lane contains the same binary32 dot value. Keep this
+    // distinct from guarded FMA: these are 3- and 4-term reductions.
+    private static final class DotOperation {
+        final String name;
+        final long opcode;
+        final int products;
+
+        DotOperation(String name, long opcode, int products) {
+            this.name = name;
+            this.opcode = opcode;
+            this.products = products;
+        }
+    }
+
+    private static final DotOperation[] DOT_OPERATIONS = {
+        new DotOperation("vmsum3fp128", 0x14000190L, 3),
+        new DotOperation("vmsum4fp128", 0x140001d0L, 4),
+    };
+
+    private static BigInteger dotOracle(DotOperation operation,
+                                         Pattern pattern) {
+        // SLEIGH evaluates from high word to low word. All products and
+        // intermediate sums in this matrix are exact binary32 integers.
+        long dot = 0;
+        for (int i = 3; i >= 4 - operation.products; i--)
+            dot += (long) pattern.a[i] * pattern.b[i];
+        if (dot == 0 || Math.abs(dot) >= EXACT_BOUND)
+            throw new IllegalArgumentException(
+                "Dot product is not a nonzero exact binary32 integer: " +
+                operation.name + " " + pattern.name + " dot=" + dot);
+        long bits = Float.floatToRawIntBits((float) dot) & 0xffffffffL;
+        BigInteger result = BigInteger.ZERO;
+        for (int i = 0; i < 4; i++)
+            result = result.shiftLeft(32).or(BigInteger.valueOf(bits));
+        return result;
+    }
+
+    private static long dotWord(DotOperation operation, int variant) {
+        if ((variant & ~3) != 0)
+            throw new IllegalArgumentException(
+                "Invalid dot-product VA variant " + variant);
+        long word = operation.opcode | (1L << 21) | (2L << 16) |
+            (3L << 11) | ((long) (variant & 1) << 5) |
+            ((long) (variant & 2) << 9);
+        if ((word & FP_SELECTOR_MASK) != operation.opcode ||
+                ((word >>> 21) & 31) != 1 ||
+                ((word >>> 16) & 31) != 2 ||
+                ((word >>> 11) & 31) != 3 ||
+                ((word >>> 5) & 1) != (variant & 1) ||
+                ((word >>> 10) & 1) != ((variant >>> 1) & 1))
+            throw new IllegalArgumentException(
+                "Dot-product opcode selector/register mismatch");
+        return word;
+    }
+
+    private String executeDot(DotOperation operation, Pattern pattern,
+                              Address address, int variant)
+            throws Exception {
+        long word = dotWord(operation, variant);
+        String label = operation.name + " " + pattern.name +
+            " variant=" + variant + " VA=" +
+            guardedFpSourceAName(variant) + " word=" +
+            String.format("%08X", word);
+        Register destination = vectorRegister("vs33");
+        Register a = vectorRegister(guardedFpSourceAName(variant));
+        Register b = vectorRegister("vs35");
+        BigInteger inputA = vector(pattern.a);
+        BigInteger inputB = vector(pattern.b);
+        BigInteger expected = dotOracle(operation, pattern);
+
+        EmulatorHelper emulator = new EmulatorHelper(currentProgram);
+        try {
+            byte[] opcode = wordBytes(word);
+            emulator.writeMemory(address, opcode);
+            if (!Arrays.equals(opcode, emulator.readMemory(address, 4)))
+                return label + ": emulator-private instruction mismatch";
+            emulator.writeRegister(a, inputA);
+            emulator.writeRegister(b, inputB);
+            emulator.writeRegister(destination, MASK128);
+            emulator.writeRegister(
+                currentProgram.getLanguage().getProgramCounter(),
+                address.getOffset());
+            if (!emulator.step(monitor))
+                return label + ": emulator step failed: " +
+                    emulator.getLastError();
+            BigInteger actual = emulator.readRegister(destination).and(MASK128);
+            BigInteger afterA = emulator.readRegister(a).and(MASK128);
+            BigInteger afterB = emulator.readRegister(b).and(MASK128);
+            if (!expected.equals(actual) ||
+                    !inputA.equals(afterA) || !inputB.equals(afterB))
+                return label + ": expectedD=" + hex128(expected) +
+                    " actualD=" + hex128(actual) +
+                    " expectedA=" + hex128(inputA) +
+                    " actualA=" + hex128(afterA) +
+                    " expectedB=" + hex128(inputB) +
+                    " actualB=" + hex128(afterB);
+        }
+        finally {
+            emulator.dispose();
+        }
+        return null;
+    }
+
+    private void runDotProducts(File manifest, Address base)
+            throws Exception {
+        Map<String, Address> sites = new LinkedHashMap<>();
+        Map<String, Long> originalWords = new LinkedHashMap<>();
+        try (BufferedReader reader = Files.newBufferedReader(
+                manifest.toPath(), StandardCharsets.UTF_8)) {
+            String header = reader.readLine();
+            if (header == null ||
+                    !header.startsWith("offset\tword_be\texpected_mnemonic\t"))
+                throw new IllegalArgumentException(
+                    "Incorrect Xenon dot-product fixture manifest");
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] columns = line.split("\t", -1);
+                if (columns.length != 6 ||
+                        !"decode".equals(columns[5]))
+                    continue;
+                for (DotOperation operation : DOT_OPERATIONS) {
+                    if (operation.name.equals(columns[2]) &&
+                            !sites.containsKey(operation.name)) {
+                        Address addr = base.add(Long.parseUnsignedLong(
+                            columns[0].replaceFirst("^0x", ""), 16));
+                        sites.put(operation.name, addr);
+                        originalWords.put(operation.name,
+                            Long.parseUnsignedLong(columns[1], 16));
+                    }
+                }
+            }
+        }
+        int passed = 0, failed = 0;
+        List<String> problems = new ArrayList<>();
+        for (DotOperation operation : DOT_OPERATIONS) {
+            Address address = sites.get(operation.name);
+            Long originalWord = originalWords.get(operation.name);
+            if (address == null || originalWord == null ||
+                    (originalWord & FP_SELECTOR_MASK) != operation.opcode ||
+                    !fixtureMatches(address, originalWord)) {
+                failed++;
+                problems.add(operation.name +
+                    ": missing or invalid original fixture bytes");
+                continue;
+            }
+            Instruction instruction = getInstructionAt(address);
+            if (instruction == null) {
+                disassemble(address);
+                instruction = getInstructionAt(address);
+            }
+            if (instruction == null ||
+                    !operation.name.equalsIgnoreCase(
+                        instruction.getMnemonicString())) {
+                failed++;
+                problems.add(operation.name +
+                    ": incorrect fixture mnemonic at " + address);
+                continue;
+            }
+            for (int variant = 0; variant < 4; variant++) {
+                for (Pattern pattern : PATTERNS) {
+                    monitor.checkCancelled();
+                    try {
+                        String problem = executeDot(operation, pattern,
+                            address, variant);
+                        if (problem == null) passed++;
+                        else {
+                            failed++;
+                            problems.add(problem);
+                        }
+                    }
+                    catch (Exception ex) {
+                        failed++;
+                        problems.add(operation.name + " " + pattern.name +
+                            " variant=" + variant + ": " + ex);
+                    }
+                }
+            }
+        }
+        println("");
+        println("============================================================");
+        println("XENON FP DOT PRODUCT NATIVE NUMERICAL P-CODE AUDIT");
+        println("============================================================");
+        println("Language: " + LANGUAGE);
+        println("Cases: " + (passed + failed) + "; passed: " +
+            passed + "; failed: " + failed);
+        println("Families: vmsum3fp128 (top 3 lanes), " +
+            "vmsum4fp128 (all 4 lanes).");
+        println("Dimensions: four extended VA banks; six four-lane " +
+            "independent, nonzero integral binary32 input patterns.");
+        println("Only exact finite integer dot products are tested;");
+        println("rounding/exceptional paths and hardware equivalence " +
+            "are not established.");
+        println("Fixture Program bytes unchanged; diagnostics below.");
+        recordSuite("DOT", passed, failed, problems);
+    }
+
     @Override
     protected void run() throws Exception {
         String id = currentProgram.getLanguage().getLanguageID()
@@ -1277,6 +1475,7 @@ public class AuditXenonNumericalPcode extends GhidraScript {
         runSaturatingPacks(manifest, base);
         runGuardedFp(manifest, base);
         runShuffles(manifest, base);
+        runDotProducts(manifest, base);
 
         println("");
         println("============================================================");
