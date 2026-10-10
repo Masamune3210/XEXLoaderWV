@@ -1,3 +1,10 @@
+## SLEIGH compilation repair: oversized SHORT_2 constant (2026-10-10)
+
+- The next user build advanced past the previously invalid `//` comments and reported exactly two fatal constant-varnode-width errors: `xenon_vector_v1.sinc:521` and `:655`, both `0x3f800000:16`. The Ghidra SleighCompile constant-varnode maximum is eight bytes. Replaced each with `shortOneWord:4 = 0x3f800000:4; shortOne:16 = zext(shortOneWord);` (two statements; commit `c77b47f`). This preserves the original low 32-bit bit pattern while constructing a 128-bit output value. Updated the Python structural test expectation (commit `05586ee`).
+- The build also printed `WARN 86 NOP constructors found`. This warning alone is not proof of a new instruction decode regression and was not suppressed. A successful recompile of the updated branch is **not yet verified**.
+- Previous compilation error from unsupported C++ `//` comments was fixed in `xenon_vector_v1.sinc` (`9733411`) and `xenon_vector_remaining_v1.sinc` (`5a7b2f5`). Added `test_sleigh_semantics_reject_cpp_style_comments` (`33f63ad`); Python Xenon suite now contains **41** methods. Do not revert the semantic changes or unrelated, already passing 344-word decode fixture.
+- Next: compile again with `verifyXenonSleigh` / `gradle buildExtension` and inspect the **first fatal SleighCompile error**, if any. Only after successful SLEIGH compilation proceed to numeric p-code execution.
+
 ## Additional exact D3D unpack formats and cleanup (2026-10-10)
 
 - Expanded both `vupkd3d128` constructors' native dispatch to **type 2 (`2_10_10_10`)** and **type 4 (`SHORT_4`)**, leaving float16 types 3/5 and packed 64-bit type 6 opaque. Source commit `672e8a9`; no decode pattern changes. Exact semantics taken from pinned Xenia backend `EmitUINT_2101010` and `EmitSHORT_4` and its assembly tests: for type2, low-to-high three 10-bit signed XYZ values and high two-bit unsigned W, produce `0x40400000 + signextended_component` (XYZ), `0x3f800000 | W` (W), and canonical `0x7fc00000` on XYZ raw `0x200`. For type4, the four halfwords in the low 64 bits of VB each sign-extend and integer-add to `0x40400000`, with `0x8000` quiet-NaN sentinels.
