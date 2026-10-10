@@ -1,3 +1,23 @@
+# CURRENT FINDING: firmware kernel is MEMORY-layout PE (2026-10-10)
+
+**Primary cause, now verified directly against the uploaded `xboxkrnl.exe(1).gzf` and original official-firmware-derived image:** the kernel's physical bytes sit at their **virtual RVAs**, but its COFF section headers still contain **on-disk** `PointerToRawData` values. Ghidra's standard FILE-layout PE loader used those unrelated offsets, shifting all executable instructions from `.text` by `0x4C00`. Consequently our previously correct `.pdata` entry and export tables pointed into unrelated instructions or zeros, and `ClearFlowAndRepairCmd` discarded hundreds of functions. The previous repair hypothesis about wrong contiguous function bodies is **not a sufficient primary explanation**.
+
+Verified `.text` VA/RVA `0x21000`; embedded raw pointer `0x1C400`. At kernel VA `0x80061010`: source memory image offset `0x21010` = PPC `7D8802A6` (`mflr r12`), while standard PE loader reads offset `0x1C410` = `00000000`. All `3188` verified `.pdata` starts were cross-checked: **3124/3188 four-byte entry words do not match** the bytes Ghidra loaded, only 64 match by coincidence. Other incorrect raw pointers: `.xedata` `0x1B400` vs RVA `0x20000`, `.data` `0x11CC00` vs RVA `0x130000`, `PROTDATA` `0x129A00` vs RVA `0x170000`, `CLRDATAA` `0x139600` vs RVA `0x180000`. The first 5 sections had matching raw/RVA. All physical section data has been checked at source RVA, including valid 17559 PPC prologues and the 0xCE00 initialized bytes of `.data`.
+
+**Implemented safe import paths, not post-analysis cleanup:**
+
+1. New `Xbox360RetailKernelMemoryPeLoader.java`, inherits Ghidra `PeLoader`, selects **Xbox 360 Kernel 17559 Memory Image PE** only for exact verified firmware-source SHA-256 `e1d1c87dbcbec01c71c5400cc129a462fa46738d267e29151a91c5354bdf6cb8`, length `0x1B0000`, PowerPC machine `0x1F2`, image base `0x80040000`. Uses `SectionLayout.MEMORY`, overrides PE section mapping to source byte offset = section RVA, and lets built-in PE metadata parsing proceed. Does not modify the original bytes or headers.
+2. Deterministic normalization utility `tools/NormalizeRetailKernel17559MemoryPeV1.py` changes only five section-header `PointerToRawData` DWORDs so they equal their source virtual RVA. Output SHA-256 `1c6113602af25b0762fb10dfb0d7ad5c7fef1c7268826982188979b9bb2e4d85`, size `0x1B0000`; only **10 bytes changed**. All original section payloads remain identical at their RVA, and original official-firmware image is preserved. This normalized copy can be imported through Ghidra's built-in **Portable Executable (PE)** loader. Conversation also includes a verified corrected PE artifact `xboxkrnl.17559.pe_rva_mapping_fixed_v2.exe`.
+3. Updated early `Xbox360RetailKernelPdataAnalyzer` to accept only the **original-SHA + custom MEMORY loader** or **normalized-SHA + standard PE loader** pairing; deliberately refuse original-SHA + standard PE loader to prevent repeating the corrupted import. Existing verified `.pdata`/exports logic and non-overwriting function metadata retained. No speculative signature changes.
+
+**Verification status:** section byte mapping and output SHA are independently checked programmatically. **New custom loader is committed but not yet compiled or tested inside Ghidra 12.1.3.** The normalized PE likewise still needs a fresh Ghidra import and post-analysis check. Previous audits/logs report behavior exclusively with incorrect code bytes and must **not** be used as benchmarks of the now-correct import. Avoid function-body/flow override changes until a correctly mapped kernel has been analyzed.
+
+**Next:** rebuild extension, reinstall/restart Ghidra. On fresh import use **original + Xbox 360 Kernel 17559 Memory Image PE** (preferred, no altered input) OR **normalized + standard PE** (independent baseline), select `PowerPC:BE:64:A2ALT-32addr` and base `0x80040000`, keep Ghidra Program named `xboxkrnl.exe`. Before analysis verify `0x80061010: 7D8802A6` and `0x80089EB0: 7D8802A6`. Run Auto Analyze with `Xbox 360 Retail Kernel 17559 Pdata`, then read-only `AuditXboxKrnl17559FlowBodiesV2.java` on the same Program. Compare missing/overlapping exports only after a correct import. Eventually import XAM and verify kernel library linkage.
+
+*Historical below documents prior attempts against an incorrectly mapped PE. Superseded where inconsistent with this finding.*
+
+---
+
 # XEX import-thunk modeling (2026-10-09)
 
 ## Why this branch exists
