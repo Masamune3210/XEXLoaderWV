@@ -1,3 +1,7 @@
+## Native VMX128 multiply refinement (2026-10-10)
+
+The earlier `vmulfp128` userop has been replaced with 4×32-bit native floating multiplication and explicitly widened 128-bit lane assembly. Combined pinned-inventory source status is now **45 native, 39 opaque, 0 missing** across all 84 families. Native FP still needs empirical p-code comparison for NaN, subnormal, rounding and exception behavior. Updated tests cover this change. The successful pre-batch Gradle build and last 134/336 runtime report **do not** verify the new supplementary SLEIGH include.
+
 ## Complete source-level Xenon VMX128 family coverage batch (2026-10-10)
 
 **Scope, not a claim of full numerical emulation:** All 46 previously unimplemented VMX128 family names now have explicit instruction constructors in the *new* `XEXLoaderWV/data/languages/xenon_vector_remaining_v1.sinc`. The language includes it after `xenon_vector_v1.sinc`. It contains 172 new constructor alternatives covering opcode-4 VX128_5, opcode-5 VX128/VX128_2, opcode-6 VX128/VX128_3/VX128_4/VX128_R. Register operand handling includes `xenonC` for the vperm third vector source. Together with the previously implemented families, pinned-inventory source classification is **44 native-pcode / 40 opaque-userop / 0 missing**, 84 families total.
