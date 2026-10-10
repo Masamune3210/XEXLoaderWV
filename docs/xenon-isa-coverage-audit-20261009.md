@@ -1,3 +1,9 @@
+## Third Ghidra runtime fixture: 134/336; remaining embedded alias (2026-10-10)
+
+The user successfully ran the newer compiled/installed language: **134 correct/336, 0 byte mismatches, 29 full families, 9 partial, 46 completely missing**. This is +70 correct mnemonics over the previous 64. Unresolved sample counts: 184 missing from 46 source-unimplemented families; 16 opcode-31 X-form `Rc=1` samples excluded pending evidence of hardware validity; 2 partial `dcbz128` cases still decoded `dcbzl`. The audit's `wrong-mnemonic-only=0` excludes wrong aliases within *partial* families and therefore must not be interpreted as zero collisions.
+
+Root cause of the `dcbzl` alias: stock `ppc_common.sinc` includes `ppc_embedded.sinc`, which defines `dcbzl` with `BITS_21_25=1` and `XOP_1_10=1014` for the same opcode as Xenon `dcbz128` when bit 0 is clear. A guarded variant-only `prepareXenonCommon` task now generates local copies of the stock common/embedded include files, redirects the normal instruction include to the installed PowerPC files, and deletes **only** the incompatible `dcbzl` constructor in the generated embedded file. Stock Ghidra remains unchanged. The Xenon `.slaspec` selects the new common include; source-level regression test added. This change has **not** yet been compiled or runtime-tested; expected effect is +2 correct samples but do not assert it until a new Ghidra run.
+
 ## Tool location (updated 2026-10-10)
 
 All Xenon ISA Python tools and their pinned TSV inventories have moved from repository-root `tools/` into the **Gradle extension project** at `XEXLoaderWV/tools/` and `XEXLoaderWV/tools/data/`. Run everything from `XEXLoaderWV/` (the directory with `build.gradle`), without changing directories:
