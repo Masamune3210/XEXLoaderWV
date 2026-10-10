@@ -38,6 +38,21 @@ class XenonIsaInventoryTests(unittest.TestCase):
                     (left["mask"] & right["mask"]), 0,
                     f"{left['mnemonic']} overlaps {right['mnemonic']}")
 
+    def test_sleigh_semantics_reject_cpp_style_comments(self):
+        # C++ // comments inside Sleigh constructor actions are NOT valid.
+        # A single such comment can make the parser reject all subsequent
+        # instruction constructors with misleading display/EOF errors.
+        import re
+
+        for path in (audit.SLEIGH, audit.ADDITIONAL_SLEIGH):
+            source = path.read_text(encoding="utf-8")
+            lines = [
+                number for number, line in enumerate(source.splitlines(), 1)
+                if re.match(r"\s*//", line) or re.search(r";\s*//", line)
+            ]
+            self.assertFalse(
+                lines, f"{path.name}: unsupported // comments at {lines}")
+
     def test_current_sleigh_source_statuses(self):
         source = audit.read_sleigh_source(audit.SLEIGH)
         constructors, custom_ops = audit.parse_sleigh(source)
