@@ -616,11 +616,11 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 {
     // Xenia-pinned operand order is exact, but FLOAT_MULT + FLOAT_ADD is
     // not a fused operation. Execute this native path only for nonzero
-    // integral binary32 inputs in [-256,256], where every intermediate
+    // integral binary32 inputs in [-2048,2048], where every intermediate
     // and final nonzero result is exact. Preserve the opaque operation
     // for non-integers, zero cancellation, NaNs, infinities and rounding.
-    lowerSafe:4 = 0xc3800000:4;  // -256.0f
-    upperSafe:4 = 0x43800000:4;  // +256.0f
+    lowerSafe:4 = 0xc5000000:4;  // -2048.0f
+    upperSafe:4 = 0x45000000:4;  // +2048.0f
     sourceA0:4 = xenonA(0);
     nanA0:1 = nan(sourceA0);
     if (nanA0) goto <fp_opaque>;
@@ -785,11 +785,11 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 {
     // Xenia-pinned operand order is exact, but FLOAT_MULT + FLOAT_ADD is
     // not a fused operation. Execute this native path only for nonzero
-    // integral binary32 inputs in [-256,256], where every intermediate
+    // integral binary32 inputs in [-2048,2048], where every intermediate
     // and final nonzero result is exact. Preserve the opaque operation
     // for non-integers, zero cancellation, NaNs, infinities and rounding.
-    lowerSafe:4 = 0xc3800000:4;  // -256.0f
-    upperSafe:4 = 0x43800000:4;  // +256.0f
+    lowerSafe:4 = 0xc5000000:4;  // -2048.0f
+    upperSafe:4 = 0x45000000:4;  // +2048.0f
     sourceA0:4 = xenonA(0);
     nanA0:1 = nan(sourceA0);
     if (nanA0) goto <fp_opaque>;
@@ -954,11 +954,11 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 {
     // Xenia-pinned operand order is exact, but FLOAT_MULT + FLOAT_ADD is
     // not a fused operation. Execute this native path only for nonzero
-    // integral binary32 inputs in [-256,256], where every intermediate
+    // integral binary32 inputs in [-2048,2048], where every intermediate
     // and final nonzero result is exact. Preserve the opaque operation
     // for non-integers, zero cancellation, NaNs, infinities and rounding.
-    lowerSafe:4 = 0xc3800000:4;  // -256.0f
-    upperSafe:4 = 0x43800000:4;  // +256.0f
+    lowerSafe:4 = 0xc5000000:4;  // -2048.0f
+    upperSafe:4 = 0x45000000:4;  // +2048.0f
     sourceA0:4 = xenonA(0);
     nanA0:1 = nan(sourceA0);
     if (nanA0) goto <fp_opaque>;
@@ -1123,11 +1123,11 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 {
     // Xenia-pinned operand order is exact, but FLOAT_MULT + FLOAT_ADD is
     // not a fused operation. Execute this native path only for nonzero
-    // integral binary32 inputs in [-256,256], where every intermediate
+    // integral binary32 inputs in [-2048,2048], where every intermediate
     // and final nonzero result is exact. Preserve the opaque operation
     // for non-integers, zero cancellation, NaNs, infinities and rounding.
-    lowerSafe:4 = 0xc3800000:4;  // -256.0f
-    upperSafe:4 = 0x43800000:4;  // +256.0f
+    lowerSafe:4 = 0xc5000000:4;  // -2048.0f
+    upperSafe:4 = 0x45000000:4;  // +2048.0f
     sourceA0:4 = xenonA(0);
     nanA0:1 = nan(sourceA0);
     if (nanA0) goto <fp_opaque>;
@@ -1293,11 +1293,11 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 {
     // Xenia-pinned operand order is exact, but FLOAT_MULT + FLOAT_ADD is
     // not a fused operation. Execute this native path only for nonzero
-    // integral binary32 inputs in [-256,256], where every intermediate
+    // integral binary32 inputs in [-2048,2048], where every intermediate
     // and final nonzero result is exact. Preserve the opaque operation
     // for non-integers, zero cancellation, NaNs, infinities and rounding.
-    lowerSafe:4 = 0xc3800000:4;  // -256.0f
-    upperSafe:4 = 0x43800000:4;  // +256.0f
+    lowerSafe:4 = 0xc5000000:4;  // -2048.0f
+    upperSafe:4 = 0x45000000:4;  // +2048.0f
     sourceA0:4 = xenonA(0);
     nanA0:1 = nan(sourceA0);
     if (nanA0) goto <fp_opaque>;
@@ -1462,11 +1462,11 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 {
     // Xenia-pinned operand order is exact, but FLOAT_MULT + FLOAT_ADD is
     // not a fused operation. Execute this native path only for nonzero
-    // integral binary32 inputs in [-256,256], where every intermediate
+    // integral binary32 inputs in [-2048,2048], where every intermediate
     // and final nonzero result is exact. Preserve the opaque operation
     // for non-integers, zero cancellation, NaNs, infinities and rounding.
-    lowerSafe:4 = 0xc3800000:4;  // -256.0f
-    upperSafe:4 = 0x43800000:4;  // +256.0f
+    lowerSafe:4 = 0xc5000000:4;  // -2048.0f
+    upperSafe:4 = 0x45000000:4;  // +2048.0f
     sourceA0:4 = xenonA(0);
     nanA0:1 = nan(sourceA0);
     if (nanA0) goto <fp_opaque>;
@@ -1631,11 +1631,11 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 {
     // Xenia-pinned operand order is exact, but FLOAT_MULT + FLOAT_ADD is
     // not a fused operation. Execute this native path only for nonzero
-    // integral binary32 inputs in [-256,256], where every intermediate
+    // integral binary32 inputs in [-2048,2048], where every intermediate
     // and final nonzero result is exact. Preserve the opaque operation
     // for non-integers, zero cancellation, NaNs, infinities and rounding.
-    lowerSafe:4 = 0xc3800000:4;  // -256.0f
-    upperSafe:4 = 0x43800000:4;  // +256.0f
+    lowerSafe:4 = 0xc5000000:4;  // -2048.0f
+    upperSafe:4 = 0x45000000:4;  // +2048.0f
     sourceA0:4 = xenonA(0);
     nanA0:1 = nan(sourceA0);
     if (nanA0) goto <fp_opaque>;
@@ -1800,11 +1800,11 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 {
     // Xenia-pinned operand order is exact, but FLOAT_MULT + FLOAT_ADD is
     // not a fused operation. Execute this native path only for nonzero
-    // integral binary32 inputs in [-256,256], where every intermediate
+    // integral binary32 inputs in [-2048,2048], where every intermediate
     // and final nonzero result is exact. Preserve the opaque operation
     // for non-integers, zero cancellation, NaNs, infinities and rounding.
-    lowerSafe:4 = 0xc3800000:4;  // -256.0f
-    upperSafe:4 = 0x43800000:4;  // +256.0f
+    lowerSafe:4 = 0xc5000000:4;  // -2048.0f
+    upperSafe:4 = 0x45000000:4;  // +2048.0f
     sourceA0:4 = xenonA(0);
     nanA0:1 = nan(sourceA0);
     if (nanA0) goto <fp_opaque>;
@@ -1970,11 +1970,11 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 {
     // Xenia-pinned operand order is exact, but FLOAT_MULT + FLOAT_ADD is
     // not a fused operation. Execute this native path only for nonzero
-    // integral binary32 inputs in [-256,256], where every intermediate
+    // integral binary32 inputs in [-2048,2048], where every intermediate
     // and final nonzero result is exact. Preserve the opaque operation
     // for non-integers, zero cancellation, NaNs, infinities and rounding.
-    lowerSafe:4 = 0xc3800000:4;  // -256.0f
-    upperSafe:4 = 0x43800000:4;  // +256.0f
+    lowerSafe:4 = 0xc5000000:4;  // -2048.0f
+    upperSafe:4 = 0x45000000:4;  // +2048.0f
     sourceA0:4 = xenonA(0);
     nanA0:1 = nan(sourceA0);
     if (nanA0) goto <fp_opaque>;
@@ -2139,11 +2139,11 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 {
     // Xenia-pinned operand order is exact, but FLOAT_MULT + FLOAT_ADD is
     // not a fused operation. Execute this native path only for nonzero
-    // integral binary32 inputs in [-256,256], where every intermediate
+    // integral binary32 inputs in [-2048,2048], where every intermediate
     // and final nonzero result is exact. Preserve the opaque operation
     // for non-integers, zero cancellation, NaNs, infinities and rounding.
-    lowerSafe:4 = 0xc3800000:4;  // -256.0f
-    upperSafe:4 = 0x43800000:4;  // +256.0f
+    lowerSafe:4 = 0xc5000000:4;  // -2048.0f
+    upperSafe:4 = 0x45000000:4;  // +2048.0f
     sourceA0:4 = xenonA(0);
     nanA0:1 = nan(sourceA0);
     if (nanA0) goto <fp_opaque>;
@@ -2308,11 +2308,11 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 {
     // Xenia-pinned operand order is exact, but FLOAT_MULT + FLOAT_ADD is
     // not a fused operation. Execute this native path only for nonzero
-    // integral binary32 inputs in [-256,256], where every intermediate
+    // integral binary32 inputs in [-2048,2048], where every intermediate
     // and final nonzero result is exact. Preserve the opaque operation
     // for non-integers, zero cancellation, NaNs, infinities and rounding.
-    lowerSafe:4 = 0xc3800000:4;  // -256.0f
-    upperSafe:4 = 0x43800000:4;  // +256.0f
+    lowerSafe:4 = 0xc5000000:4;  // -2048.0f
+    upperSafe:4 = 0x45000000:4;  // +2048.0f
     sourceA0:4 = xenonA(0);
     nanA0:1 = nan(sourceA0);
     if (nanA0) goto <fp_opaque>;
@@ -2477,11 +2477,11 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 {
     // Xenia-pinned operand order is exact, but FLOAT_MULT + FLOAT_ADD is
     // not a fused operation. Execute this native path only for nonzero
-    // integral binary32 inputs in [-256,256], where every intermediate
+    // integral binary32 inputs in [-2048,2048], where every intermediate
     // and final nonzero result is exact. Preserve the opaque operation
     // for non-integers, zero cancellation, NaNs, infinities and rounding.
-    lowerSafe:4 = 0xc3800000:4;  // -256.0f
-    upperSafe:4 = 0x43800000:4;  // +256.0f
+    lowerSafe:4 = 0xc5000000:4;  // -2048.0f
+    upperSafe:4 = 0x45000000:4;  // +2048.0f
     sourceA0:4 = xenonA(0);
     nanA0:1 = nan(sourceA0);
     if (nanA0) goto <fp_opaque>;
