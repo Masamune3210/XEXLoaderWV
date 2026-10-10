@@ -335,17 +335,18 @@ xenonB: "xv127" is vrBR=31 & BITS_0_1=3 { export xv127; }
 
 # Opcode 6, VX128_3: OPC=127 (bits 21..27 in Xenia notation);
 # bottom two bits extend VB and the next two bits extend VD.
-# UIMM=(16,20), with D3D unpack format in UIMM>>2.
+# A_BITS=(16,20) is the VX128_3 five-bit immediate; D3D format is A_BITS>>2.
+# The stock UIMM field spans (0,15) and is NOT the VX128_3 immediate.
 # The opcode is real and changes a vector register. Until supported
 # numeric unpack types have verified p-code, use an explicit userop
 # rather than fabricating byte-level behavior or treating it as NOP.
-:vupkd3d128 xenonD,xenonB,UIMM is OP=6 & xenonD & xenonB & UIMM & XOP_3_10=254
+:vupkd3d128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=254
 {
-    unpacked:16 = xenonVupkd3d128(xenonB, UIMM:4);
+    unpacked:16 = xenonVupkd3d128(xenonB, A_BITS:4);
     xenonD = unpacked;
 }
-:vupkd3d128 xenonD,xenonB,UIMM is OP=6 & xenonD & xenonB & UIMM & XOP_3_10=255
+:vupkd3d128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=255
 {
-    unpacked:16 = xenonVupkd3d128(xenonB, UIMM:4);
+    unpacked:16 = xenonVupkd3d128(xenonB, A_BITS:4);
     xenonD = unpacked;
 }
