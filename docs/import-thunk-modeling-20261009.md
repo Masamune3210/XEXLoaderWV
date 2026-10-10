@@ -1,3 +1,10 @@
+## Xenon ISA offline audit verified on user's Windows environment (2026-10-09)
+
+- User ran `python -m unittest discover -s tools -p "test_xenon_isa_coverage_v1.py"` from repo root: **5 tests, 0 failures/errors, OK**, completed in 0.016s. Temporary fixture generation reported 84 families, native=7, opaque=5, missing=72; fixture=336 words / 1344 bytes.
+- User then ran `python tools/audit_xenon_isa_coverage_v1.py`: **PASS**, generated report and fixture under `build/xenon-isa-audit` with the same counts. This is now verified on their machine, not merely statically inspected.
+- Next check: import `build/xenon-isa-audit/xenon_isa_fixture_v1.bin` into a **disposable Ghidra Program** as a raw binary with `PowerPC:BE:64:XENON-32addr`, then run `ghidra_scripts/AuditXenonIsaFixtureV1.java`, selecting `build/xenon-isa-audit/xenon_isa_fixture_v1.tsv`. Record sample-level unresolved/mismatched instruction reports and distinguish missing SLEIGH constructors from inherited Ghidra PPC coverage.
+- **Still unverified:** Ghidra fixture runtime results, exhaustive inherited stock language coverage, and numerical p-code semantics. Do not mark missing constructors as actual undecoded opcodes until the runtime script checks them.
+
 ## Xenon ISA coverage inventory and test fixtures (2026-10-09)
 
 - New audit document: `docs/xenon-isa-coverage-audit-20261009.md`. Source-of-truth Xenia generated decoder pinned to commit `95a5c3ee250f80c3b9d139658649d9ffb6db3eec`. Inventoried **76 VMX128-suffixed opcode families** plus **8 distinct opcode-31 X-form vector instructions**. This is an extension inventory, not a claim to cover Ghidra's entire inherited PowerPC/AltiVec ISA.
