@@ -480,6 +480,8 @@ xenonA: "xv127" is vrAR=31 & MBH=1 & OE=1 { export xv127; }
     unpackType:4 = A_BITS:4 >> 2;
     if (unpackType == 0:4) goto <unpack_color>;
     if (unpackType == 1:4) goto <unpack_short2_signed>;
+    if (unpackType == 2:4) goto <unpack_2101010>;
+    if (unpackType == 4:4) goto <unpack_short4>;
     goto <unpack_opaque>;
 <unpack_color>
     packedColor:4 = xenonB(0);
@@ -524,6 +526,90 @@ xenonA: "xv127" is vrAR=31 & MBH=1 & OE=1 { export xv127; }
     placeY:16 = zext(shortY) << 64;
     shortOne:16 = 0x3f800000:16;
     xenonD = placeX | placeY | shortOne;
+    goto <unpack_done>;
+<unpack_2101010>
+    // Xenia EmitUINT_2101010: low-to-high signed 10-bit XYZ, unsigned 2-bit W.
+    // A signed -512 XYZ component encodes the negative-overflow quiet NaN.
+    packed210:4 = xenonB(0);
+    rawR10:4 = packed210 & 0x3ff:4;
+    signedR10:4 = (rawR10 << 22) s>> 22;
+    decodedR10:4 = 0x40400000:4 + signedR10;
+    overflowR10:1 = rawR10 == 0x200:4;
+    if (overflowR10) goto <nan_r10>;
+    goto <done_r10>;
+<nan_r10>
+    decodedR10 = 0x7fc00000:4;
+<done_r10>
+    rawG10:4 = (packed210 >> 10) & 0x3ff:4;
+    signedG10:4 = (rawG10 << 22) s>> 22;
+    decodedG10:4 = 0x40400000:4 + signedG10;
+    overflowG10:1 = rawG10 == 0x200:4;
+    if (overflowG10) goto <nan_g10>;
+    goto <done_g10>;
+<nan_g10>
+    decodedG10 = 0x7fc00000:4;
+<done_g10>
+    rawB10:4 = (packed210 >> 20) & 0x3ff:4;
+    signedB10:4 = (rawB10 << 22) s>> 22;
+    decodedB10:4 = 0x40400000:4 + signedB10;
+    overflowB10:1 = rawB10 == 0x200:4;
+    if (overflowB10) goto <nan_b10>;
+    goto <done_b10>;
+<nan_b10>
+    decodedB10 = 0x7fc00000:4;
+<done_b10>
+    rawAlpha2:4 = (packed210 >> 30) & 3:4;
+    decodedAlpha2:4 = 0x3f800000:4 | rawAlpha2;
+    placeR10:16 = zext(decodedR10) << 96;
+    placeG10:16 = zext(decodedG10) << 64;
+    placeB10:16 = zext(decodedB10) << 32;
+    placeA2:16 = zext(decodedAlpha2);
+    xenonD = placeR10 | placeG10 | placeB10 | placeA2;
+    goto <unpack_done>;
+<unpack_short4>
+    // Xenia EmitSHORT_4: four signed halfwords from the low 64 bits.
+    // Sign-extend, integer-add 3.0f, substitute QNaN on 0x8000.
+    halfX:2 = xenonB(6);
+    signedX16:4 = sext(halfX);
+    decodedX16:4 = 0x40400000:4 + signedX16;
+    overflowX16:1 = halfX == 0x8000:2;
+    if (overflowX16) goto <nan_x16>;
+    goto <done_x16>;
+<nan_x16>
+    decodedX16 = 0x7fc00000:4;
+<done_x16>
+    halfY:2 = xenonB(4);
+    signedY16:4 = sext(halfY);
+    decodedY16:4 = 0x40400000:4 + signedY16;
+    overflowY16:1 = halfY == 0x8000:2;
+    if (overflowY16) goto <nan_y16>;
+    goto <done_y16>;
+<nan_y16>
+    decodedY16 = 0x7fc00000:4;
+<done_y16>
+    halfZ:2 = xenonB(2);
+    signedZ16:4 = sext(halfZ);
+    decodedZ16:4 = 0x40400000:4 + signedZ16;
+    overflowZ16:1 = halfZ == 0x8000:2;
+    if (overflowZ16) goto <nan_z16>;
+    goto <done_z16>;
+<nan_z16>
+    decodedZ16 = 0x7fc00000:4;
+<done_z16>
+    halfW:2 = xenonB(0);
+    signedW16:4 = sext(halfW);
+    decodedW16:4 = 0x40400000:4 + signedW16;
+    overflowW16:1 = halfW == 0x8000:2;
+    if (overflowW16) goto <nan_w16>;
+    goto <done_w16>;
+<nan_w16>
+    decodedW16 = 0x7fc00000:4;
+<done_w16>
+    placeX16:16 = zext(decodedX16) << 96;
+    placeY16:16 = zext(decodedY16) << 64;
+    placeZ16:16 = zext(decodedZ16) << 32;
+    placeW16:16 = zext(decodedW16);
+    xenonD = placeX16 | placeY16 | placeZ16 | placeW16;
     goto <unpack_done>;
 <unpack_opaque>
     unpacked:16 = xenonVupkd3d128(xenonB, A_BITS:4);
@@ -538,6 +624,8 @@ xenonA: "xv127" is vrAR=31 & MBH=1 & OE=1 { export xv127; }
     unpackType:4 = A_BITS:4 >> 2;
     if (unpackType == 0:4) goto <unpack_color>;
     if (unpackType == 1:4) goto <unpack_short2_signed>;
+    if (unpackType == 2:4) goto <unpack_2101010>;
+    if (unpackType == 4:4) goto <unpack_short4>;
     goto <unpack_opaque>;
 <unpack_color>
     packedColor:4 = xenonB(0);
@@ -582,6 +670,90 @@ xenonA: "xv127" is vrAR=31 & MBH=1 & OE=1 { export xv127; }
     placeY:16 = zext(shortY) << 64;
     shortOne:16 = 0x3f800000:16;
     xenonD = placeX | placeY | shortOne;
+    goto <unpack_done>;
+<unpack_2101010>
+    // Xenia EmitUINT_2101010: low-to-high signed 10-bit XYZ, unsigned 2-bit W.
+    // A signed -512 XYZ component encodes the negative-overflow quiet NaN.
+    packed210:4 = xenonB(0);
+    rawR10:4 = packed210 & 0x3ff:4;
+    signedR10:4 = (rawR10 << 22) s>> 22;
+    decodedR10:4 = 0x40400000:4 + signedR10;
+    overflowR10:1 = rawR10 == 0x200:4;
+    if (overflowR10) goto <nan_r10>;
+    goto <done_r10>;
+<nan_r10>
+    decodedR10 = 0x7fc00000:4;
+<done_r10>
+    rawG10:4 = (packed210 >> 10) & 0x3ff:4;
+    signedG10:4 = (rawG10 << 22) s>> 22;
+    decodedG10:4 = 0x40400000:4 + signedG10;
+    overflowG10:1 = rawG10 == 0x200:4;
+    if (overflowG10) goto <nan_g10>;
+    goto <done_g10>;
+<nan_g10>
+    decodedG10 = 0x7fc00000:4;
+<done_g10>
+    rawB10:4 = (packed210 >> 20) & 0x3ff:4;
+    signedB10:4 = (rawB10 << 22) s>> 22;
+    decodedB10:4 = 0x40400000:4 + signedB10;
+    overflowB10:1 = rawB10 == 0x200:4;
+    if (overflowB10) goto <nan_b10>;
+    goto <done_b10>;
+<nan_b10>
+    decodedB10 = 0x7fc00000:4;
+<done_b10>
+    rawAlpha2:4 = (packed210 >> 30) & 3:4;
+    decodedAlpha2:4 = 0x3f800000:4 | rawAlpha2;
+    placeR10:16 = zext(decodedR10) << 96;
+    placeG10:16 = zext(decodedG10) << 64;
+    placeB10:16 = zext(decodedB10) << 32;
+    placeA2:16 = zext(decodedAlpha2);
+    xenonD = placeR10 | placeG10 | placeB10 | placeA2;
+    goto <unpack_done>;
+<unpack_short4>
+    // Xenia EmitSHORT_4: four signed halfwords from the low 64 bits.
+    // Sign-extend, integer-add 3.0f, substitute QNaN on 0x8000.
+    halfX:2 = xenonB(6);
+    signedX16:4 = sext(halfX);
+    decodedX16:4 = 0x40400000:4 + signedX16;
+    overflowX16:1 = halfX == 0x8000:2;
+    if (overflowX16) goto <nan_x16>;
+    goto <done_x16>;
+<nan_x16>
+    decodedX16 = 0x7fc00000:4;
+<done_x16>
+    halfY:2 = xenonB(4);
+    signedY16:4 = sext(halfY);
+    decodedY16:4 = 0x40400000:4 + signedY16;
+    overflowY16:1 = halfY == 0x8000:2;
+    if (overflowY16) goto <nan_y16>;
+    goto <done_y16>;
+<nan_y16>
+    decodedY16 = 0x7fc00000:4;
+<done_y16>
+    halfZ:2 = xenonB(2);
+    signedZ16:4 = sext(halfZ);
+    decodedZ16:4 = 0x40400000:4 + signedZ16;
+    overflowZ16:1 = halfZ == 0x8000:2;
+    if (overflowZ16) goto <nan_z16>;
+    goto <done_z16>;
+<nan_z16>
+    decodedZ16 = 0x7fc00000:4;
+<done_z16>
+    halfW:2 = xenonB(0);
+    signedW16:4 = sext(halfW);
+    decodedW16:4 = 0x40400000:4 + signedW16;
+    overflowW16:1 = halfW == 0x8000:2;
+    if (overflowW16) goto <nan_w16>;
+    goto <done_w16>;
+<nan_w16>
+    decodedW16 = 0x7fc00000:4;
+<done_w16>
+    placeX16:16 = zext(decodedX16) << 96;
+    placeY16:16 = zext(decodedY16) << 64;
+    placeZ16:16 = zext(decodedZ16) << 32;
+    placeW16:16 = zext(decodedW16);
+    xenonD = placeX16 | placeY16 | placeZ16 | placeW16;
     goto <unpack_done>;
 <unpack_opaque>
     unpacked:16 = xenonVupkd3d128(xenonB, A_BITS:4);
