@@ -614,13 +614,8 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 # vmaddfp128: opaque; Xenia mask/value fc0003d0/140000d0
 :vmaddfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=3 & BITS_4_5=1
 {
-    // Xenia-pinned operand order is exact, but FLOAT_MULT + FLOAT_ADD is
-    // not a fused operation. Execute this native path only for nonzero
-    // integral binary32 inputs in [-2048,2048], where every intermediate
-    // and final nonzero result is exact. Preserve the opaque operation
-    // for non-integers, zero cancellation, NaNs, infinities and rounding.
-    lowerSafe:4 = 0xc5000000:4;  // -2048.0f
-    upperSafe:4 = 0x45000000:4;  // +2048.0f
+    lowerSafe:4 = 0xc5000000:4;
+    upperSafe:4 = 0x45000000:4;
     sourceA0:4 = xenonA(0);
     nanA0:1 = nan(sourceA0);
     if (nanA0) goto <fp_opaque>;
@@ -783,13 +778,8 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 
 :vmaddfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=3 & BITS_4_5=3
 {
-    // Xenia-pinned operand order is exact, but FLOAT_MULT + FLOAT_ADD is
-    // not a fused operation. Execute this native path only for nonzero
-    // integral binary32 inputs in [-2048,2048], where every intermediate
-    // and final nonzero result is exact. Preserve the opaque operation
-    // for non-integers, zero cancellation, NaNs, infinities and rounding.
-    lowerSafe:4 = 0xc5000000:4;  // -2048.0f
-    upperSafe:4 = 0x45000000:4;  // +2048.0f
+    lowerSafe:4 = 0xc5000000:4;
+    upperSafe:4 = 0x45000000:4;
     sourceA0:4 = xenonA(0);
     nanA0:1 = nan(sourceA0);
     if (nanA0) goto <fp_opaque>;
@@ -952,13 +942,8 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 
 :vmaddfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=19 & BITS_4_5=1
 {
-    // Xenia-pinned operand order is exact, but FLOAT_MULT + FLOAT_ADD is
-    // not a fused operation. Execute this native path only for nonzero
-    // integral binary32 inputs in [-2048,2048], where every intermediate
-    // and final nonzero result is exact. Preserve the opaque operation
-    // for non-integers, zero cancellation, NaNs, infinities and rounding.
-    lowerSafe:4 = 0xc5000000:4;  // -2048.0f
-    upperSafe:4 = 0x45000000:4;  // +2048.0f
+    lowerSafe:4 = 0xc5000000:4;
+    upperSafe:4 = 0x45000000:4;
     sourceA0:4 = xenonA(0);
     nanA0:1 = nan(sourceA0);
     if (nanA0) goto <fp_opaque>;
@@ -1121,13 +1106,8 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 
 :vmaddfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=19 & BITS_4_5=3
 {
-    // Xenia-pinned operand order is exact, but FLOAT_MULT + FLOAT_ADD is
-    // not a fused operation. Execute this native path only for nonzero
-    // integral binary32 inputs in [-2048,2048], where every intermediate
-    // and final nonzero result is exact. Preserve the opaque operation
-    // for non-integers, zero cancellation, NaNs, infinities and rounding.
-    lowerSafe:4 = 0xc5000000:4;  // -2048.0f
-    upperSafe:4 = 0x45000000:4;  // +2048.0f
+    lowerSafe:4 = 0xc5000000:4;
+    upperSafe:4 = 0x45000000:4;
     sourceA0:4 = xenonA(0);
     nanA0:1 = nan(sourceA0);
     if (nanA0) goto <fp_opaque>;
@@ -1291,13 +1271,8 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 # vmaddcfp128: opaque; Xenia mask/value fc0003d0/14000110
 :vmaddcfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=4 & BITS_4_5=1
 {
-    // Xenia-pinned operand order is exact, but FLOAT_MULT + FLOAT_ADD is
-    // not a fused operation. Execute this native path only for nonzero
-    // integral binary32 inputs in [-2048,2048], where every intermediate
-    // and final nonzero result is exact. Preserve the opaque operation
-    // for non-integers, zero cancellation, NaNs, infinities and rounding.
-    lowerSafe:4 = 0xc5000000:4;  // -2048.0f
-    upperSafe:4 = 0x45000000:4;  // +2048.0f
+    lowerSafe:4 = 0xc5000000:4;
+    upperSafe:4 = 0x45000000:4;
     sourceA0:4 = xenonA(0);
     nanA0:1 = nan(sourceA0);
     if (nanA0) goto <fp_opaque>;
@@ -1460,13 +1435,8 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 
 :vmaddcfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=4 & BITS_4_5=3
 {
-    // Xenia-pinned operand order is exact, but FLOAT_MULT + FLOAT_ADD is
-    // not a fused operation. Execute this native path only for nonzero
-    // integral binary32 inputs in [-2048,2048], where every intermediate
-    // and final nonzero result is exact. Preserve the opaque operation
-    // for non-integers, zero cancellation, NaNs, infinities and rounding.
-    lowerSafe:4 = 0xc5000000:4;  // -2048.0f
-    upperSafe:4 = 0x45000000:4;  // +2048.0f
+    lowerSafe:4 = 0xc5000000:4;
+    upperSafe:4 = 0x45000000:4;
     sourceA0:4 = xenonA(0);
     nanA0:1 = nan(sourceA0);
     if (nanA0) goto <fp_opaque>;
@@ -1629,13 +1599,8 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 
 :vmaddcfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=20 & BITS_4_5=1
 {
-    // Xenia-pinned operand order is exact, but FLOAT_MULT + FLOAT_ADD is
-    // not a fused operation. Execute this native path only for nonzero
-    // integral binary32 inputs in [-2048,2048], where every intermediate
-    // and final nonzero result is exact. Preserve the opaque operation
-    // for non-integers, zero cancellation, NaNs, infinities and rounding.
-    lowerSafe:4 = 0xc5000000:4;  // -2048.0f
-    upperSafe:4 = 0x45000000:4;  // +2048.0f
+    lowerSafe:4 = 0xc5000000:4;
+    upperSafe:4 = 0x45000000:4;
     sourceA0:4 = xenonA(0);
     nanA0:1 = nan(sourceA0);
     if (nanA0) goto <fp_opaque>;
@@ -1798,13 +1763,8 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 
 :vmaddcfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=20 & BITS_4_5=3
 {
-    // Xenia-pinned operand order is exact, but FLOAT_MULT + FLOAT_ADD is
-    // not a fused operation. Execute this native path only for nonzero
-    // integral binary32 inputs in [-2048,2048], where every intermediate
-    // and final nonzero result is exact. Preserve the opaque operation
-    // for non-integers, zero cancellation, NaNs, infinities and rounding.
-    lowerSafe:4 = 0xc5000000:4;  // -2048.0f
-    upperSafe:4 = 0x45000000:4;  // +2048.0f
+    lowerSafe:4 = 0xc5000000:4;
+    upperSafe:4 = 0x45000000:4;
     sourceA0:4 = xenonA(0);
     nanA0:1 = nan(sourceA0);
     if (nanA0) goto <fp_opaque>;
@@ -1968,13 +1928,8 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 # vnmsubfp128: opaque; Xenia mask/value fc0003d0/14000150
 :vnmsubfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=5 & BITS_4_5=1
 {
-    // Xenia-pinned operand order is exact, but FLOAT_MULT + FLOAT_ADD is
-    // not a fused operation. Execute this native path only for nonzero
-    // integral binary32 inputs in [-2048,2048], where every intermediate
-    // and final nonzero result is exact. Preserve the opaque operation
-    // for non-integers, zero cancellation, NaNs, infinities and rounding.
-    lowerSafe:4 = 0xc5000000:4;  // -2048.0f
-    upperSafe:4 = 0x45000000:4;  // +2048.0f
+    lowerSafe:4 = 0xc5000000:4;
+    upperSafe:4 = 0x45000000:4;
     sourceA0:4 = xenonA(0);
     nanA0:1 = nan(sourceA0);
     if (nanA0) goto <fp_opaque>;
@@ -2137,13 +2092,8 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 
 :vnmsubfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=5 & BITS_4_5=3
 {
-    // Xenia-pinned operand order is exact, but FLOAT_MULT + FLOAT_ADD is
-    // not a fused operation. Execute this native path only for nonzero
-    // integral binary32 inputs in [-2048,2048], where every intermediate
-    // and final nonzero result is exact. Preserve the opaque operation
-    // for non-integers, zero cancellation, NaNs, infinities and rounding.
-    lowerSafe:4 = 0xc5000000:4;  // -2048.0f
-    upperSafe:4 = 0x45000000:4;  // +2048.0f
+    lowerSafe:4 = 0xc5000000:4;
+    upperSafe:4 = 0x45000000:4;
     sourceA0:4 = xenonA(0);
     nanA0:1 = nan(sourceA0);
     if (nanA0) goto <fp_opaque>;
@@ -2306,13 +2256,8 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 
 :vnmsubfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=21 & BITS_4_5=1
 {
-    // Xenia-pinned operand order is exact, but FLOAT_MULT + FLOAT_ADD is
-    // not a fused operation. Execute this native path only for nonzero
-    // integral binary32 inputs in [-2048,2048], where every intermediate
-    // and final nonzero result is exact. Preserve the opaque operation
-    // for non-integers, zero cancellation, NaNs, infinities and rounding.
-    lowerSafe:4 = 0xc5000000:4;  // -2048.0f
-    upperSafe:4 = 0x45000000:4;  // +2048.0f
+    lowerSafe:4 = 0xc5000000:4;
+    upperSafe:4 = 0x45000000:4;
     sourceA0:4 = xenonA(0);
     nanA0:1 = nan(sourceA0);
     if (nanA0) goto <fp_opaque>;
@@ -2475,13 +2420,8 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 
 :vnmsubfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=21 & BITS_4_5=3
 {
-    // Xenia-pinned operand order is exact, but FLOAT_MULT + FLOAT_ADD is
-    // not a fused operation. Execute this native path only for nonzero
-    // integral binary32 inputs in [-2048,2048], where every intermediate
-    // and final nonzero result is exact. Preserve the opaque operation
-    // for non-integers, zero cancellation, NaNs, infinities and rounding.
-    lowerSafe:4 = 0xc5000000:4;  // -2048.0f
-    upperSafe:4 = 0x45000000:4;  // +2048.0f
+    lowerSafe:4 = 0xc5000000:4;
+    upperSafe:4 = 0x45000000:4;
     sourceA0:4 = xenonA(0);
     nanA0:1 = nan(sourceA0);
     if (nanA0) goto <fp_opaque>;
