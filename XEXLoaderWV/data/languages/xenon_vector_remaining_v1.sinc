@@ -1,0 +1,1475 @@
+# Xenon supplemental VMX128 constructors; Xenia 95a5c3ee250f80c3b9d139658649d9ffb6db3eec.
+# Native p-code when numerical operand semantics are sufficiently established.
+# All other results are explicit opaque pcodeops; no false numerical behavior is invented.
+# Some opaque families additionally affect CR6 or VSCR; their side effects remain incomplete.
+
+define pcodeop xenonVperm128;
+define pcodeop xenonVmaddfp128;
+define pcodeop xenonVmaddcfp128;
+define pcodeop xenonVnmsubfp128;
+define pcodeop xenonVmsum3fp128;
+define pcodeop xenonVpkshss128;
+define pcodeop xenonVpkshus128;
+define pcodeop xenonVpkswss128;
+define pcodeop xenonVpkswus128;
+define pcodeop xenonVpkuhum128;
+define pcodeop xenonVpkuhus128;
+define pcodeop xenonVpkuwum128;
+define pcodeop xenonVslo128;
+define pcodeop xenonVpkuwus128;
+define pcodeop xenonVsro128;
+define pcodeop xenonVpkd3d128;
+define pcodeop xenonVcfpsxws128;
+define pcodeop xenonVcfpuxws128;
+define pcodeop xenonVcsxwfp128;
+define pcodeop xenonVcuxwfp128;
+define pcodeop xenonVrfim128;
+define pcodeop xenonVrfin128;
+define pcodeop xenonVrfip128;
+define pcodeop xenonVrfiz128;
+define pcodeop xenonVrefp128;
+define pcodeop xenonVrsqrtefp128;
+define pcodeop xenonVexptefp128;
+define pcodeop xenonVlogefp128;
+define pcodeop xenonVcmpeqfp128;
+define pcodeop xenonVcmpgefp128;
+define pcodeop xenonVcmpgtfp128;
+define pcodeop xenonVcmpbfp128;
+define pcodeop xenonVcmpequw128;
+define pcodeop xenonVmaxfp128;
+define pcodeop xenonVminfp128;
+define pcodeop xenonVupkhsb128;
+define pcodeop xenonVupklsb128;
+
+# vsldoi128: native; Xenia mask/value fc000010/10000010
+:vsldoi128 xenonD,xenonA,xenonB,BITS_6_10 is OP=4 & xenonD & xenonA & xenonB & BITS_6_10 & BITS_4_5=1
+{
+    shift:4 = (BITS_6_10:4 & 15) * 8;
+    back:4 = 128 - shift;
+    xenonD = (xenonA << shift) | (xenonB >> back);
+}
+
+:vsldoi128 xenonD,xenonA,xenonB,BITS_6_10 is OP=4 & xenonD & xenonA & xenonB & BITS_6_10 & BITS_4_5=3
+{
+    shift:4 = (BITS_6_10:4 & 15) * 8;
+    back:4 = 128 - shift;
+    xenonD = (xenonA << shift) | (xenonB >> back);
+}
+
+# vperm128: opaque; Xenia mask/value fc000210/14000000
+:vperm128 xenonD,xenonA,xenonB,BITS_6_10 is OP=5 & xenonD & xenonA & xenonB & BITS_6_10 & BITS_4_5=0 & BIT_9=0
+{
+    result:16 = xenonVperm128(xenonA, xenonB, BITS_6_10:4);
+    xenonD = result;
+}
+
+:vperm128 xenonD,xenonA,xenonB,BITS_6_10 is OP=5 & xenonD & xenonA & xenonB & BITS_6_10 & BITS_4_5=2 & BIT_9=0
+{
+    result:16 = xenonVperm128(xenonA, xenonB, BITS_6_10:4);
+    xenonD = result;
+}
+
+# vaddfp128: native; Xenia mask/value fc0003d0/14000010
+:vaddfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=0 & BITS_4_5=1
+{
+    a0:4 = xenonA(0);
+    b0:4 = xenonB(0);
+    r0:4 = a0 f+ b0;
+    a1:4 = xenonA(4);
+    b1:4 = xenonB(4);
+    r1:4 = a1 f+ b1;
+    a2:4 = xenonA(8);
+    b2:4 = xenonB(8);
+    r2:4 = a2 f+ b2;
+    a3:4 = xenonA(12);
+    b3:4 = xenonB(12);
+    r3:4 = a3 f+ b3;
+    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+}
+
+:vaddfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=0 & BITS_4_5=3
+{
+    a0:4 = xenonA(0);
+    b0:4 = xenonB(0);
+    r0:4 = a0 f+ b0;
+    a1:4 = xenonA(4);
+    b1:4 = xenonB(4);
+    r1:4 = a1 f+ b1;
+    a2:4 = xenonA(8);
+    b2:4 = xenonB(8);
+    r2:4 = a2 f+ b2;
+    a3:4 = xenonA(12);
+    b3:4 = xenonB(12);
+    r3:4 = a3 f+ b3;
+    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+}
+
+:vaddfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=16 & BITS_4_5=1
+{
+    a0:4 = xenonA(0);
+    b0:4 = xenonB(0);
+    r0:4 = a0 f+ b0;
+    a1:4 = xenonA(4);
+    b1:4 = xenonB(4);
+    r1:4 = a1 f+ b1;
+    a2:4 = xenonA(8);
+    b2:4 = xenonB(8);
+    r2:4 = a2 f+ b2;
+    a3:4 = xenonA(12);
+    b3:4 = xenonB(12);
+    r3:4 = a3 f+ b3;
+    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+}
+
+:vaddfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=16 & BITS_4_5=3
+{
+    a0:4 = xenonA(0);
+    b0:4 = xenonB(0);
+    r0:4 = a0 f+ b0;
+    a1:4 = xenonA(4);
+    b1:4 = xenonB(4);
+    r1:4 = a1 f+ b1;
+    a2:4 = xenonA(8);
+    b2:4 = xenonB(8);
+    r2:4 = a2 f+ b2;
+    a3:4 = xenonA(12);
+    b3:4 = xenonB(12);
+    r3:4 = a3 f+ b3;
+    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+}
+
+# vsubfp128: native; Xenia mask/value fc0003d0/14000050
+:vsubfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=1 & BITS_4_5=1
+{
+    a0:4 = xenonA(0);
+    b0:4 = xenonB(0);
+    r0:4 = a0 f- b0;
+    a1:4 = xenonA(4);
+    b1:4 = xenonB(4);
+    r1:4 = a1 f- b1;
+    a2:4 = xenonA(8);
+    b2:4 = xenonB(8);
+    r2:4 = a2 f- b2;
+    a3:4 = xenonA(12);
+    b3:4 = xenonB(12);
+    r3:4 = a3 f- b3;
+    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+}
+
+:vsubfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=1 & BITS_4_5=3
+{
+    a0:4 = xenonA(0);
+    b0:4 = xenonB(0);
+    r0:4 = a0 f- b0;
+    a1:4 = xenonA(4);
+    b1:4 = xenonB(4);
+    r1:4 = a1 f- b1;
+    a2:4 = xenonA(8);
+    b2:4 = xenonB(8);
+    r2:4 = a2 f- b2;
+    a3:4 = xenonA(12);
+    b3:4 = xenonB(12);
+    r3:4 = a3 f- b3;
+    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+}
+
+:vsubfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=17 & BITS_4_5=1
+{
+    a0:4 = xenonA(0);
+    b0:4 = xenonB(0);
+    r0:4 = a0 f- b0;
+    a1:4 = xenonA(4);
+    b1:4 = xenonB(4);
+    r1:4 = a1 f- b1;
+    a2:4 = xenonA(8);
+    b2:4 = xenonB(8);
+    r2:4 = a2 f- b2;
+    a3:4 = xenonA(12);
+    b3:4 = xenonB(12);
+    r3:4 = a3 f- b3;
+    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+}
+
+:vsubfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=17 & BITS_4_5=3
+{
+    a0:4 = xenonA(0);
+    b0:4 = xenonB(0);
+    r0:4 = a0 f- b0;
+    a1:4 = xenonA(4);
+    b1:4 = xenonB(4);
+    r1:4 = a1 f- b1;
+    a2:4 = xenonA(8);
+    b2:4 = xenonB(8);
+    r2:4 = a2 f- b2;
+    a3:4 = xenonA(12);
+    b3:4 = xenonB(12);
+    r3:4 = a3 f- b3;
+    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+}
+
+# vmaddfp128: opaque; Xenia mask/value fc0003d0/140000d0
+:vmaddfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=3 & BITS_4_5=1
+{
+    result:16 = xenonVmaddfp128(xenonA, xenonB, xenonD);
+    xenonD = result;
+}
+
+:vmaddfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=3 & BITS_4_5=3
+{
+    result:16 = xenonVmaddfp128(xenonA, xenonB, xenonD);
+    xenonD = result;
+}
+
+:vmaddfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=19 & BITS_4_5=1
+{
+    result:16 = xenonVmaddfp128(xenonA, xenonB, xenonD);
+    xenonD = result;
+}
+
+:vmaddfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=19 & BITS_4_5=3
+{
+    result:16 = xenonVmaddfp128(xenonA, xenonB, xenonD);
+    xenonD = result;
+}
+
+# vmaddcfp128: opaque; Xenia mask/value fc0003d0/14000110
+:vmaddcfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=4 & BITS_4_5=1
+{
+    result:16 = xenonVmaddcfp128(xenonA, xenonB, xenonD);
+    xenonD = result;
+}
+
+:vmaddcfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=4 & BITS_4_5=3
+{
+    result:16 = xenonVmaddcfp128(xenonA, xenonB, xenonD);
+    xenonD = result;
+}
+
+:vmaddcfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=20 & BITS_4_5=1
+{
+    result:16 = xenonVmaddcfp128(xenonA, xenonB, xenonD);
+    xenonD = result;
+}
+
+:vmaddcfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=20 & BITS_4_5=3
+{
+    result:16 = xenonVmaddcfp128(xenonA, xenonB, xenonD);
+    xenonD = result;
+}
+
+# vnmsubfp128: opaque; Xenia mask/value fc0003d0/14000150
+:vnmsubfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=5 & BITS_4_5=1
+{
+    result:16 = xenonVnmsubfp128(xenonA, xenonB, xenonD);
+    xenonD = result;
+}
+
+:vnmsubfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=5 & BITS_4_5=3
+{
+    result:16 = xenonVnmsubfp128(xenonA, xenonB, xenonD);
+    xenonD = result;
+}
+
+:vnmsubfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=21 & BITS_4_5=1
+{
+    result:16 = xenonVnmsubfp128(xenonA, xenonB, xenonD);
+    xenonD = result;
+}
+
+:vnmsubfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=21 & BITS_4_5=3
+{
+    result:16 = xenonVnmsubfp128(xenonA, xenonB, xenonD);
+    xenonD = result;
+}
+
+# vmsum3fp128: opaque; Xenia mask/value fc0003d0/14000190
+:vmsum3fp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=6 & BITS_4_5=1
+{
+    result:16 = xenonVmsum3fp128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vmsum3fp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=6 & BITS_4_5=3
+{
+    result:16 = xenonVmsum3fp128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vmsum3fp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=22 & BITS_4_5=1
+{
+    result:16 = xenonVmsum3fp128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vmsum3fp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=22 & BITS_4_5=3
+{
+    result:16 = xenonVmsum3fp128(xenonA, xenonB);
+    xenonD = result;
+}
+
+# vpkshss128: opaque; Xenia mask/value fc0003d0/14000200
+:vpkshss128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=8 & BITS_4_5=0
+{
+    result:16 = xenonVpkshss128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vpkshss128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=8 & BITS_4_5=2
+{
+    result:16 = xenonVpkshss128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vpkshss128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=24 & BITS_4_5=0
+{
+    result:16 = xenonVpkshss128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vpkshss128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=24 & BITS_4_5=2
+{
+    result:16 = xenonVpkshss128(xenonA, xenonB);
+    xenonD = result;
+}
+
+# vpkshus128: opaque; Xenia mask/value fc0003d0/14000240
+:vpkshus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=9 & BITS_4_5=0
+{
+    result:16 = xenonVpkshus128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vpkshus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=9 & BITS_4_5=2
+{
+    result:16 = xenonVpkshus128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vpkshus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=25 & BITS_4_5=0
+{
+    result:16 = xenonVpkshus128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vpkshus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=25 & BITS_4_5=2
+{
+    result:16 = xenonVpkshus128(xenonA, xenonB);
+    xenonD = result;
+}
+
+# vpkswss128: opaque; Xenia mask/value fc0003d0/14000280
+:vpkswss128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=10 & BITS_4_5=0
+{
+    result:16 = xenonVpkswss128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vpkswss128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=10 & BITS_4_5=2
+{
+    result:16 = xenonVpkswss128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vpkswss128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=26 & BITS_4_5=0
+{
+    result:16 = xenonVpkswss128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vpkswss128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=26 & BITS_4_5=2
+{
+    result:16 = xenonVpkswss128(xenonA, xenonB);
+    xenonD = result;
+}
+
+# vpkswus128: opaque; Xenia mask/value fc0003d0/140002c0
+:vpkswus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=11 & BITS_4_5=0
+{
+    result:16 = xenonVpkswus128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vpkswus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=11 & BITS_4_5=2
+{
+    result:16 = xenonVpkswus128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vpkswus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=27 & BITS_4_5=0
+{
+    result:16 = xenonVpkswus128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vpkswus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=27 & BITS_4_5=2
+{
+    result:16 = xenonVpkswus128(xenonA, xenonB);
+    xenonD = result;
+}
+
+# vpkuhum128: opaque; Xenia mask/value fc0003d0/14000300
+:vpkuhum128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=12 & BITS_4_5=0
+{
+    result:16 = xenonVpkuhum128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vpkuhum128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=12 & BITS_4_5=2
+{
+    result:16 = xenonVpkuhum128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vpkuhum128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=28 & BITS_4_5=0
+{
+    result:16 = xenonVpkuhum128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vpkuhum128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=28 & BITS_4_5=2
+{
+    result:16 = xenonVpkuhum128(xenonA, xenonB);
+    xenonD = result;
+}
+
+# vpkuhus128: opaque; Xenia mask/value fc0003d0/14000340
+:vpkuhus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=13 & BITS_4_5=0
+{
+    result:16 = xenonVpkuhus128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vpkuhus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=13 & BITS_4_5=2
+{
+    result:16 = xenonVpkuhus128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vpkuhus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=29 & BITS_4_5=0
+{
+    result:16 = xenonVpkuhus128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vpkuhus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=29 & BITS_4_5=2
+{
+    result:16 = xenonVpkuhus128(xenonA, xenonB);
+    xenonD = result;
+}
+
+# vpkuwum128: opaque; Xenia mask/value fc0003d0/14000380
+:vpkuwum128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=14 & BITS_4_5=0
+{
+    result:16 = xenonVpkuwum128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vpkuwum128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=14 & BITS_4_5=2
+{
+    result:16 = xenonVpkuwum128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vpkuwum128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=30 & BITS_4_5=0
+{
+    result:16 = xenonVpkuwum128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vpkuwum128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=30 & BITS_4_5=2
+{
+    result:16 = xenonVpkuwum128(xenonA, xenonB);
+    xenonD = result;
+}
+
+# vslo128: opaque; Xenia mask/value fc0003d0/14000390
+:vslo128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=14 & BITS_4_5=1
+{
+    result:16 = xenonVslo128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vslo128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=14 & BITS_4_5=3
+{
+    result:16 = xenonVslo128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vslo128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=30 & BITS_4_5=1
+{
+    result:16 = xenonVslo128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vslo128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=30 & BITS_4_5=3
+{
+    result:16 = xenonVslo128(xenonA, xenonB);
+    xenonD = result;
+}
+
+# vpkuwus128: opaque; Xenia mask/value fc0003d0/140003c0
+:vpkuwus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=15 & BITS_4_5=0
+{
+    result:16 = xenonVpkuwus128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vpkuwus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=15 & BITS_4_5=2
+{
+    result:16 = xenonVpkuwus128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vpkuwus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=31 & BITS_4_5=0
+{
+    result:16 = xenonVpkuwus128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vpkuwus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=31 & BITS_4_5=2
+{
+    result:16 = xenonVpkuwus128(xenonA, xenonB);
+    xenonD = result;
+}
+
+# vsro128: opaque; Xenia mask/value fc0003d0/140003d0
+:vsro128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=15 & BITS_4_5=1
+{
+    result:16 = xenonVsro128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vsro128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=15 & BITS_4_5=3
+{
+    result:16 = xenonVsro128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vsro128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=31 & BITS_4_5=1
+{
+    result:16 = xenonVsro128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vsro128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=31 & BITS_4_5=3
+{
+    result:16 = xenonVsro128(xenonA, xenonB);
+    xenonD = result;
+}
+
+# vpkd3d128: opaque; Xenia mask/value fc000730/18000610
+:vpkd3d128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & BITS_6_10=24 & BITS_4_5=1
+{
+    result:16 = xenonVpkd3d128(xenonB, A_BITS:4, BITS_6_10:4);
+    xenonD = result;
+}
+
+:vpkd3d128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & BITS_6_10=25 & BITS_4_5=1
+{
+    result:16 = xenonVpkd3d128(xenonB, A_BITS:4, BITS_6_10:4);
+    xenonD = result;
+}
+
+:vpkd3d128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & BITS_6_10=26 & BITS_4_5=1
+{
+    result:16 = xenonVpkd3d128(xenonB, A_BITS:4, BITS_6_10:4);
+    xenonD = result;
+}
+
+:vpkd3d128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & BITS_6_10=27 & BITS_4_5=1
+{
+    result:16 = xenonVpkd3d128(xenonB, A_BITS:4, BITS_6_10:4);
+    xenonD = result;
+}
+
+# vcfpsxws128: opaque; Xenia mask/value fc0007f0/18000230
+:vcfpsxws128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=70 & BITS_0_1
+{
+    result:16 = xenonVcfpsxws128(xenonB, A_BITS:4);
+    xenonD = result;
+}
+
+:vcfpsxws128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=71 & BITS_0_1
+{
+    result:16 = xenonVcfpsxws128(xenonB, A_BITS:4);
+    xenonD = result;
+}
+
+# vcfpuxws128: opaque; Xenia mask/value fc0007f0/18000270
+:vcfpuxws128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=78 & BITS_0_1
+{
+    result:16 = xenonVcfpuxws128(xenonB, A_BITS:4);
+    xenonD = result;
+}
+
+:vcfpuxws128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=79 & BITS_0_1
+{
+    result:16 = xenonVcfpuxws128(xenonB, A_BITS:4);
+    xenonD = result;
+}
+
+# vcsxwfp128: opaque; Xenia mask/value fc0007f0/180002b0
+:vcsxwfp128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=86 & BITS_0_1
+{
+    result:16 = xenonVcsxwfp128(xenonB, A_BITS:4);
+    xenonD = result;
+}
+
+:vcsxwfp128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=87 & BITS_0_1
+{
+    result:16 = xenonVcsxwfp128(xenonB, A_BITS:4);
+    xenonD = result;
+}
+
+# vcuxwfp128: opaque; Xenia mask/value fc0007f0/180002f0
+:vcuxwfp128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=94 & BITS_0_1
+{
+    result:16 = xenonVcuxwfp128(xenonB, A_BITS:4);
+    xenonD = result;
+}
+
+:vcuxwfp128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=95 & BITS_0_1
+{
+    result:16 = xenonVcuxwfp128(xenonB, A_BITS:4);
+    xenonD = result;
+}
+
+# vrfim128: opaque; Xenia mask/value fc0007f0/18000330
+:vrfim128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=102 & BITS_0_1
+{
+    result:16 = xenonVrfim128(xenonB, A_BITS:4);
+    xenonD = result;
+}
+
+:vrfim128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=103 & BITS_0_1
+{
+    result:16 = xenonVrfim128(xenonB, A_BITS:4);
+    xenonD = result;
+}
+
+# vrfin128: opaque; Xenia mask/value fc0007f0/18000370
+:vrfin128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=110 & BITS_0_1
+{
+    result:16 = xenonVrfin128(xenonB, A_BITS:4);
+    xenonD = result;
+}
+
+:vrfin128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=111 & BITS_0_1
+{
+    result:16 = xenonVrfin128(xenonB, A_BITS:4);
+    xenonD = result;
+}
+
+# vrfip128: opaque; Xenia mask/value fc0007f0/180003b0
+:vrfip128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=118 & BITS_0_1
+{
+    result:16 = xenonVrfip128(xenonB, A_BITS:4);
+    xenonD = result;
+}
+
+:vrfip128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=119 & BITS_0_1
+{
+    result:16 = xenonVrfip128(xenonB, A_BITS:4);
+    xenonD = result;
+}
+
+# vrfiz128: opaque; Xenia mask/value fc0007f0/180003f0
+:vrfiz128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=126 & BITS_0_1
+{
+    result:16 = xenonVrfiz128(xenonB, A_BITS:4);
+    xenonD = result;
+}
+
+:vrfiz128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=127 & BITS_0_1
+{
+    result:16 = xenonVrfiz128(xenonB, A_BITS:4);
+    xenonD = result;
+}
+
+# vrefp128: opaque; Xenia mask/value fc0007f0/18000630
+:vrefp128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=198 & BITS_0_1
+{
+    result:16 = xenonVrefp128(xenonB, A_BITS:4);
+    xenonD = result;
+}
+
+:vrefp128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=199 & BITS_0_1
+{
+    result:16 = xenonVrefp128(xenonB, A_BITS:4);
+    xenonD = result;
+}
+
+# vrsqrtefp128: opaque; Xenia mask/value fc0007f0/18000670
+:vrsqrtefp128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=206 & BITS_0_1
+{
+    result:16 = xenonVrsqrtefp128(xenonB, A_BITS:4);
+    xenonD = result;
+}
+
+:vrsqrtefp128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=207 & BITS_0_1
+{
+    result:16 = xenonVrsqrtefp128(xenonB, A_BITS:4);
+    xenonD = result;
+}
+
+# vexptefp128: opaque; Xenia mask/value fc0007f0/180006b0
+:vexptefp128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=214 & BITS_0_1
+{
+    result:16 = xenonVexptefp128(xenonB, A_BITS:4);
+    xenonD = result;
+}
+
+:vexptefp128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=215 & BITS_0_1
+{
+    result:16 = xenonVexptefp128(xenonB, A_BITS:4);
+    xenonD = result;
+}
+
+# vlogefp128: opaque; Xenia mask/value fc0007f0/180006f0
+:vlogefp128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=222 & BITS_0_1
+{
+    result:16 = xenonVlogefp128(xenonB, A_BITS:4);
+    xenonD = result;
+}
+
+:vlogefp128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=223 & BITS_0_1
+{
+    result:16 = xenonVlogefp128(xenonB, A_BITS:4);
+    xenonD = result;
+}
+
+# vspltw128: native; Xenia mask/value fc0007f0/18000730
+:vspltw128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=230 & BITS_0_1
+{
+    lane:4 = A_BITS:4 & 3;
+    shift:4 = (3 - lane) * 32;
+    shifted:16 = xenonB >> shift;
+    word:4 = shifted(0);
+    xenonD = (zext(word) << 96) | (zext(word) << 64) | (zext(word) << 32) | zext(word);
+}
+
+:vspltw128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=231 & BITS_0_1
+{
+    lane:4 = A_BITS:4 & 3;
+    shift:4 = (3 - lane) * 32;
+    shifted:16 = xenonB >> shift;
+    word:4 = shifted(0);
+    xenonD = (zext(word) << 96) | (zext(word) << 64) | (zext(word) << 32) | zext(word);
+}
+
+# vspltisw128: native; Xenia mask/value fc0007f0/18000770
+:vspltisw128 xenonD,A_BITS is OP=6 & xenonD & A_BITS & XOP_3_10=238 & BITS_0_1
+{
+    imm:4 = A_BITS:4;
+    word:4 = (imm << 27) s>> 27;
+    xenonD = (zext(word) << 96) | (zext(word) << 64) | (zext(word) << 32) | zext(word);
+}
+
+:vspltisw128 xenonD,A_BITS is OP=6 & xenonD & A_BITS & XOP_3_10=239 & BITS_0_1
+{
+    imm:4 = A_BITS:4;
+    word:4 = (imm << 27) s>> 27;
+    xenonD = (zext(word) << 96) | (zext(word) << 64) | (zext(word) << 32) | zext(word);
+}
+
+# vcmpeqfp128: opaque; Xenia mask/value fc000390/18000000
+:vcmpeqfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=0 & BITS_4_5=0
+{
+    result:16 = xenonVcmpeqfp128(xenonA, xenonB, 0:1);
+    xenonD = result;
+}
+
+:vcmpeqfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=0 & BITS_4_5=2
+{
+    result:16 = xenonVcmpeqfp128(xenonA, xenonB, 0:1);
+    xenonD = result;
+}
+
+:vcmpeqfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=1 & BITS_4_5=0
+{
+    result:16 = xenonVcmpeqfp128(xenonA, xenonB, 1:1);
+    xenonD = result;
+}
+
+:vcmpeqfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=1 & BITS_4_5=2
+{
+    result:16 = xenonVcmpeqfp128(xenonA, xenonB, 1:1);
+    xenonD = result;
+}
+
+:vcmpeqfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=16 & BITS_4_5=0
+{
+    result:16 = xenonVcmpeqfp128(xenonA, xenonB, 0:1);
+    xenonD = result;
+}
+
+:vcmpeqfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=16 & BITS_4_5=2
+{
+    result:16 = xenonVcmpeqfp128(xenonA, xenonB, 0:1);
+    xenonD = result;
+}
+
+:vcmpeqfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=17 & BITS_4_5=0
+{
+    result:16 = xenonVcmpeqfp128(xenonA, xenonB, 1:1);
+    xenonD = result;
+}
+
+:vcmpeqfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=17 & BITS_4_5=2
+{
+    result:16 = xenonVcmpeqfp128(xenonA, xenonB, 1:1);
+    xenonD = result;
+}
+
+# vcmpgefp128: opaque; Xenia mask/value fc000390/18000080
+:vcmpgefp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=2 & BITS_4_5=0
+{
+    result:16 = xenonVcmpgefp128(xenonA, xenonB, 0:1);
+    xenonD = result;
+}
+
+:vcmpgefp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=2 & BITS_4_5=2
+{
+    result:16 = xenonVcmpgefp128(xenonA, xenonB, 0:1);
+    xenonD = result;
+}
+
+:vcmpgefp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=3 & BITS_4_5=0
+{
+    result:16 = xenonVcmpgefp128(xenonA, xenonB, 1:1);
+    xenonD = result;
+}
+
+:vcmpgefp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=3 & BITS_4_5=2
+{
+    result:16 = xenonVcmpgefp128(xenonA, xenonB, 1:1);
+    xenonD = result;
+}
+
+:vcmpgefp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=18 & BITS_4_5=0
+{
+    result:16 = xenonVcmpgefp128(xenonA, xenonB, 0:1);
+    xenonD = result;
+}
+
+:vcmpgefp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=18 & BITS_4_5=2
+{
+    result:16 = xenonVcmpgefp128(xenonA, xenonB, 0:1);
+    xenonD = result;
+}
+
+:vcmpgefp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=19 & BITS_4_5=0
+{
+    result:16 = xenonVcmpgefp128(xenonA, xenonB, 1:1);
+    xenonD = result;
+}
+
+:vcmpgefp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=19 & BITS_4_5=2
+{
+    result:16 = xenonVcmpgefp128(xenonA, xenonB, 1:1);
+    xenonD = result;
+}
+
+# vcmpgtfp128: opaque; Xenia mask/value fc000390/18000100
+:vcmpgtfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=4 & BITS_4_5=0
+{
+    result:16 = xenonVcmpgtfp128(xenonA, xenonB, 0:1);
+    xenonD = result;
+}
+
+:vcmpgtfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=4 & BITS_4_5=2
+{
+    result:16 = xenonVcmpgtfp128(xenonA, xenonB, 0:1);
+    xenonD = result;
+}
+
+:vcmpgtfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=5 & BITS_4_5=0
+{
+    result:16 = xenonVcmpgtfp128(xenonA, xenonB, 1:1);
+    xenonD = result;
+}
+
+:vcmpgtfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=5 & BITS_4_5=2
+{
+    result:16 = xenonVcmpgtfp128(xenonA, xenonB, 1:1);
+    xenonD = result;
+}
+
+:vcmpgtfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=20 & BITS_4_5=0
+{
+    result:16 = xenonVcmpgtfp128(xenonA, xenonB, 0:1);
+    xenonD = result;
+}
+
+:vcmpgtfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=20 & BITS_4_5=2
+{
+    result:16 = xenonVcmpgtfp128(xenonA, xenonB, 0:1);
+    xenonD = result;
+}
+
+:vcmpgtfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=21 & BITS_4_5=0
+{
+    result:16 = xenonVcmpgtfp128(xenonA, xenonB, 1:1);
+    xenonD = result;
+}
+
+:vcmpgtfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=21 & BITS_4_5=2
+{
+    result:16 = xenonVcmpgtfp128(xenonA, xenonB, 1:1);
+    xenonD = result;
+}
+
+# vcmpbfp128: opaque; Xenia mask/value fc000390/18000180
+:vcmpbfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=6 & BITS_4_5=0
+{
+    result:16 = xenonVcmpbfp128(xenonA, xenonB, 0:1);
+    xenonD = result;
+}
+
+:vcmpbfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=6 & BITS_4_5=2
+{
+    result:16 = xenonVcmpbfp128(xenonA, xenonB, 0:1);
+    xenonD = result;
+}
+
+:vcmpbfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=7 & BITS_4_5=0
+{
+    result:16 = xenonVcmpbfp128(xenonA, xenonB, 1:1);
+    xenonD = result;
+}
+
+:vcmpbfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=7 & BITS_4_5=2
+{
+    result:16 = xenonVcmpbfp128(xenonA, xenonB, 1:1);
+    xenonD = result;
+}
+
+:vcmpbfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=22 & BITS_4_5=0
+{
+    result:16 = xenonVcmpbfp128(xenonA, xenonB, 0:1);
+    xenonD = result;
+}
+
+:vcmpbfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=22 & BITS_4_5=2
+{
+    result:16 = xenonVcmpbfp128(xenonA, xenonB, 0:1);
+    xenonD = result;
+}
+
+:vcmpbfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=23 & BITS_4_5=0
+{
+    result:16 = xenonVcmpbfp128(xenonA, xenonB, 1:1);
+    xenonD = result;
+}
+
+:vcmpbfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=23 & BITS_4_5=2
+{
+    result:16 = xenonVcmpbfp128(xenonA, xenonB, 1:1);
+    xenonD = result;
+}
+
+# vcmpequw128: opaque; Xenia mask/value fc000390/18000200
+:vcmpequw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=8 & BITS_4_5=0
+{
+    result:16 = xenonVcmpequw128(xenonA, xenonB, 0:1);
+    xenonD = result;
+}
+
+:vcmpequw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=8 & BITS_4_5=2
+{
+    result:16 = xenonVcmpequw128(xenonA, xenonB, 0:1);
+    xenonD = result;
+}
+
+:vcmpequw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=9 & BITS_4_5=0
+{
+    result:16 = xenonVcmpequw128(xenonA, xenonB, 1:1);
+    xenonD = result;
+}
+
+:vcmpequw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=9 & BITS_4_5=2
+{
+    result:16 = xenonVcmpequw128(xenonA, xenonB, 1:1);
+    xenonD = result;
+}
+
+:vcmpequw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=24 & BITS_4_5=0
+{
+    result:16 = xenonVcmpequw128(xenonA, xenonB, 0:1);
+    xenonD = result;
+}
+
+:vcmpequw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=24 & BITS_4_5=2
+{
+    result:16 = xenonVcmpequw128(xenonA, xenonB, 0:1);
+    xenonD = result;
+}
+
+:vcmpequw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=25 & BITS_4_5=0
+{
+    result:16 = xenonVcmpequw128(xenonA, xenonB, 1:1);
+    xenonD = result;
+}
+
+:vcmpequw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=25 & BITS_4_5=2
+{
+    result:16 = xenonVcmpequw128(xenonA, xenonB, 1:1);
+    xenonD = result;
+}
+
+# vrlw128: native; Xenia mask/value fc0003d0/18000050
+:vrlw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=1 & BITS_4_5=1
+{
+    a0:4 = xenonA(0);
+    b0:4 = xenonB(0);
+    sh0:4 = b0 & 31;
+    back0:4 = (32 - sh0) & 31;
+    r0:4 = (a0 << sh0) | (a0 >> back0);
+    a1:4 = xenonA(4);
+    b1:4 = xenonB(4);
+    sh1:4 = b1 & 31;
+    back1:4 = (32 - sh1) & 31;
+    r1:4 = (a1 << sh1) | (a1 >> back1);
+    a2:4 = xenonA(8);
+    b2:4 = xenonB(8);
+    sh2:4 = b2 & 31;
+    back2:4 = (32 - sh2) & 31;
+    r2:4 = (a2 << sh2) | (a2 >> back2);
+    a3:4 = xenonA(12);
+    b3:4 = xenonB(12);
+    sh3:4 = b3 & 31;
+    back3:4 = (32 - sh3) & 31;
+    r3:4 = (a3 << sh3) | (a3 >> back3);
+    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+}
+
+:vrlw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=1 & BITS_4_5=3
+{
+    a0:4 = xenonA(0);
+    b0:4 = xenonB(0);
+    sh0:4 = b0 & 31;
+    back0:4 = (32 - sh0) & 31;
+    r0:4 = (a0 << sh0) | (a0 >> back0);
+    a1:4 = xenonA(4);
+    b1:4 = xenonB(4);
+    sh1:4 = b1 & 31;
+    back1:4 = (32 - sh1) & 31;
+    r1:4 = (a1 << sh1) | (a1 >> back1);
+    a2:4 = xenonA(8);
+    b2:4 = xenonB(8);
+    sh2:4 = b2 & 31;
+    back2:4 = (32 - sh2) & 31;
+    r2:4 = (a2 << sh2) | (a2 >> back2);
+    a3:4 = xenonA(12);
+    b3:4 = xenonB(12);
+    sh3:4 = b3 & 31;
+    back3:4 = (32 - sh3) & 31;
+    r3:4 = (a3 << sh3) | (a3 >> back3);
+    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+}
+
+:vrlw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=17 & BITS_4_5=1
+{
+    a0:4 = xenonA(0);
+    b0:4 = xenonB(0);
+    sh0:4 = b0 & 31;
+    back0:4 = (32 - sh0) & 31;
+    r0:4 = (a0 << sh0) | (a0 >> back0);
+    a1:4 = xenonA(4);
+    b1:4 = xenonB(4);
+    sh1:4 = b1 & 31;
+    back1:4 = (32 - sh1) & 31;
+    r1:4 = (a1 << sh1) | (a1 >> back1);
+    a2:4 = xenonA(8);
+    b2:4 = xenonB(8);
+    sh2:4 = b2 & 31;
+    back2:4 = (32 - sh2) & 31;
+    r2:4 = (a2 << sh2) | (a2 >> back2);
+    a3:4 = xenonA(12);
+    b3:4 = xenonB(12);
+    sh3:4 = b3 & 31;
+    back3:4 = (32 - sh3) & 31;
+    r3:4 = (a3 << sh3) | (a3 >> back3);
+    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+}
+
+:vrlw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=17 & BITS_4_5=3
+{
+    a0:4 = xenonA(0);
+    b0:4 = xenonB(0);
+    sh0:4 = b0 & 31;
+    back0:4 = (32 - sh0) & 31;
+    r0:4 = (a0 << sh0) | (a0 >> back0);
+    a1:4 = xenonA(4);
+    b1:4 = xenonB(4);
+    sh1:4 = b1 & 31;
+    back1:4 = (32 - sh1) & 31;
+    r1:4 = (a1 << sh1) | (a1 >> back1);
+    a2:4 = xenonA(8);
+    b2:4 = xenonB(8);
+    sh2:4 = b2 & 31;
+    back2:4 = (32 - sh2) & 31;
+    r2:4 = (a2 << sh2) | (a2 >> back2);
+    a3:4 = xenonA(12);
+    b3:4 = xenonB(12);
+    sh3:4 = b3 & 31;
+    back3:4 = (32 - sh3) & 31;
+    r3:4 = (a3 << sh3) | (a3 >> back3);
+    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+}
+
+# vslw128: native; Xenia mask/value fc0003d0/180000d0
+:vslw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=3 & BITS_4_5=1
+{
+    a0:4 = xenonA(0);
+    b0:4 = xenonB(0);
+    sh0:4 = b0 & 31;
+    r0:4 = a0 << sh0;
+    a1:4 = xenonA(4);
+    b1:4 = xenonB(4);
+    sh1:4 = b1 & 31;
+    r1:4 = a1 << sh1;
+    a2:4 = xenonA(8);
+    b2:4 = xenonB(8);
+    sh2:4 = b2 & 31;
+    r2:4 = a2 << sh2;
+    a3:4 = xenonA(12);
+    b3:4 = xenonB(12);
+    sh3:4 = b3 & 31;
+    r3:4 = a3 << sh3;
+    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+}
+
+:vslw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=3 & BITS_4_5=3
+{
+    a0:4 = xenonA(0);
+    b0:4 = xenonB(0);
+    sh0:4 = b0 & 31;
+    r0:4 = a0 << sh0;
+    a1:4 = xenonA(4);
+    b1:4 = xenonB(4);
+    sh1:4 = b1 & 31;
+    r1:4 = a1 << sh1;
+    a2:4 = xenonA(8);
+    b2:4 = xenonB(8);
+    sh2:4 = b2 & 31;
+    r2:4 = a2 << sh2;
+    a3:4 = xenonA(12);
+    b3:4 = xenonB(12);
+    sh3:4 = b3 & 31;
+    r3:4 = a3 << sh3;
+    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+}
+
+:vslw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=19 & BITS_4_5=1
+{
+    a0:4 = xenonA(0);
+    b0:4 = xenonB(0);
+    sh0:4 = b0 & 31;
+    r0:4 = a0 << sh0;
+    a1:4 = xenonA(4);
+    b1:4 = xenonB(4);
+    sh1:4 = b1 & 31;
+    r1:4 = a1 << sh1;
+    a2:4 = xenonA(8);
+    b2:4 = xenonB(8);
+    sh2:4 = b2 & 31;
+    r2:4 = a2 << sh2;
+    a3:4 = xenonA(12);
+    b3:4 = xenonB(12);
+    sh3:4 = b3 & 31;
+    r3:4 = a3 << sh3;
+    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+}
+
+:vslw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=19 & BITS_4_5=3
+{
+    a0:4 = xenonA(0);
+    b0:4 = xenonB(0);
+    sh0:4 = b0 & 31;
+    r0:4 = a0 << sh0;
+    a1:4 = xenonA(4);
+    b1:4 = xenonB(4);
+    sh1:4 = b1 & 31;
+    r1:4 = a1 << sh1;
+    a2:4 = xenonA(8);
+    b2:4 = xenonB(8);
+    sh2:4 = b2 & 31;
+    r2:4 = a2 << sh2;
+    a3:4 = xenonA(12);
+    b3:4 = xenonB(12);
+    sh3:4 = b3 & 31;
+    r3:4 = a3 << sh3;
+    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+}
+
+# vsraw128: native; Xenia mask/value fc0003d0/18000150
+:vsraw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=5 & BITS_4_5=1
+{
+    a0:4 = xenonA(0);
+    b0:4 = xenonB(0);
+    sh0:4 = b0 & 31;
+    r0:4 = a0 s>> sh0;
+    a1:4 = xenonA(4);
+    b1:4 = xenonB(4);
+    sh1:4 = b1 & 31;
+    r1:4 = a1 s>> sh1;
+    a2:4 = xenonA(8);
+    b2:4 = xenonB(8);
+    sh2:4 = b2 & 31;
+    r2:4 = a2 s>> sh2;
+    a3:4 = xenonA(12);
+    b3:4 = xenonB(12);
+    sh3:4 = b3 & 31;
+    r3:4 = a3 s>> sh3;
+    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+}
+
+:vsraw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=5 & BITS_4_5=3
+{
+    a0:4 = xenonA(0);
+    b0:4 = xenonB(0);
+    sh0:4 = b0 & 31;
+    r0:4 = a0 s>> sh0;
+    a1:4 = xenonA(4);
+    b1:4 = xenonB(4);
+    sh1:4 = b1 & 31;
+    r1:4 = a1 s>> sh1;
+    a2:4 = xenonA(8);
+    b2:4 = xenonB(8);
+    sh2:4 = b2 & 31;
+    r2:4 = a2 s>> sh2;
+    a3:4 = xenonA(12);
+    b3:4 = xenonB(12);
+    sh3:4 = b3 & 31;
+    r3:4 = a3 s>> sh3;
+    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+}
+
+:vsraw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=21 & BITS_4_5=1
+{
+    a0:4 = xenonA(0);
+    b0:4 = xenonB(0);
+    sh0:4 = b0 & 31;
+    r0:4 = a0 s>> sh0;
+    a1:4 = xenonA(4);
+    b1:4 = xenonB(4);
+    sh1:4 = b1 & 31;
+    r1:4 = a1 s>> sh1;
+    a2:4 = xenonA(8);
+    b2:4 = xenonB(8);
+    sh2:4 = b2 & 31;
+    r2:4 = a2 s>> sh2;
+    a3:4 = xenonA(12);
+    b3:4 = xenonB(12);
+    sh3:4 = b3 & 31;
+    r3:4 = a3 s>> sh3;
+    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+}
+
+:vsraw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=21 & BITS_4_5=3
+{
+    a0:4 = xenonA(0);
+    b0:4 = xenonB(0);
+    sh0:4 = b0 & 31;
+    r0:4 = a0 s>> sh0;
+    a1:4 = xenonA(4);
+    b1:4 = xenonB(4);
+    sh1:4 = b1 & 31;
+    r1:4 = a1 s>> sh1;
+    a2:4 = xenonA(8);
+    b2:4 = xenonB(8);
+    sh2:4 = b2 & 31;
+    r2:4 = a2 s>> sh2;
+    a3:4 = xenonA(12);
+    b3:4 = xenonB(12);
+    sh3:4 = b3 & 31;
+    r3:4 = a3 s>> sh3;
+    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+}
+
+# vsrw128: native; Xenia mask/value fc0003d0/180001d0
+:vsrw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=7 & BITS_4_5=1
+{
+    a0:4 = xenonA(0);
+    b0:4 = xenonB(0);
+    sh0:4 = b0 & 31;
+    r0:4 = a0 >> sh0;
+    a1:4 = xenonA(4);
+    b1:4 = xenonB(4);
+    sh1:4 = b1 & 31;
+    r1:4 = a1 >> sh1;
+    a2:4 = xenonA(8);
+    b2:4 = xenonB(8);
+    sh2:4 = b2 & 31;
+    r2:4 = a2 >> sh2;
+    a3:4 = xenonA(12);
+    b3:4 = xenonB(12);
+    sh3:4 = b3 & 31;
+    r3:4 = a3 >> sh3;
+    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+}
+
+:vsrw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=7 & BITS_4_5=3
+{
+    a0:4 = xenonA(0);
+    b0:4 = xenonB(0);
+    sh0:4 = b0 & 31;
+    r0:4 = a0 >> sh0;
+    a1:4 = xenonA(4);
+    b1:4 = xenonB(4);
+    sh1:4 = b1 & 31;
+    r1:4 = a1 >> sh1;
+    a2:4 = xenonA(8);
+    b2:4 = xenonB(8);
+    sh2:4 = b2 & 31;
+    r2:4 = a2 >> sh2;
+    a3:4 = xenonA(12);
+    b3:4 = xenonB(12);
+    sh3:4 = b3 & 31;
+    r3:4 = a3 >> sh3;
+    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+}
+
+:vsrw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=23 & BITS_4_5=1
+{
+    a0:4 = xenonA(0);
+    b0:4 = xenonB(0);
+    sh0:4 = b0 & 31;
+    r0:4 = a0 >> sh0;
+    a1:4 = xenonA(4);
+    b1:4 = xenonB(4);
+    sh1:4 = b1 & 31;
+    r1:4 = a1 >> sh1;
+    a2:4 = xenonA(8);
+    b2:4 = xenonB(8);
+    sh2:4 = b2 & 31;
+    r2:4 = a2 >> sh2;
+    a3:4 = xenonA(12);
+    b3:4 = xenonB(12);
+    sh3:4 = b3 & 31;
+    r3:4 = a3 >> sh3;
+    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+}
+
+:vsrw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=23 & BITS_4_5=3
+{
+    a0:4 = xenonA(0);
+    b0:4 = xenonB(0);
+    sh0:4 = b0 & 31;
+    r0:4 = a0 >> sh0;
+    a1:4 = xenonA(4);
+    b1:4 = xenonB(4);
+    sh1:4 = b1 & 31;
+    r1:4 = a1 >> sh1;
+    a2:4 = xenonA(8);
+    b2:4 = xenonB(8);
+    sh2:4 = b2 & 31;
+    r2:4 = a2 >> sh2;
+    a3:4 = xenonA(12);
+    b3:4 = xenonB(12);
+    sh3:4 = b3 & 31;
+    r3:4 = a3 >> sh3;
+    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+}
+
+# vmaxfp128: opaque; Xenia mask/value fc0003d0/18000280
+:vmaxfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=10 & BITS_4_5=0
+{
+    result:16 = xenonVmaxfp128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vmaxfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=10 & BITS_4_5=2
+{
+    result:16 = xenonVmaxfp128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vmaxfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=26 & BITS_4_5=0
+{
+    result:16 = xenonVmaxfp128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vmaxfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=26 & BITS_4_5=2
+{
+    result:16 = xenonVmaxfp128(xenonA, xenonB);
+    xenonD = result;
+}
+
+# vminfp128: opaque; Xenia mask/value fc0003d0/180002c0
+:vminfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=11 & BITS_4_5=0
+{
+    result:16 = xenonVminfp128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vminfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=11 & BITS_4_5=2
+{
+    result:16 = xenonVminfp128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vminfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=27 & BITS_4_5=0
+{
+    result:16 = xenonVminfp128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vminfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=27 & BITS_4_5=2
+{
+    result:16 = xenonVminfp128(xenonA, xenonB);
+    xenonD = result;
+}
+
+# vupkhsb128: opaque; Xenia mask/value fc0003d0/18000380
+:vupkhsb128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=14 & BITS_4_5=0
+{
+    result:16 = xenonVupkhsb128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vupkhsb128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=14 & BITS_4_5=2
+{
+    result:16 = xenonVupkhsb128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vupkhsb128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=30 & BITS_4_5=0
+{
+    result:16 = xenonVupkhsb128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vupkhsb128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=30 & BITS_4_5=2
+{
+    result:16 = xenonVupkhsb128(xenonA, xenonB);
+    xenonD = result;
+}
+
+# vupklsb128: opaque; Xenia mask/value fc0003d0/180003c0
+:vupklsb128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=15 & BITS_4_5=0
+{
+    result:16 = xenonVupklsb128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vupklsb128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=15 & BITS_4_5=2
+{
+    result:16 = xenonVupklsb128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vupklsb128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=31 & BITS_4_5=0
+{
+    result:16 = xenonVupklsb128(xenonA, xenonB);
+    xenonD = result;
+}
+
+:vupklsb128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=31 & BITS_4_5=2
+{
+    result:16 = xenonVupklsb128(xenonA, xenonB);
+    xenonD = result;
+}
+
