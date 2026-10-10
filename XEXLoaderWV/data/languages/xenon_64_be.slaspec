@@ -1,0 +1,20 @@
+# Retail Xbox 360 Xenon PPC64, BE, 32-bit physical addressing.
+# This is derived from Ghidra 12.1.3 PowerISA AltiVec, with independent
+# register-accurate Xenon load/unpack patterns in xenon_vector_v1.sinc.
+# For a reproducible compile, the -dPowerPC preprocessor option resolves
+# installed stock Ghidra Processor PowerPC sources (see data/sleighArgs.txt).
+@define ENDIAN "big"
+@define IS_ISA "1"
+@define NoLegacyIntegerMultiplyAccumulate "1"
+@define REGISTER_SIZE "8"
+@define BIT_64 "64"
+@define EATRUNC "ea"
+@define CTR_OFFSET "32"
+
+@include "$(PowerPC)/data/languages/ppc_common.sinc"
+@include "$(PowerPC)/data/languages/ppc_isa.sinc"
+@include "$(PowerPC)/data/languages/ppc_a2.sinc"
+@include "$(PowerPC)/data/languages/quicciii.sinc"
+@include "$(PowerPC)/data/languages/FPRC.sinc"
+@include "$(PowerPC)/data/languages/altivec.sinc"
+@include "xenon_vector_v1.sinc"
