@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Collection;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +21,9 @@ import ghidra.app.util.bin.format.pe.SectionHeader;
 import ghidra.app.util.importer.MessageLog;
 import ghidra.app.util.opinion.LoadSpec;
 import ghidra.app.util.opinion.LoaderTier;
+import ghidra.program.model.lang.LanguageCompilerSpecPair;
+import ghidra.program.model.lang.LanguageID;
+import ghidra.program.util.DefaultLanguageService;
 import ghidra.app.util.opinion.PeLoader;
 import ghidra.program.database.mem.FileBytes;
 import ghidra.program.model.address.Address;
@@ -102,7 +106,24 @@ public class Xbox360RetailKernelMemoryPeLoader extends PeLoader {
                 nt.getOptionalHeader().getImageBase() != 0x80040000L) {
             return List.of();
         }
-        return super.findSupportedLoadSpecs(provider);
+        // Two explicit choices, deliberately retaining stock PowerPC as
+        // default. Opting into experimental VMX128 requires choosing its
+        // separate language and a new Program, never silently migrating the
+        // user's proven .pdata kernel database.
+        List<LoadSpec> choices = new ArrayList<>();
+        choices.add(new LoadSpec(this, 0x80040000L,
+            new LanguageCompilerSpecPair("PowerPC:BE:64:A2ALT-32addr", "default"), true));
+        try {
+            DefaultLanguageService.getLanguageService().getLanguage(
+                new LanguageID("PowerPC:BE:64:XENON-32addr"));
+            choices.add(new LoadSpec(this, 0x80040000L,
+                new LanguageCompilerSpecPair("PowerPC:BE:64:XENON-32addr", "default"), false));
+        }
+        catch (Exception unavailable) {
+            // Installation without the experimental .sla is still valid.
+            // Keep the working stock PowerPC path and no dangling option.
+        }
+        return choices;
     }
 
     @Override
