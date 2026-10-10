@@ -508,6 +508,54 @@ class XenonIsaInventoryTests(unittest.TestCase):
                 self.assertEqual(
                     body.count("xenonVSCR = "), 1, name)
 
+    def test_xenon_vsldoi_excludes_overlapping_generic_madd(self):
+        # Real Ghidra 12.1.3 native decode collision: 0x10221830 was
+        # incorrectly preferred as scalar maddhd over Xenon vsldoi128.
+        # The fix belongs in the isolated generated Xenon PPC ISA, not
+        # a modification to Ghidra's installed stock PPC language.
+        gradle = (audit.ROOT / "build.gradle").read_text(
+            encoding="utf-8")
+        slaspec = (audit.ROOT /
+                   "data/languages/xenon_64_be.slaspec").read_text(
+                       encoding="utf-8")
+        self.assertIn('@include "xenon_ppc_isa.sinc"', slaspec)
+        self.assertIn('tasks.register("prepareXenonIsa")', gradle)
+        self.assertIn("inputs.file(xenonStockIsa)", gradle)
+        self.assertIn("outputs.file(xenonLegacyIsa)", gradle)
+        self.assertIn('src = src.substring(0, start) + src.substring(end + 2)',
+                      gradle)
+        self.assertIn('body.contains(expectedSelector)', gradle)
+        self.assertIn('body.contains(spec.result)', gradle)
+        self.assertIn(
+            'Installed Ghidra " + spec.name +',
+            gradle)
+
+        spec_section = gradle[
+            gradle.index('for (def spec : ['):
+            gradle.index('xenonLegacyIsa.setText(', 
+                         gradle.index('for (def spec : ['))]
+        for name, xo, result in (
+                ("maddhd", 48, "D = tmpp(8);"),
+                ("maddhdu", 49, "D = tmpp(8);"),
+                ("maddld", 51, "D = tmpp:8;")):
+            self.assertIn(
+                f'name: "{name}",', spec_section)
+            self.assertIn(
+                f'xo: {xo},', spec_section)
+            self.assertIn(
+                f'result: "{result}"', spec_section)
+            # All these scalar selectors overlap Xenon's native vsldoi128
+            # mask, including encodings for its extra VD bank bits.
+            self.assertEqual(xo & 0x10, 0x10)
+            word = (0x10000010 | (1 << 21) | (2 << 16) |
+                    (3 << 11) | (1 << 5) | (xo & 0xf))
+            self.assertEqual(word & 0xfc000010, 0x10000010)
+            self.assertEqual(word & 0xfc00003f, 0x10000000 | xo)
+        self.assertEqual(
+            0x10221830 & 0xfc00003f, 0x10000030)
+        self.assertEqual(
+            0x10221c30 & 0xfc00003f, 0x10000030)
+
     def test_embedded_dcbzl_collision_filter_wiring(self):
         # Stock ppc_common includes the embedded dcbzl alias, which has the
         # same opcode selector as Xenon's dcbz128. Only the Xenon variant
