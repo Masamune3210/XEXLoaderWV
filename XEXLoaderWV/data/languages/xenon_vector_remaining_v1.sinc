@@ -24,7 +24,7 @@ define pcodeop xenonVcfpuxws128;
 define pcodeop xenonVcsxwfp128;
 define pcodeop xenonVcuxwfp128;
 define pcodeop xenonVrfim128;
-define pcodeop xenonVrfin128;
+
 define pcodeop xenonVrfip128;
 define pcodeop xenonVrfiz128;
 define pcodeop xenonVrefp128;
@@ -1401,14 +1401,36 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 # vrfin128: opaque; Xenia mask/value fc0007f0/18000370
 :vrfin128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=110 & BITS_0_1
 {
-    result:16 = xenonVrfin128(xenonB, A_BITS:4);
-    xenonD = result;
+    sourceFloat0:4 = xenonB(0);
+    nearest0:4 = round(sourceFloat0);
+    widenedNearest0:16 = zext(nearest0);
+    sourceFloat1:4 = xenonB(4);
+    nearest1:4 = round(sourceFloat1);
+    widenedNearest1:16 = zext(nearest1) << 32;
+    sourceFloat2:4 = xenonB(8);
+    nearest2:4 = round(sourceFloat2);
+    widenedNearest2:16 = zext(nearest2) << 64;
+    sourceFloat3:4 = xenonB(12);
+    nearest3:4 = round(sourceFloat3);
+    widenedNearest3:16 = zext(nearest3) << 96;
+    xenonD = widenedNearest0 | widenedNearest1 | widenedNearest2 | widenedNearest3;
 }
 
 :vrfin128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=111 & BITS_0_1
 {
-    result:16 = xenonVrfin128(xenonB, A_BITS:4);
-    xenonD = result;
+    sourceFloat0:4 = xenonB(0);
+    nearest0:4 = round(sourceFloat0);
+    widenedNearest0:16 = zext(nearest0);
+    sourceFloat1:4 = xenonB(4);
+    nearest1:4 = round(sourceFloat1);
+    widenedNearest1:16 = zext(nearest1) << 32;
+    sourceFloat2:4 = xenonB(8);
+    nearest2:4 = round(sourceFloat2);
+    widenedNearest2:16 = zext(nearest2) << 64;
+    sourceFloat3:4 = xenonB(12);
+    nearest3:4 = round(sourceFloat3);
+    widenedNearest3:16 = zext(nearest3) << 96;
+    xenonD = widenedNearest0 | widenedNearest1 | widenedNearest2 | widenedNearest3;
 }
 
 # vrfip128: opaque; Xenia mask/value fc0007f0/180003b0
