@@ -1,3 +1,9 @@
+## Script filename discipline and current branch state (2026-10-10)
+
+- User explicitly requires **stable Git-tracked Ghidra audit script filenames**. Do not introduce a new numbered/renamed script each time the numerical focus changes. Update the chosen script **in place**, and keep the test invocation stable. The user specifically objected to adding a standalone `AuditXenonGuardedFusedFloatNumeric.java` after running `AuditXenonD3DUnpackNumericV1.java`.
+- The user subsequently committed **`fb0941b`, `delete old scripts`**, removing the old `ghidra_scripts/AuditXenon*` Java audit scripts from this branch. **Preserve those deletions. Do not restore or recreate those files, or invent a replacement script name without a real user need.** Verified numerical audit results (30/30 saturating packs and 96/96 D3D unpack) remain recorded, but the historical Java harness files are absent in this branch.
+- Follow-up required if running the Python structural suite: `XEXLoaderWV/tools/test_xenon_isa_coverage_v1.py` still contains six references to now-deleted `AuditXenon*.java` files, so file-reading structural tests need reconciling with the intentional removal. Do not silently re-add deleted files merely to satisfy those tests.
+
 ## D3D native unpack PASSED; guarded FP numerical gate prepared (2026-10-10)
 
 - User ran `AuditXenonD3DUnpackNumericV1.java` in Ghidra 12.1.3 / `PowerPC:BE:64:XENON-32addr`: **96/96 passed, 0 failed, 0 unresolved**. Both opcode destination-bank variants, all four low immediate combinations, and exact signed/NaN bit-pattern oracles passed for native format 0 D3DCOLOR, 1 SHORT_2, 2 signed 2_10_10_10, and 4 SHORT_4. Emulator-private instruction injection again worked, original fixture unchanged. Formats 3/5/6/7 still retain opaque userop fallbacks, not numerical validation. Together with 30/30 saturating pack checks, **126 native p-code numerical cases** passed. This is tested-case correctness, not hardware equivalence.
