@@ -1,8 +1,8 @@
 // Audit the generated Xenia VMX128 fixture against the installed Xenon language.
 // @category Xbox360
 //
-// From the XEXLoaderWV Gradle extension project directory, generate fixture:
-//   python tools/audit_xenon_isa_coverage_v1.py
+// The Gradle extension build regenerates the fixture automatically:
+//   gradle buildExtension
 //
 // Import XEXLoaderWV/build/xenon-isa-audit/xenon_isa_fixture_v1.bin as a flat binary
 // with PowerPC:BE:64:XENON-32addr, big endian. Run this script in that
@@ -29,6 +29,11 @@ import ghidra.program.model.mem.MemoryAccessException;
 public class AuditXenonIsaFixtureV1 extends GhidraScript {
 
     private static final String XENON = "PowerPC:BE:64:XENON-32addr";
+    private static final String FIXTURE_TSV = "xenon_isa_fixture_v1.tsv";
+    private static final String COVERAGE_TSV = "xenon_isa_coverage_v1.tsv";
+    private static final String FIXTURE_HEADER =
+        "offset\tword_be\texpected_mnemonic\tsleigh_status\tvariant";
+
 
     private static class Family {
         String status;
@@ -49,7 +54,22 @@ public class AuditXenonIsaFixtureV1 extends GhidraScript {
             return;
         }
 
-        File manifest = askFile("Select xenon_isa_fixture_v1.tsv", "Open");
+        File manifest = askFile("Select " + FIXTURE_TSV, "Open");
+        // The generator writes two TSVs next to each other. If the coverage
+        // table was selected, use its sibling fixture manifest instead.
+        if (COVERAGE_TSV.equals(manifest.getName())) {
+            File fixture = new File(manifest.getParentFile(), FIXTURE_TSV);
+            if (!fixture.isFile()) {
+                printerr("Selected coverage table: " + manifest.getAbsolutePath());
+                printerr("Expected sibling fixture manifest was not found: " +
+                         fixture.getAbsolutePath());
+                return;
+            }
+            println("Selected the coverage TSV; using sibling fixture manifest: " +
+                    fixture.getAbsolutePath());
+            manifest = fixture;
+        }
+
         Address base = currentProgram.getMinAddress();
         if (base == null) {
             printerr("Program has no mapped memory");
@@ -64,10 +84,20 @@ public class AuditXenonIsaFixtureV1 extends GhidraScript {
         try (BufferedReader reader = Files.newBufferedReader(
                 manifest.toPath(), StandardCharsets.UTF_8)) {
             String line = reader.readLine();
-            if (line == null || !line.equals(
-                    "offset\tword_be\texpected_mnemonic\tsleigh_status\tvariant")) {
-                throw new IllegalArgumentException(
-                    "Manifest header does not match fixture generator v1");
+            // Python's csv.writer emits UTF-8 without a BOM, but a TSV
+            // saved through another editor can acquire a UTF-8 BOM.
+            if (line != null && !line.isEmpty() && line.charAt(0) == '\uFEFF') {
+                line = line.substring(1);
+            }
+            if (!FIXTURE_HEADER.equals(line)) {
+                printerr("Invalid Xenon fixture manifest: " +
+                         manifest.getAbsolutePath());
+                printerr("Expected header: " + FIXTURE_HEADER);
+                printerr("Actual header:   " +
+                         (line == null ? "<empty file>" : line));
+                printerr("Select build/xenon-isa-audit/" + FIXTURE_TSV +
+                         " (not " + COVERAGE_TSV + ").");
+                return;
             }
 
             while ((line = reader.readLine()) != null) {
