@@ -44,8 +44,10 @@ class XenonIsaInventoryTests(unittest.TestCase):
         statuses = Counter(
             constructors.get(row["mnemonic"], "missing") for row in self.rows)
         self.assertEqual(statuses, Counter(
-            {"native-pcode": 44, "opaque-userop": 40}))
+            {"native-pcode": 45, "opaque-userop": 39}))
         self.assertIn("xenonVupkd3d128", custom_ops)
+        self.assertNotIn("xenonVmulfp128", custom_ops)
+        self.assertEqual(constructors.get("vmulfp128"), "native-pcode")
         self.assertIn("xenonLvsl128", custom_ops)
         self.assertIn("xenonLvsr128", custom_ops)
         self.assertEqual(constructors.get("dcbz128"), "native-pcode")
