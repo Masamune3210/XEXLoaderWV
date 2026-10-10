@@ -495,7 +495,7 @@ xenonA: "xv127" is vrAR=31 & MBH=1 & OE=1 { export xv127; }
 # BITS_6_10 includes bit 10, and BITS_4_5 includes bit 5, so the
 # four high-A combinations need disjoint SLEIGH pattern alternatives.
 # Native VX128_P word swizzle and VX128_4 rotate-left-mask-insert follow pinned Xenia 95a5c3ee250f80c3b9d139658649d9ffb6db3eec.
-define pcodeop xenonVmsum4fp128;
+
 
 
 :vmulfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=2 & BITS_4_5=1
@@ -580,23 +580,95 @@ define pcodeop xenonVmsum4fp128;
 }
 :vmsum4fp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=7 & BITS_4_5=1
 {
-    out:16 = xenonVmsum4fp128(xenonA, xenonB);
-    xenonD = out;
+    lhs0:4 = xenonA(12);
+    rhs0:4 = xenonB(12);
+    product0:4 = lhs0 f* rhs0;
+    lhs1:4 = xenonA(8);
+    rhs1:4 = xenonB(8);
+    product1:4 = lhs1 f* rhs1;
+    lhs2:4 = xenonA(4);
+    rhs2:4 = xenonB(4);
+    product2:4 = lhs2 f* rhs2;
+    lhs3:4 = xenonA(0);
+    rhs3:4 = xenonB(0);
+    product3:4 = lhs3 f* rhs3;
+    dotSum1:4 = product0 f+ product1;
+    dotSum2:4 = dotSum1 f+ product2;
+    dot:4 = dotSum2 f+ product3;
+    dotLane0:16 = zext(dot);
+    dotLane1:16 = zext(dot) << 32;
+    dotLane2:16 = zext(dot) << 64;
+    dotLane3:16 = zext(dot) << 96;
+    xenonD = dotLane3 | dotLane2 | dotLane1 | dotLane0;
 }
 :vmsum4fp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=7 & BITS_4_5=3
 {
-    out:16 = xenonVmsum4fp128(xenonA, xenonB);
-    xenonD = out;
+    lhs0:4 = xenonA(12);
+    rhs0:4 = xenonB(12);
+    product0:4 = lhs0 f* rhs0;
+    lhs1:4 = xenonA(8);
+    rhs1:4 = xenonB(8);
+    product1:4 = lhs1 f* rhs1;
+    lhs2:4 = xenonA(4);
+    rhs2:4 = xenonB(4);
+    product2:4 = lhs2 f* rhs2;
+    lhs3:4 = xenonA(0);
+    rhs3:4 = xenonB(0);
+    product3:4 = lhs3 f* rhs3;
+    dotSum1:4 = product0 f+ product1;
+    dotSum2:4 = dotSum1 f+ product2;
+    dot:4 = dotSum2 f+ product3;
+    dotLane0:16 = zext(dot);
+    dotLane1:16 = zext(dot) << 32;
+    dotLane2:16 = zext(dot) << 64;
+    dotLane3:16 = zext(dot) << 96;
+    xenonD = dotLane3 | dotLane2 | dotLane1 | dotLane0;
 }
 :vmsum4fp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=23 & BITS_4_5=1
 {
-    out:16 = xenonVmsum4fp128(xenonA, xenonB);
-    xenonD = out;
+    lhs0:4 = xenonA(12);
+    rhs0:4 = xenonB(12);
+    product0:4 = lhs0 f* rhs0;
+    lhs1:4 = xenonA(8);
+    rhs1:4 = xenonB(8);
+    product1:4 = lhs1 f* rhs1;
+    lhs2:4 = xenonA(4);
+    rhs2:4 = xenonB(4);
+    product2:4 = lhs2 f* rhs2;
+    lhs3:4 = xenonA(0);
+    rhs3:4 = xenonB(0);
+    product3:4 = lhs3 f* rhs3;
+    dotSum1:4 = product0 f+ product1;
+    dotSum2:4 = dotSum1 f+ product2;
+    dot:4 = dotSum2 f+ product3;
+    dotLane0:16 = zext(dot);
+    dotLane1:16 = zext(dot) << 32;
+    dotLane2:16 = zext(dot) << 64;
+    dotLane3:16 = zext(dot) << 96;
+    xenonD = dotLane3 | dotLane2 | dotLane1 | dotLane0;
 }
 :vmsum4fp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=23 & BITS_4_5=3
 {
-    out:16 = xenonVmsum4fp128(xenonA, xenonB);
-    xenonD = out;
+    lhs0:4 = xenonA(12);
+    rhs0:4 = xenonB(12);
+    product0:4 = lhs0 f* rhs0;
+    lhs1:4 = xenonA(8);
+    rhs1:4 = xenonB(8);
+    product1:4 = lhs1 f* rhs1;
+    lhs2:4 = xenonA(4);
+    rhs2:4 = xenonB(4);
+    product2:4 = lhs2 f* rhs2;
+    lhs3:4 = xenonA(0);
+    rhs3:4 = xenonB(0);
+    product3:4 = lhs3 f* rhs3;
+    dotSum1:4 = product0 f+ product1;
+    dotSum2:4 = dotSum1 f+ product2;
+    dot:4 = dotSum2 f+ product3;
+    dotLane0:16 = zext(dot);
+    dotLane1:16 = zext(dot) << 32;
+    dotLane2:16 = zext(dot) << 64;
+    dotLane3:16 = zext(dot) << 96;
+    xenonD = dotLane3 | dotLane2 | dotLane1 | dotLane0;
 }
 :vor128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=11 & BITS_4_5=1
 {
