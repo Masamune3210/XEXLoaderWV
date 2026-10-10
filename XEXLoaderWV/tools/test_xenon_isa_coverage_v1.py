@@ -44,7 +44,7 @@ class XenonIsaInventoryTests(unittest.TestCase):
         statuses = Counter(
             constructors.get(row["mnemonic"], "missing") for row in self.rows)
         self.assertEqual(statuses, Counter(
-            {"native-pcode": 52, "opaque-userop": 32}))
+            {"native-pcode": 54, "opaque-userop": 32}))
         self.assertIn("xenonVupkd3d128", custom_ops)
         self.assertNotIn("xenonVmulfp128", custom_ops)
         self.assertEqual(constructors.get("vmulfp128"), "native-pcode")
@@ -235,7 +235,7 @@ class XenonIsaInventoryTests(unittest.TestCase):
         former_missing, ops = audit.parse_sleigh(rest)
         self.assertEqual(len(former_missing), 48)
         self.assertEqual(Counter(former_missing.values()), Counter(
-            {"native-pcode": 15, "opaque-userop": 33}))
+            {"native-pcode": 17, "opaque-userop": 31}))
         original, _ = audit.parse_sleigh(
             audit.SLEIGH.read_text(encoding="utf-8"))
         self.assertEqual(set(former_missing) & set(original), set())
@@ -296,7 +296,7 @@ class XenonIsaInventoryTests(unittest.TestCase):
                            if f"BITS_6_10={(code >> 6) & 31}" in p and
                            f"BITS_4_5={(code >> 4) & 3}" in p][0])
             self.assertIn(f":{half_name} xenonD,xenonB", source)
-            self.assertIn(
+            self.assertNotIn(
                 f"define pcodeop xenon{half_name[0].upper()}{half_name[1:]};",
                 source)
 
