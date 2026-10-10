@@ -843,7 +843,15 @@ class XenonIsaInventoryTests(unittest.TestCase):
         self.assertEqual(
             sorted(p.name for p in root.glob("AuditXenon*.java")),
             ["AuditXenonNumericalPcode.java"])
-        self.assertEqual(script.count('askFile('), 1)
+        self.assertEqual(script.count('askFile('), 0)
+        self.assertIn(
+            '"C:/Users/Johnny/Downloads/Source Files/testing/XEXLoaderWV/"',
+            script)
+        self.assertIn(
+            '"XEXLoaderWV/build/xenon-isa-audit/xenon_isa_fixture_v1.tsv"',
+            script)
+        self.assertIn("if (!manifest.isFile())", script)
+        self.assertIn("manifest.getAbsolutePath()", script)
 
     def test_opcode31_rc1_reserved_fixtures_are_preserved(self):
         # Cell Vector/SIMD PEM v2.07c X-form encodings fix bit 31 to 0,
