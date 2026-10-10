@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<language_definitions>
+  <!-- A separate experimental language. It NEVER replaces stock A2ALT. -->
+  <language processor="PowerPC"
+            endian="big"
+            size="32"
+            variant="Xenon-17559-Altivec-64-32addr"
+            version="1.0"
+            slafile="xenon_64_be.sla"
+            processorspec="xenon_64.pspec"
+            id="PowerPC:BE:64:XENON-32addr">
+    <description>Xbox 360 Xenon PPC64 Big Endian 32-bit Addressing (experimental VMX128)</description>
+    <truncate_space space="ram" size="4"/>
+    <compiler name="default" spec="xenon_64_32.cspec" id="default"/>
+    <compiler name="Visual Studio" spec="xenon_64_32.cspec" id="windows"/>
+  </language>
+</language_definitions>
