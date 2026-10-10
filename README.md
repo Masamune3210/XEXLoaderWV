@@ -82,7 +82,7 @@ and runs at `FORMAT_ANALYSIS + 1` before generic function discovery.
 
 **For a clean test**, build/install this extension, restart Ghidra, then
 import `xboxkrnl.exe` as a regular PE and enable the
-`Xbox 360 Retail Kernel 17559 .pdata` analyzer in the initial Auto Analyze
+`Xbox 360 Retail Kernel 17559 Pdata` analyzer in the initial Auto Analyze
 dialog. Confirm the Auto Analysis log's function counts, and inspect the
 exported functions before importing XAM through the XEX loader.
 
