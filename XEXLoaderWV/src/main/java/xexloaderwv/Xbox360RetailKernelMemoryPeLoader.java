@@ -106,26 +106,32 @@ public class Xbox360RetailKernelMemoryPeLoader extends PeLoader {
                 nt.getOptionalHeader().getImageBase() != 0x80040000L) {
             return List.of();
         }
-        // Two explicit choices, deliberately retaining stock PowerPC as
-        // default. Opting into experimental VMX128 requires choosing its
-        // separate language and a new Program, never silently migrating the
-        // user's proven .pdata kernel database.
+        // Prefer the separately installed Xenon language when it is present:
+        // otherwise a normal import silently selects A2ALT and reproduces
+        // unsupported VMX128 bookmarks even though the Xenon .sla compiled.
+        // This loader is gated to one exact firmware SHA, so no other image
+        // gets a changed default. A2ALT remains a selectable fallback.
         List<LoadSpec> choices = new ArrayList<>();
-        choices.add(new LoadSpec(this, 0x80040000L,
-            new LanguageCompilerSpecPair("PowerPC:BE:64:A2ALT-32addr", "default"), true));
+        boolean xenonAvailable = false;
         try {
-            // Query metadata only. Loading/compiling the experimental Sleigh
-            // language while enumerating import choices would emit duplicate
-            // parser errors and needlessly interrupt ordinary PE discovery.
+            // Query metadata only; do not compile a SLEIGH language merely
+            // to enumerate import options.
             DefaultLanguageService.getLanguageService().getLanguageDescription(
                 new LanguageID("PowerPC:BE:64:XENON-32addr"));
-            choices.add(new LoadSpec(this, 0x80040000L,
-                new LanguageCompilerSpecPair("PowerPC:BE:64:XENON-32addr", "default"), false));
+            xenonAvailable = true;
         }
         catch (Exception unavailable) {
-            // Installation without the experimental .sla is still valid.
-            // Keep the working stock PowerPC path and no dangling option.
+            // Old installs without the experimental language still import
+            // safely using the known-good stock PowerPC option.
         }
+
+        if (xenonAvailable) {
+            choices.add(new LoadSpec(this, 0x80040000L,
+                new LanguageCompilerSpecPair("PowerPC:BE:64:XENON-32addr", "default"), true));
+        }
+        choices.add(new LoadSpec(this, 0x80040000L,
+            new LanguageCompilerSpecPair("PowerPC:BE:64:A2ALT-32addr", "default"),
+            !xenonAvailable));
         return choices;
     }
 
