@@ -44,13 +44,15 @@ class XenonIsaInventoryTests(unittest.TestCase):
         statuses = Counter(
             constructors.get(row["mnemonic"], "missing") for row in self.rows)
         self.assertEqual(statuses, Counter(
-            {"native-pcode": 45, "opaque-userop": 39}))
+            {"native-pcode": 47, "opaque-userop": 37}))
         self.assertIn("xenonVupkd3d128", custom_ops)
         self.assertNotIn("xenonVmulfp128", custom_ops)
         self.assertEqual(constructors.get("vmulfp128"), "native-pcode")
-        self.assertIn("xenonLvsl128", custom_ops)
-        self.assertIn("xenonLvsr128", custom_ops)
+        self.assertNotIn("xenonLvsl128", custom_ops)
+        self.assertNotIn("xenonLvsr128", custom_ops)
         self.assertEqual(constructors.get("dcbz128"), "native-pcode")
+        for name in ("lvsl128", "lvsr128"):
+            self.assertEqual(constructors.get(name), "native-pcode", name)
         for name in ("vand128", "vandc128", "vnor128", "vxor128", "vsel128"):
             self.assertEqual(constructors.get(name), "native-pcode", name)
 
@@ -222,6 +224,23 @@ class XenonIsaInventoryTests(unittest.TestCase):
                     r"(?m)^    part\d+:" + str(dst_width) + r" = ", body)),
                     count)
                 self.assertNotIn("xenonVpk", body)
+
+    def test_native_permute_control_byte_masks(self):
+        # Pinned Xenia LoadVectorShl produces bytes offset..offset+15,
+        # while LoadVectorShr produces 16-offset..31-offset.
+        import re
+
+        source = audit.SLEIGH.read_text(encoding="utf-8")
+        for name in ("lvsl128", "lvsr128"):
+            rules = re.findall(
+                r"(?m)^:" + name + r" [^\n]+ is [^\n]+\n"
+                r"\{\n([\s\S]*?)\n\}", source)
+            self.assertEqual(len(rules), 2)
+            for body in rules:
+                self.assertEqual(
+                    len(re.findall(r"(?m)^    part\d+:16 = ", body)), 16)
+                self.assertIn("off:4 = offsetFull(0);", body)
+                self.assertNotIn("xenonLv", body)
 
     def test_fixture_generation(self):
         with tempfile.TemporaryDirectory() as folder:
