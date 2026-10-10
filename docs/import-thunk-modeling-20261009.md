@@ -1,3 +1,9 @@
+## Post-semantics Ghidra decoding audit (2026-10-10)
+
+- **User-verified Ghidra runtime** for the updated Xenon language, after the large native/hybrid p-code tranche and 32-method regression suite: `AuditXenonIsaFixtureV1.java` reports **344 samples, 328 correct mnemonics, 16 correctly rejected reserved Rc=1 words, 0 unreadable/byte mismatches, 86/86 families meeting 4/4 expectations, 0 unresolved or incorrect states**.
+- This confirms the revised language still decodes the entire known fixture inventory after semantic changes, but it **does not validate numerical p-code, CR6 writes, sticky VSCR/SAT handling, NaN/Inf/rounding, or the fidelity of opaque userops**. The 16 reserved expectations are from Cell documentation rather than direct Xenon hardware tests.
+- Do not request another mnemonic audit unless opcode patterns change. Next validation should directly inspect or execute p-code and run the existing Python regression suite when feasible; continue substantial implementation batches and normal in-flow tests/doc updates.
+
 ## In-flow regression coverage restored after large VMX128 semantics pass (2026-10-10)
 
 - **Workflow:** Preserve large implementation batches and keep normal in-flow Python checks, regression fixture updates, and concise handoff/coverage metadata. Do not impose a blanket ban on tests or documentation. Avoid requesting a user Ghidra reinstall/test after small changes; bundle validation with meaningful implementation milestones.
