@@ -213,3 +213,31 @@ For independent opcode-pattern validation on the verified source image, run
 the language **has not been compiled or runtime-tested** against the user's
 Ghidra installation. Report any `SleighCompile` errors so source can be
 fixed before using the experimental variant.
+
+
+### Xenon kernel decoder follow-up: second VMX128 tranche
+
+The real 17559 Xenon-language `xboxkrnl.exe(6).gzf` imported with
+`PowerPC:BE:64:XENON-32addr`, eliminating all 16 prior bad-instruction
+bookmarks, but exposed 13 *new* instruction errors in six other families:
+`vpermwi128` (3), `vmulfp128` (3), `vmsum4fp128` (2),
+`vrlimi128` (3), `stvx128` (1), and `vor128` (1).
+
+Additional constructors for these are now included in
+`data/languages/xenon_vector_v1.sinc`. The vector store and OR have
+concrete p-code; floating-point/permute/rotate operations currently
+preserve source/destination dependencies with **opaque userops** rather
+than incorrect fabricated numerical semantics. Run `gradle buildExtension`
+to compile/check the updated SLEIGH before installing.
+
+The directly runnable `ghidra_scripts/RepairAuditXboxKrnl17559XenonVmxV2.java`
+checks all 29 original and newly uncovered error sites under the Xenon
+language and optionally disassembles precise failing instructions. It
+deletes a stale Bad Instruction bookmark **only after** verifying that
+the exact expected instruction now decodes. The pure byte-level
+`tools/validate_xenon_sleigh_patterns_v2.py` provides an independent
+raw-encoding check against the two supported SHA-256-verified kernel images.
+
+**Status:** source committed but second-round SLEIGH compilation and
+runtime 29/29 decode verification pending. Do not call the VMX128
+implementation numerically complete based on absent bookmarks alone.
