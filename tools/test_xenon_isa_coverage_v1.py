@@ -88,6 +88,20 @@ class XenonIsaInventoryTests(unittest.TestCase):
                     self.assertEqual(len(matches), 1,
                                      (row["mnemonic"], hex(word)))
 
+    def test_diagnostic_source_syntax_and_gradle_literals(self):
+        # Prevent recurrences of Windows-path unicodeescape parsing and
+        # Groovy interpolation of SLEIGH's $(NOTVLE) preprocessor macro.
+        import ast
+
+        diagnostic = (HERE / "check_xenon_fixture_install_v1.py").read_text(
+            encoding="utf-8")
+        ast.parse(diagnostic, filename="check_xenon_fixture_install_v1.py")
+        gradle = (audit.ROOT / "XEXLoaderWV" / "build.gradle").read_text(
+            encoding="utf-8")
+        for symbol in ("dcbzOld", "dcbzNew"):
+            self.assertIn(
+                "String " + symbol + " = ':dcbz A,B is $(NOTVLE)", gradle)
+
     def test_fixture_generation(self):
         with tempfile.TemporaryDirectory() as folder:
             out = Path(folder)
