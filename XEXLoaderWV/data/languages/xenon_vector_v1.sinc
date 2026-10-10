@@ -971,7 +971,7 @@ define pcodeop xenonVrlimi128;
     xenonD = data >> shift;
     goto <done>;
 <no_load>
-    xenonD = 0:16;
+    xenonD = zext(0:8);
 <done>
 }
 
@@ -987,7 +987,7 @@ define pcodeop xenonVrlimi128;
     xenonD = data >> shift;
     goto <done>;
 <no_load>
-    xenonD = 0:16;
+    xenonD = zext(0:8);
 <done>
 }
 
@@ -1003,7 +1003,7 @@ define pcodeop xenonVrlimi128;
     xenonD = data >> shift;
     goto <done>;
 <no_load>
-    xenonD = 0:16;
+    xenonD = zext(0:8);
 <done>
 }
 
@@ -1019,7 +1019,7 @@ define pcodeop xenonVrlimi128;
     xenonD = data >> shift;
     goto <done>;
 <no_load>
-    xenonD = 0:16;
+    xenonD = zext(0:8);
 <done>
 }
 
@@ -1029,7 +1029,8 @@ define pcodeop xenonVrlimi128;
     addr:$(REGISTER_SIZE) = RA_OR_ZERO + B;
     shift:$(REGISTER_SIZE) = (addr & 15) * 8;
     aligned:$(REGISTER_SIZE) = addr & 0xfffffffffffffff0;
-    mask:16 = ~(0:16) >> shift;
+    zeroVec:16 = zext(0:8);
+    mask:16 = ~zeroVec >> shift;
     oldValue:16 = *[ram]:16 aligned;
     newValue:16 = xenonD >> shift;
     *[ram]:16 aligned = (oldValue & ~mask) | (newValue & mask);
@@ -1041,7 +1042,8 @@ define pcodeop xenonVrlimi128;
     addr:$(REGISTER_SIZE) = RA_OR_ZERO + B;
     shift:$(REGISTER_SIZE) = (addr & 15) * 8;
     aligned:$(REGISTER_SIZE) = addr & 0xfffffffffffffff0;
-    mask:16 = ~(0:16) >> shift;
+    zeroVec:16 = zext(0:8);
+    mask:16 = ~zeroVec >> shift;
     oldValue:16 = *[ram]:16 aligned;
     newValue:16 = xenonD >> shift;
     *[ram]:16 aligned = (oldValue & ~mask) | (newValue & mask);
@@ -1053,7 +1055,8 @@ define pcodeop xenonVrlimi128;
     addr:$(REGISTER_SIZE) = RA_OR_ZERO + B;
     shift:$(REGISTER_SIZE) = (addr & 15) * 8;
     aligned:$(REGISTER_SIZE) = addr & 0xfffffffffffffff0;
-    mask:16 = ~(0:16) >> shift;
+    zeroVec:16 = zext(0:8);
+    mask:16 = ~zeroVec >> shift;
     oldValue:16 = *[ram]:16 aligned;
     newValue:16 = xenonD >> shift;
     *[ram]:16 aligned = (oldValue & ~mask) | (newValue & mask);
@@ -1065,7 +1068,8 @@ define pcodeop xenonVrlimi128;
     addr:$(REGISTER_SIZE) = RA_OR_ZERO + B;
     shift:$(REGISTER_SIZE) = (addr & 15) * 8;
     aligned:$(REGISTER_SIZE) = addr & 0xfffffffffffffff0;
-    mask:16 = ~(0:16) >> shift;
+    zeroVec:16 = zext(0:8);
+    mask:16 = ~zeroVec >> shift;
     oldValue:16 = *[ram]:16 aligned;
     newValue:16 = xenonD >> shift;
     *[ram]:16 aligned = (oldValue & ~mask) | (newValue & mask);
@@ -1079,7 +1083,8 @@ define pcodeop xenonVrlimi128;
     if (off == 0) goto <done>;
     aligned:$(REGISTER_SIZE) = addr & 0xfffffffffffffff0;
     shift:$(REGISTER_SIZE) = (16 - off) * 8;
-    mask:16 = ~(~(0:16) >> shift);
+    zeroVec:16 = zext(0:8);
+    mask:16 = ~(~zeroVec >> shift);
     oldValue:16 = *[ram]:16 aligned;
     newValue:16 = xenonD << shift;
     *[ram]:16 aligned = (oldValue & ~mask) | (newValue & mask);
@@ -1094,7 +1099,8 @@ define pcodeop xenonVrlimi128;
     if (off == 0) goto <done>;
     aligned:$(REGISTER_SIZE) = addr & 0xfffffffffffffff0;
     shift:$(REGISTER_SIZE) = (16 - off) * 8;
-    mask:16 = ~(~(0:16) >> shift);
+    zeroVec:16 = zext(0:8);
+    mask:16 = ~(~zeroVec >> shift);
     oldValue:16 = *[ram]:16 aligned;
     newValue:16 = xenonD << shift;
     *[ram]:16 aligned = (oldValue & ~mask) | (newValue & mask);
@@ -1109,7 +1115,8 @@ define pcodeop xenonVrlimi128;
     if (off == 0) goto <done>;
     aligned:$(REGISTER_SIZE) = addr & 0xfffffffffffffff0;
     shift:$(REGISTER_SIZE) = (16 - off) * 8;
-    mask:16 = ~(~(0:16) >> shift);
+    zeroVec:16 = zext(0:8);
+    mask:16 = ~(~zeroVec >> shift);
     oldValue:16 = *[ram]:16 aligned;
     newValue:16 = xenonD << shift;
     *[ram]:16 aligned = (oldValue & ~mask) | (newValue & mask);
@@ -1124,7 +1131,8 @@ define pcodeop xenonVrlimi128;
     if (off == 0) goto <done>;
     aligned:$(REGISTER_SIZE) = addr & 0xfffffffffffffff0;
     shift:$(REGISTER_SIZE) = (16 - off) * 8;
-    mask:16 = ~(~(0:16) >> shift);
+    zeroVec:16 = zext(0:8);
+    mask:16 = ~(~zeroVec >> shift);
     oldValue:16 = *[ram]:16 aligned;
     newValue:16 = xenonD << shift;
     *[ram]:16 aligned = (oldValue & ~mask) | (newValue & mask);
@@ -1181,7 +1189,8 @@ define pcodeop xenonLvsr128;
     addr:$(REGISTER_SIZE) = RA_OR_ZERO + B;
     shift:$(REGISTER_SIZE) = (addr & 15) * 8;
     aligned:$(REGISTER_SIZE) = addr & 0xfffffffffffffff0;
-    mask:16 = ~(0:16) >> shift;
+    zeroVec:16 = zext(0:8);
+    mask:16 = ~zeroVec >> shift;
     oldValue:16 = *[ram]:16 aligned;
     newValue:16 = vrD >> shift;
     *[ram]:16 aligned = (oldValue & ~mask) | (newValue & mask);
@@ -1195,7 +1204,8 @@ define pcodeop xenonLvsr128;
     if (off == 0) goto <done>;
     aligned:$(REGISTER_SIZE) = addr & 0xfffffffffffffff0;
     shift:$(REGISTER_SIZE) = (16 - off) * 8;
-    mask:16 = ~(~(0:16) >> shift);
+    zeroVec:16 = zext(0:8);
+    mask:16 = ~(~zeroVec >> shift);
     oldValue:16 = *[ram]:16 aligned;
     newValue:16 = vrD << shift;
     *[ram]:16 aligned = (oldValue & ~mask) | (newValue & mask);
@@ -1224,7 +1234,7 @@ define pcodeop xenonLvsr128;
     vrD = data >> shift;
     goto <done>;
 <no_load>
-    vrD = 0:16;
+    vrD = zext(0:8);
 <done>
 }
 
@@ -1234,7 +1244,8 @@ define pcodeop xenonLvsr128;
     addr:$(REGISTER_SIZE) = RA_OR_ZERO + B;
     shift:$(REGISTER_SIZE) = (addr & 15) * 8;
     aligned:$(REGISTER_SIZE) = addr & 0xfffffffffffffff0;
-    mask:16 = ~(0:16) >> shift;
+    zeroVec:16 = zext(0:8);
+    mask:16 = ~zeroVec >> shift;
     oldValue:16 = *[ram]:16 aligned;
     newValue:16 = vrD >> shift;
     *[ram]:16 aligned = (oldValue & ~mask) | (newValue & mask);
@@ -1248,7 +1259,8 @@ define pcodeop xenonLvsr128;
     if (off == 0) goto <done>;
     aligned:$(REGISTER_SIZE) = addr & 0xfffffffffffffff0;
     shift:$(REGISTER_SIZE) = (16 - off) * 8;
-    mask:16 = ~(~(0:16) >> shift);
+    zeroVec:16 = zext(0:8);
+    mask:16 = ~(~zeroVec >> shift);
     oldValue:16 = *[ram]:16 aligned;
     newValue:16 = vrD << shift;
     *[ram]:16 aligned = (oldValue & ~mask) | (newValue & mask);
@@ -1262,19 +1274,20 @@ define pcodeop xenonLvsr128;
 {
     build RA_OR_ZERO;
     addr:$(REGISTER_SIZE) = (RA_OR_ZERO + B) & 0xffffffffffffff80;
-    *[ram]:16 addr = 0:16;
+    zeroVec:16 = zext(0:8);
+    *[ram]:16 addr = zeroVec;
     target1:$(REGISTER_SIZE) = addr + 16;
-    *[ram]:16 target1 = 0:16;
+    *[ram]:16 target1 = zeroVec;
     target2:$(REGISTER_SIZE) = addr + 32;
-    *[ram]:16 target2 = 0:16;
+    *[ram]:16 target2 = zeroVec;
     target3:$(REGISTER_SIZE) = addr + 48;
-    *[ram]:16 target3 = 0:16;
+    *[ram]:16 target3 = zeroVec;
     target4:$(REGISTER_SIZE) = addr + 64;
-    *[ram]:16 target4 = 0:16;
+    *[ram]:16 target4 = zeroVec;
     target5:$(REGISTER_SIZE) = addr + 80;
-    *[ram]:16 target5 = 0:16;
+    *[ram]:16 target5 = zeroVec;
     target6:$(REGISTER_SIZE) = addr + 96;
-    *[ram]:16 target6 = 0:16;
+    *[ram]:16 target6 = zeroVec;
     target7:$(REGISTER_SIZE) = addr + 112;
-    *[ram]:16 target7 = 0:16;
+    *[ram]:16 target7 = zeroVec;
 }
