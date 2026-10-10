@@ -1,3 +1,9 @@
+## Final numerical refinement after bulk Xenon decode batch (2026-10-10)
+
+- Promoted existing `vmulfp128` from an opaque pcodeop to native four-lane 32-bit floating-point multiplication, with explicit 128-bit result assembly; commit `c86ea70`. All four existing selector variants preserved. The user-requested bulk expansion now gives the **84-family source inventory 45 native p-code, 39 opaque userops, 0 missing**; specifically, 13 newly native and 33 newly opaque among the 46 formerly missing, plus one former opaque promoted to native.
+- Adjusted source coverage test expectations and an explicit `vmulfp128` assertion, commit `d945e6b`. Independent source/fixture selector recheck confirms all **84 family names** present; all 46 new families have a unique matching rule for each of four fixture words, and all `vmulfp128` alternatives use native `f*`. There are now **11** Python unit test definitions. No user-side Python test, SleighCompile, installed language or Ghidra runtime audit has run after this batch; do not claim they have.
+- The next user-facing validation should be ONE full-batch cycle, not micro-tests for individual families, from the *inner* `XEXLoaderWV/` Gradle working directory. Priority after that is numerical p-code implementations for the remaining 39 opaque families, with special attention to IEEE FP edge cases, D3D pack formats, saturation/VSCR and compare/CR6 side effects. The existing `Rc=1` eight-X-form uncertainty remains intentionally unresolved.
+
 ## Bulk Xenon VMX128 family coverage batch (2026-10-10)
 
 - After the new **134/336** runtime audit and the isolated `dcbzl` collision fix, the user explicitly requested **broad instruction-section implementation before another test/install cycle**, not repeated builds for single aliases. All work remains on `fix/import-thunk-modeling-20261009`; do not ask for another Ghidra reinstall until a meaningful batch is complete.
