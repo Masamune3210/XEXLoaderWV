@@ -18,9 +18,7 @@ define pcodeop xenonVnmsubfp128;
 
 
 
-# Updates sticky VSCR.SAT when any saturated pack lane exceeds range.
-# VSCR itself still needs a register-backed model shared with mfvscr/mtvscr.
-define pcodeop xenonSetVscrSatIf;
+# Saturating VMX128 operations now update the shared VSCR.SAT bit natively.
 define pcodeop xenonVpkd3d128;
 define pcodeop xenonVcfpsxws128;
 define pcodeop xenonVcfpuxws128;
@@ -922,7 +920,7 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
     widened15:16 = zext(packed15);
     xenonD = widened0 | widened1 | widened2 | widened3 | widened4 | widened5 | widened6 | widened7 | widened8 | widened9 | widened10 | widened11 | widened12 | widened13 | widened14 | widened15;
     saturatedAny:1 = (under0 | over0) | (under1 | over1) | (under2 | over2) | (under3 | over3) | (under4 | over4) | (under5 | over5) | (under6 | over6) | (under7 | over7) | (under8 | over8) | (under9 | over9) | (under10 | over10) | (under11 | over11) | (under12 | over12) | (under13 | over13) | (under14 | over14) | (under15 | over15);
-    xenonSetVscrSatIf(saturatedAny);
+    xenonVSCR = xenonVSCR | zext(saturatedAny);
 }
 
 :vpkshss128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=8 & BITS_4_5=2
@@ -1073,7 +1071,7 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
     widened15:16 = zext(packed15);
     xenonD = widened0 | widened1 | widened2 | widened3 | widened4 | widened5 | widened6 | widened7 | widened8 | widened9 | widened10 | widened11 | widened12 | widened13 | widened14 | widened15;
     saturatedAny:1 = (under0 | over0) | (under1 | over1) | (under2 | over2) | (under3 | over3) | (under4 | over4) | (under5 | over5) | (under6 | over6) | (under7 | over7) | (under8 | over8) | (under9 | over9) | (under10 | over10) | (under11 | over11) | (under12 | over12) | (under13 | over13) | (under14 | over14) | (under15 | over15);
-    xenonSetVscrSatIf(saturatedAny);
+    xenonVSCR = xenonVSCR | zext(saturatedAny);
 }
 
 :vpkshss128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=24 & BITS_4_5=0
@@ -1224,7 +1222,7 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
     widened15:16 = zext(packed15);
     xenonD = widened0 | widened1 | widened2 | widened3 | widened4 | widened5 | widened6 | widened7 | widened8 | widened9 | widened10 | widened11 | widened12 | widened13 | widened14 | widened15;
     saturatedAny:1 = (under0 | over0) | (under1 | over1) | (under2 | over2) | (under3 | over3) | (under4 | over4) | (under5 | over5) | (under6 | over6) | (under7 | over7) | (under8 | over8) | (under9 | over9) | (under10 | over10) | (under11 | over11) | (under12 | over12) | (under13 | over13) | (under14 | over14) | (under15 | over15);
-    xenonSetVscrSatIf(saturatedAny);
+    xenonVSCR = xenonVSCR | zext(saturatedAny);
 }
 
 :vpkshss128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=24 & BITS_4_5=2
@@ -1375,7 +1373,7 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
     widened15:16 = zext(packed15);
     xenonD = widened0 | widened1 | widened2 | widened3 | widened4 | widened5 | widened6 | widened7 | widened8 | widened9 | widened10 | widened11 | widened12 | widened13 | widened14 | widened15;
     saturatedAny:1 = (under0 | over0) | (under1 | over1) | (under2 | over2) | (under3 | over3) | (under4 | over4) | (under5 | over5) | (under6 | over6) | (under7 | over7) | (under8 | over8) | (under9 | over9) | (under10 | over10) | (under11 | over11) | (under12 | over12) | (under13 | over13) | (under14 | over14) | (under15 | over15);
-    xenonSetVscrSatIf(saturatedAny);
+    xenonVSCR = xenonVSCR | zext(saturatedAny);
 }
 
 # vpkshus128: opaque; Xenia mask/value fc0003d0/14000240
@@ -1527,7 +1525,7 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
     widened15:16 = zext(packed15);
     xenonD = widened0 | widened1 | widened2 | widened3 | widened4 | widened5 | widened6 | widened7 | widened8 | widened9 | widened10 | widened11 | widened12 | widened13 | widened14 | widened15;
     saturatedAny:1 = (under0 | over0) | (under1 | over1) | (under2 | over2) | (under3 | over3) | (under4 | over4) | (under5 | over5) | (under6 | over6) | (under7 | over7) | (under8 | over8) | (under9 | over9) | (under10 | over10) | (under11 | over11) | (under12 | over12) | (under13 | over13) | (under14 | over14) | (under15 | over15);
-    xenonSetVscrSatIf(saturatedAny);
+    xenonVSCR = xenonVSCR | zext(saturatedAny);
 }
 
 :vpkshus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=9 & BITS_4_5=2
@@ -1678,7 +1676,7 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
     widened15:16 = zext(packed15);
     xenonD = widened0 | widened1 | widened2 | widened3 | widened4 | widened5 | widened6 | widened7 | widened8 | widened9 | widened10 | widened11 | widened12 | widened13 | widened14 | widened15;
     saturatedAny:1 = (under0 | over0) | (under1 | over1) | (under2 | over2) | (under3 | over3) | (under4 | over4) | (under5 | over5) | (under6 | over6) | (under7 | over7) | (under8 | over8) | (under9 | over9) | (under10 | over10) | (under11 | over11) | (under12 | over12) | (under13 | over13) | (under14 | over14) | (under15 | over15);
-    xenonSetVscrSatIf(saturatedAny);
+    xenonVSCR = xenonVSCR | zext(saturatedAny);
 }
 
 :vpkshus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=25 & BITS_4_5=0
@@ -1829,7 +1827,7 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
     widened15:16 = zext(packed15);
     xenonD = widened0 | widened1 | widened2 | widened3 | widened4 | widened5 | widened6 | widened7 | widened8 | widened9 | widened10 | widened11 | widened12 | widened13 | widened14 | widened15;
     saturatedAny:1 = (under0 | over0) | (under1 | over1) | (under2 | over2) | (under3 | over3) | (under4 | over4) | (under5 | over5) | (under6 | over6) | (under7 | over7) | (under8 | over8) | (under9 | over9) | (under10 | over10) | (under11 | over11) | (under12 | over12) | (under13 | over13) | (under14 | over14) | (under15 | over15);
-    xenonSetVscrSatIf(saturatedAny);
+    xenonVSCR = xenonVSCR | zext(saturatedAny);
 }
 
 :vpkshus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=25 & BITS_4_5=2
@@ -1980,7 +1978,7 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
     widened15:16 = zext(packed15);
     xenonD = widened0 | widened1 | widened2 | widened3 | widened4 | widened5 | widened6 | widened7 | widened8 | widened9 | widened10 | widened11 | widened12 | widened13 | widened14 | widened15;
     saturatedAny:1 = (under0 | over0) | (under1 | over1) | (under2 | over2) | (under3 | over3) | (under4 | over4) | (under5 | over5) | (under6 | over6) | (under7 | over7) | (under8 | over8) | (under9 | over9) | (under10 | over10) | (under11 | over11) | (under12 | over12) | (under13 | over13) | (under14 | over14) | (under15 | over15);
-    xenonSetVscrSatIf(saturatedAny);
+    xenonVSCR = xenonVSCR | zext(saturatedAny);
 }
 
 # vpkswss128: opaque; Xenia mask/value fc0003d0/14000280
@@ -2060,7 +2058,7 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
     widened7:16 = zext(packed7);
     xenonD = widened0 | widened1 | widened2 | widened3 | widened4 | widened5 | widened6 | widened7;
     saturatedAny:1 = (under0 | over0) | (under1 | over1) | (under2 | over2) | (under3 | over3) | (under4 | over4) | (under5 | over5) | (under6 | over6) | (under7 | over7);
-    xenonSetVscrSatIf(saturatedAny);
+    xenonVSCR = xenonVSCR | zext(saturatedAny);
 }
 
 :vpkswss128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=10 & BITS_4_5=2
@@ -2139,7 +2137,7 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
     widened7:16 = zext(packed7);
     xenonD = widened0 | widened1 | widened2 | widened3 | widened4 | widened5 | widened6 | widened7;
     saturatedAny:1 = (under0 | over0) | (under1 | over1) | (under2 | over2) | (under3 | over3) | (under4 | over4) | (under5 | over5) | (under6 | over6) | (under7 | over7);
-    xenonSetVscrSatIf(saturatedAny);
+    xenonVSCR = xenonVSCR | zext(saturatedAny);
 }
 
 :vpkswss128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=26 & BITS_4_5=0
@@ -2218,7 +2216,7 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
     widened7:16 = zext(packed7);
     xenonD = widened0 | widened1 | widened2 | widened3 | widened4 | widened5 | widened6 | widened7;
     saturatedAny:1 = (under0 | over0) | (under1 | over1) | (under2 | over2) | (under3 | over3) | (under4 | over4) | (under5 | over5) | (under6 | over6) | (under7 | over7);
-    xenonSetVscrSatIf(saturatedAny);
+    xenonVSCR = xenonVSCR | zext(saturatedAny);
 }
 
 :vpkswss128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=26 & BITS_4_5=2
@@ -2297,7 +2295,7 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
     widened7:16 = zext(packed7);
     xenonD = widened0 | widened1 | widened2 | widened3 | widened4 | widened5 | widened6 | widened7;
     saturatedAny:1 = (under0 | over0) | (under1 | over1) | (under2 | over2) | (under3 | over3) | (under4 | over4) | (under5 | over5) | (under6 | over6) | (under7 | over7);
-    xenonSetVscrSatIf(saturatedAny);
+    xenonVSCR = xenonVSCR | zext(saturatedAny);
 }
 
 # vpkswus128: opaque; Xenia mask/value fc0003d0/140002c0
@@ -2377,7 +2375,7 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
     widened7:16 = zext(packed7);
     xenonD = widened0 | widened1 | widened2 | widened3 | widened4 | widened5 | widened6 | widened7;
     saturatedAny:1 = (under0 | over0) | (under1 | over1) | (under2 | over2) | (under3 | over3) | (under4 | over4) | (under5 | over5) | (under6 | over6) | (under7 | over7);
-    xenonSetVscrSatIf(saturatedAny);
+    xenonVSCR = xenonVSCR | zext(saturatedAny);
 }
 
 :vpkswus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=11 & BITS_4_5=2
@@ -2456,7 +2454,7 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
     widened7:16 = zext(packed7);
     xenonD = widened0 | widened1 | widened2 | widened3 | widened4 | widened5 | widened6 | widened7;
     saturatedAny:1 = (under0 | over0) | (under1 | over1) | (under2 | over2) | (under3 | over3) | (under4 | over4) | (under5 | over5) | (under6 | over6) | (under7 | over7);
-    xenonSetVscrSatIf(saturatedAny);
+    xenonVSCR = xenonVSCR | zext(saturatedAny);
 }
 
 :vpkswus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=27 & BITS_4_5=0
@@ -2535,7 +2533,7 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
     widened7:16 = zext(packed7);
     xenonD = widened0 | widened1 | widened2 | widened3 | widened4 | widened5 | widened6 | widened7;
     saturatedAny:1 = (under0 | over0) | (under1 | over1) | (under2 | over2) | (under3 | over3) | (under4 | over4) | (under5 | over5) | (under6 | over6) | (under7 | over7);
-    xenonSetVscrSatIf(saturatedAny);
+    xenonVSCR = xenonVSCR | zext(saturatedAny);
 }
 
 :vpkswus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=27 & BITS_4_5=2
@@ -2614,7 +2612,7 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
     widened7:16 = zext(packed7);
     xenonD = widened0 | widened1 | widened2 | widened3 | widened4 | widened5 | widened6 | widened7;
     saturatedAny:1 = (under0 | over0) | (under1 | over1) | (under2 | over2) | (under3 | over3) | (under4 | over4) | (under5 | over5) | (under6 | over6) | (under7 | over7);
-    xenonSetVscrSatIf(saturatedAny);
+    xenonVSCR = xenonVSCR | zext(saturatedAny);
 }
 
 # vpkuhum128: native; Xenia mask/value fc0003d0/14000300
@@ -2979,7 +2977,7 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
     widened15:16 = zext(packed15);
     xenonD = widened0 | widened1 | widened2 | widened3 | widened4 | widened5 | widened6 | widened7 | widened8 | widened9 | widened10 | widened11 | widened12 | widened13 | widened14 | widened15;
     saturatedAny:1 = (under0 | over0) | (under1 | over1) | (under2 | over2) | (under3 | over3) | (under4 | over4) | (under5 | over5) | (under6 | over6) | (under7 | over7) | (under8 | over8) | (under9 | over9) | (under10 | over10) | (under11 | over11) | (under12 | over12) | (under13 | over13) | (under14 | over14) | (under15 | over15);
-    xenonSetVscrSatIf(saturatedAny);
+    xenonVSCR = xenonVSCR | zext(saturatedAny);
 }
 
 :vpkuhus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=13 & BITS_4_5=2
@@ -3130,7 +3128,7 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
     widened15:16 = zext(packed15);
     xenonD = widened0 | widened1 | widened2 | widened3 | widened4 | widened5 | widened6 | widened7 | widened8 | widened9 | widened10 | widened11 | widened12 | widened13 | widened14 | widened15;
     saturatedAny:1 = (under0 | over0) | (under1 | over1) | (under2 | over2) | (under3 | over3) | (under4 | over4) | (under5 | over5) | (under6 | over6) | (under7 | over7) | (under8 | over8) | (under9 | over9) | (under10 | over10) | (under11 | over11) | (under12 | over12) | (under13 | over13) | (under14 | over14) | (under15 | over15);
-    xenonSetVscrSatIf(saturatedAny);
+    xenonVSCR = xenonVSCR | zext(saturatedAny);
 }
 
 :vpkuhus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=29 & BITS_4_5=0
@@ -3281,7 +3279,7 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
     widened15:16 = zext(packed15);
     xenonD = widened0 | widened1 | widened2 | widened3 | widened4 | widened5 | widened6 | widened7 | widened8 | widened9 | widened10 | widened11 | widened12 | widened13 | widened14 | widened15;
     saturatedAny:1 = (under0 | over0) | (under1 | over1) | (under2 | over2) | (under3 | over3) | (under4 | over4) | (under5 | over5) | (under6 | over6) | (under7 | over7) | (under8 | over8) | (under9 | over9) | (under10 | over10) | (under11 | over11) | (under12 | over12) | (under13 | over13) | (under14 | over14) | (under15 | over15);
-    xenonSetVscrSatIf(saturatedAny);
+    xenonVSCR = xenonVSCR | zext(saturatedAny);
 }
 
 :vpkuhus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=29 & BITS_4_5=2
@@ -3432,7 +3430,7 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
     widened15:16 = zext(packed15);
     xenonD = widened0 | widened1 | widened2 | widened3 | widened4 | widened5 | widened6 | widened7 | widened8 | widened9 | widened10 | widened11 | widened12 | widened13 | widened14 | widened15;
     saturatedAny:1 = (under0 | over0) | (under1 | over1) | (under2 | over2) | (under3 | over3) | (under4 | over4) | (under5 | over5) | (under6 | over6) | (under7 | over7) | (under8 | over8) | (under9 | over9) | (under10 | over10) | (under11 | over11) | (under12 | over12) | (under13 | over13) | (under14 | over14) | (under15 | over15);
-    xenonSetVscrSatIf(saturatedAny);
+    xenonVSCR = xenonVSCR | zext(saturatedAny);
 }
 
 # vpkuwum128: native; Xenia mask/value fc0003d0/14000380
@@ -3658,7 +3656,7 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
     widened7:16 = zext(packed7);
     xenonD = widened0 | widened1 | widened2 | widened3 | widened4 | widened5 | widened6 | widened7;
     saturatedAny:1 = (under0 | over0) | (under1 | over1) | (under2 | over2) | (under3 | over3) | (under4 | over4) | (under5 | over5) | (under6 | over6) | (under7 | over7);
-    xenonSetVscrSatIf(saturatedAny);
+    xenonVSCR = xenonVSCR | zext(saturatedAny);
 }
 
 :vpkuwus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=15 & BITS_4_5=2
@@ -3737,7 +3735,7 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
     widened7:16 = zext(packed7);
     xenonD = widened0 | widened1 | widened2 | widened3 | widened4 | widened5 | widened6 | widened7;
     saturatedAny:1 = (under0 | over0) | (under1 | over1) | (under2 | over2) | (under3 | over3) | (under4 | over4) | (under5 | over5) | (under6 | over6) | (under7 | over7);
-    xenonSetVscrSatIf(saturatedAny);
+    xenonVSCR = xenonVSCR | zext(saturatedAny);
 }
 
 :vpkuwus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=31 & BITS_4_5=0
@@ -3816,7 +3814,7 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
     widened7:16 = zext(packed7);
     xenonD = widened0 | widened1 | widened2 | widened3 | widened4 | widened5 | widened6 | widened7;
     saturatedAny:1 = (under0 | over0) | (under1 | over1) | (under2 | over2) | (under3 | over3) | (under4 | over4) | (under5 | over5) | (under6 | over6) | (under7 | over7);
-    xenonSetVscrSatIf(saturatedAny);
+    xenonVSCR = xenonVSCR | zext(saturatedAny);
 }
 
 :vpkuwus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=31 & BITS_4_5=2
@@ -3895,7 +3893,7 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
     widened7:16 = zext(packed7);
     xenonD = widened0 | widened1 | widened2 | widened3 | widened4 | widened5 | widened6 | widened7;
     saturatedAny:1 = (under0 | over0) | (under1 | over1) | (under2 | over2) | (under3 | over3) | (under4 | over4) | (under5 | over5) | (under6 | over6) | (under7 | over7);
-    xenonSetVscrSatIf(saturatedAny);
+    xenonVSCR = xenonVSCR | zext(saturatedAny);
 }
 
 # vsro128: native; Xenia mask/value fc0003d0/140003d0
@@ -4030,7 +4028,7 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
     assembledInt3:16 = zext(convertedInt3) << 96;
     xenonD = assembledInt0 | assembledInt1 | assembledInt2 | assembledInt3;
     conversionSaturated:1 = (belowMin0 | aboveMax0) | (belowMin1 | aboveMax1) | (belowMin2 | aboveMax2) | (belowMin3 | aboveMax3);
-    xenonSetVscrSatIf(conversionSaturated);
+    xenonVSCR = xenonVSCR | zext(conversionSaturated);
     goto <conversion_done>;
 <conversion_nan_opaque>
     unresolvedNaN:16 = xenonVcfpsxws128(xenonB, A_BITS:4);
@@ -4115,7 +4113,7 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
     assembledInt3:16 = zext(convertedInt3) << 96;
     xenonD = assembledInt0 | assembledInt1 | assembledInt2 | assembledInt3;
     conversionSaturated:1 = (belowMin0 | aboveMax0) | (belowMin1 | aboveMax1) | (belowMin2 | aboveMax2) | (belowMin3 | aboveMax3);
-    xenonSetVscrSatIf(conversionSaturated);
+    xenonVSCR = xenonVSCR | zext(conversionSaturated);
     goto <conversion_done>;
 <conversion_nan_opaque>
     unresolvedNaN:16 = xenonVcfpsxws128(xenonB, A_BITS:4);
@@ -4205,7 +4203,7 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
     assembledInt3:16 = zext(convertedInt3) << 96;
     xenonD = assembledInt0 | assembledInt1 | assembledInt2 | assembledInt3;
     conversionSaturated:1 = (belowMin0 | aboveMax0) | (belowMin1 | aboveMax1) | (belowMin2 | aboveMax2) | (belowMin3 | aboveMax3);
-    xenonSetVscrSatIf(conversionSaturated);
+    xenonVSCR = xenonVSCR | zext(conversionSaturated);
     goto <conversion_done>;
 <conversion_nan_opaque>
     unresolvedNaN:16 = xenonVcfpuxws128(xenonB, A_BITS:4);
@@ -4294,7 +4292,7 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
     assembledInt3:16 = zext(convertedInt3) << 96;
     xenonD = assembledInt0 | assembledInt1 | assembledInt2 | assembledInt3;
     conversionSaturated:1 = (belowMin0 | aboveMax0) | (belowMin1 | aboveMax1) | (belowMin2 | aboveMax2) | (belowMin3 | aboveMax3);
-    xenonSetVscrSatIf(conversionSaturated);
+    xenonVSCR = xenonVSCR | zext(conversionSaturated);
     goto <conversion_done>;
 <conversion_nan_opaque>
     unresolvedNaN:16 = xenonVcfpuxws128(xenonB, A_BITS:4);
