@@ -114,7 +114,10 @@ public class Xbox360RetailKernelMemoryPeLoader extends PeLoader {
         choices.add(new LoadSpec(this, 0x80040000L,
             new LanguageCompilerSpecPair("PowerPC:BE:64:A2ALT-32addr", "default"), true));
         try {
-            DefaultLanguageService.getLanguageService().getLanguage(
+            // Query metadata only. Loading/compiling the experimental Sleigh
+            // language while enumerating import choices would emit duplicate
+            // parser errors and needlessly interrupt ordinary PE discovery.
+            DefaultLanguageService.getLanguageService().getLanguageDescription(
                 new LanguageID("PowerPC:BE:64:XENON-32addr"));
             choices.add(new LoadSpec(this, 0x80040000L,
                 new LanguageCompilerSpecPair("PowerPC:BE:64:XENON-32addr", "default"), false));
