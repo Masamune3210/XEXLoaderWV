@@ -1,0 +1,7 @@
+# Additional Xenon VMX128 alias encodings absent from pinned Xenia generated decoder.
+# Based on Sven Biallas Rev.1.2 corrections, Xenia PR #2331,
+# encounter/powerpc-rs isa.yaml, hedge-dev/XenonRecomp; xenia_line=0 means not in pinned decoder.
+# Strict VA==0x60 (including VA high bits) and distinct signed-halfword unpack.
+mnemonic	primary	mask	value	xenia_line
+vupkhsh128	6	0xfc1f07f0	0x180007a0	0
+vupklsh128	6	0xfc1f07f0	0x180007e0	0
