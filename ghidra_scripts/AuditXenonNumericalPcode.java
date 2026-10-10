@@ -1,13 +1,13 @@
-// Consolidated Xenon native numerical p-code audit: packs, D3D unpack and guarded FP.
+// Consolidated Xenon native numerical p-code audit (stable multi-suite fixture).
 // @category Xbox360
 //
 // A single stable script name. Run in the disposable Xenon ISA fixture,
-// select xenon_isa_fixture_v1.tsv once, and receive all numerical diagnostics.
+// load xenon_isa_fixture_v1.tsv from the pinned local path automatically.
 // Program bytes are never changed; probes use EmulatorHelper private memory.
 //
 // Run in a disposable PowerPC:BE:64:XENON-32addr Program made from
-// build/xenon-isa-audit/xenon_isa_fixture_v1.bin. Select the sibling
-// xenon_isa_fixture_v1.tsv when prompted.
+// build/xenon-isa-audit/xenon_isa_fixture_v1.bin.
+// The pinned sibling TSV path is resolved automatically, with no file picker.
 //
 // 12 scalar packing cases x 2 opcode variants x 4 immediate low bits = 96.
 // The existing 344-word mnemonic fixture is verified but its operands alias.
@@ -2271,6 +2271,189 @@ public class AuditXenonNumericalPcode extends GhidraScript {
         recordSuite("WORD-MERGE", passed, failed, problems);
     }
 
+
+    // vpermwi128: all 256 2-bit-per-word selections, with four
+    // independent VB register banks and two distinguishable source words.
+    private static final String[] PERMUTE_WORD_B_BANKS = {
+        "vs35", "xv35", "xv67", "xv99"
+    };
+
+    private static final BigInteger[] PERMUTE_WORD_SOURCES = {
+        new BigInteger("0123456789abcdeffedcba9876543210", 16),
+        new BigInteger("deadbeef8000000101020304f0f00f0f", 16)
+    };
+
+    private static final long PERMUTE_WORD_MASK = 0xfc000630L;
+    private static final long PERMUTE_WORD_SELECTOR = 0x18000210L;
+
+    private static long permuteWordOpcode(int selector, int bank) {
+        if ((selector & ~255) != 0 || (bank & ~3) != 0)
+            throw new IllegalArgumentException(
+                "Word permutation selector/bank outside range");
+        // D=vs33, B index=3, high three selector bits in bits 6..8,
+        // low five selector bits in A_BITS (instruction bits 16..20).
+        long word = PERMUTE_WORD_SELECTOR | (1L << 21) |
+            (3L << 11) | ((long) (selector & 31) << 16) |
+            ((long) (selector >>> 5) << 6) | bank;
+        if ((word & PERMUTE_WORD_MASK) != PERMUTE_WORD_SELECTOR ||
+                ((word >>> 21) & 31) != 1 ||
+                ((word >>> 11) & 31) != 3 ||
+                ((word >>> 16) & 31) != (selector & 31) ||
+                ((word >>> 6) & 7) != (selector >>> 5) ||
+                (word & 3) != bank ||
+                ((word >>> 2) & 3) != 0)
+            throw new IllegalArgumentException(
+                "Incorrect vpermwi128 opcode/register fields");
+        return word;
+    }
+
+    private static BigInteger permuteWordOracle(BigInteger b,
+                                                 int selector) {
+        BigInteger result = BigInteger.ZERO;
+        // Destination word 0 is LSB. The immediate's two low bits
+        // choose which source word appears there, indexed from MSB.
+        for (int lane = 0; lane < 4; lane++) {
+            int pick = (selector >>> (lane * 2)) & 3;
+            BigInteger word = b.shiftRight((3 - pick) * 32)
+                .and(WORD32_MASK);
+            result = result.or(word.shiftLeft(lane * 32));
+        }
+        return result;
+    }
+
+    private String executeWordPermutation(Address address, int bank,
+                                          int selector,
+                                          int sourcePattern)
+            throws Exception {
+        long word = permuteWordOpcode(selector, bank);
+        Register destination = vectorRegister("vs33");
+        Register source = vectorRegister(PERMUTE_WORD_B_BANKS[bank]);
+        BigInteger b = PERMUTE_WORD_SOURCES[sourcePattern];
+        BigInteger expected = permuteWordOracle(b, selector);
+        BigInteger initialD = expected.xor(MASK128);
+        String label = "vpermwi128 bank=" + bank + " B=" +
+            PERMUTE_WORD_B_BANKS[bank] +
+            " selector=" + selector + " pattern=" + sourcePattern +
+            " word=" + String.format("%08X", word);
+        EmulatorHelper emulator = new EmulatorHelper(currentProgram);
+        try {
+            byte[] opcode = wordBytes(word);
+            emulator.writeMemory(address, opcode);
+            if (!Arrays.equals(opcode, emulator.readMemory(address, 4)))
+                return label + ": emulator-private opcode mismatch";
+            emulator.writeRegister(source, b);
+            emulator.writeRegister(destination, initialD);
+            emulator.writeRegister(
+                currentProgram.getLanguage().getProgramCounter(),
+                address.getOffset());
+            if (!emulator.step(monitor))
+                return label + ": emulator step failed: " +
+                    emulator.getLastError();
+            BigInteger got = emulator.readRegister(destination).and(MASK128);
+            BigInteger afterB = emulator.readRegister(source).and(MASK128);
+            if (!expected.equals(got) || !b.equals(afterB))
+                return label + ": expectedD=" + hex128(expected) +
+                    " actualD=" + hex128(got) +
+                    " initialD=" + hex128(initialD) +
+                    " expectedB=" + hex128(b) +
+                    " actualB=" + hex128(afterB);
+        }
+        finally {
+            emulator.dispose();
+        }
+        return null;
+    }
+
+    private void runWordPermutations(File manifest, Address base)
+            throws Exception {
+        Address address = null;
+        Long originalWord = null;
+        try (BufferedReader reader = Files.newBufferedReader(
+                manifest.toPath(), StandardCharsets.UTF_8)) {
+            String heading = reader.readLine();
+            if (heading == null ||
+                    !heading.startsWith("offset\tword_be\texpected_mnemonic\t"))
+                throw new IllegalArgumentException(
+                    "Incorrect Xenon word-permutation fixture manifest");
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] columns = line.split("\t", -1);
+                if (columns.length != 6 ||
+                        !"decode".equals(columns[5]) ||
+                        !"vpermwi128".equals(columns[2]))
+                    continue;
+                address = base.add(Long.parseUnsignedLong(
+                    columns[0].replaceFirst("^0x", ""), 16));
+                originalWord = Long.parseUnsignedLong(columns[1], 16);
+                break;
+            }
+        }
+        int passed = 0, failed = 0;
+        List<String> problems = new ArrayList<>();
+        if (address == null || originalWord == null ||
+                (originalWord & PERMUTE_WORD_MASK) !=
+                    PERMUTE_WORD_SELECTOR ||
+                !fixtureMatches(address, originalWord)) {
+            failed++;
+            problems.add("vpermwi128: missing/mismatched fixture bytes");
+        }
+        else {
+            Instruction instruction = getInstructionAt(address);
+            if (instruction == null) {
+                disassemble(address);
+                instruction = getInstructionAt(address);
+            }
+            if (instruction == null ||
+                    !"vpermwi128".equalsIgnoreCase(
+                        instruction.getMnemonicString())) {
+                failed++;
+                problems.add("vpermwi128: unexpected fixture mnemonic at " +
+                    address);
+            }
+            else {
+                for (int bank = 0; bank < PERMUTE_WORD_B_BANKS.length;
+                        bank++) {
+                    for (int selector = 0; selector < 256; selector++) {
+                        for (int sourcePattern = 0;
+                                sourcePattern < PERMUTE_WORD_SOURCES.length;
+                                sourcePattern++) {
+                            monitor.checkCancelled();
+                            try {
+                                String issue = executeWordPermutation(
+                                    address, bank, selector, sourcePattern);
+                                if (issue == null) passed++;
+                                else {
+                                    failed++;
+                                    problems.add(issue);
+                                }
+                            }
+                            catch (Exception error) {
+                                failed++;
+                                problems.add("vpermwi128 bank=" + bank +
+                                    " selector=" + selector +
+                                    " pattern=" + sourcePattern + ": " +
+                                    error);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        println("");
+        println("============================================================");
+        println("XENON WORD PERMUTATION NATIVE NUMERICAL P-CODE AUDIT");
+        println("============================================================");
+        println("Language: " + LANGUAGE);
+        println("Cases: " + (passed + failed) + "; passed: " +
+            passed + "; failed: " + failed);
+        println("vpermwi128: exhaustive 256 word-selection immediates, " +
+            "four VB banks, two nonuniform input vectors.");
+        println("Initial destination is complement of expected output; " +
+            "source register and Program fixture bytes preserved.");
+        println("Unresolved details follow in combined result below.");
+        recordSuite("WORD-PERMUTE", passed, failed, problems);
+    }
+
     @Override
     protected void run() throws Exception {
         String id = currentProgram.getLanguage().getLanguageID()
@@ -2379,7 +2562,7 @@ public class AuditXenonNumericalPcode extends GhidraScript {
         println("Unresolved details follow in the combined result below.");
         recordSuite("D3D", passed, failed, problems);
 
-        // One script entry point and exactly one manifest selection.
+        // One script entry point and one pinned manifest, without any picker.
         runSaturatingPacks(manifest, base);
         runGuardedFp(manifest, base);
         runShuffles(manifest, base);
@@ -2388,6 +2571,7 @@ public class AuditXenonNumericalPcode extends GhidraScript {
         runLaneShifts(manifest, base);
         runLogicalOps(manifest, base);
         runWordMerges(manifest, base);
+        runWordPermutations(manifest, base);
 
         println("");
         println("============================================================");
