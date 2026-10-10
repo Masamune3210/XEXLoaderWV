@@ -884,6 +884,8 @@ class XenonIsaInventoryTests(unittest.TestCase):
         self.assertIn("runShuffles(manifest, base);", script)
         self.assertIn("runDotProducts(manifest, base);", script)
         self.assertIn("runWholeVectorShifts(manifest, base);", script)
+        self.assertIn("runLaneShifts(manifest, base);", script)
+        self.assertIn("XENON PER-LANE WORD SHIFT NATIVE NUMERICAL P-CODE AUDIT", script)
         self.assertIn("XENON WHOLE-VECTOR SHIFT NATIVE NUMERICAL P-CODE AUDIT", script)
         self.assertIn("XENON FP DOT PRODUCT NATIVE NUMERICAL P-CODE AUDIT", script)
         self.assertIn("import ghidra.app.emulator.DefaultEmulator;", script)
@@ -1133,6 +1135,111 @@ class XenonIsaInventoryTests(unittest.TestCase):
                             result.to_bytes(16, "big"), expected)
                         total += 1
         self.assertEqual(total, 256)
+
+    def test_native_word_lane_shift_numerical_matrix(self):
+        # Confirm each of the four independent 32-bit lanes obeys its own
+        # low-five-bit control, including signed right-shift and rotation.
+        import re
+
+        script = (audit.ROOT.parent / "ghidra_scripts" /
+                  "AuditXenonNumericalPcode.java").read_text(
+                      encoding="utf-8")
+        sleigh = audit.ADDITIONAL_SLEIGH.read_text(encoding="utf-8")
+        operations = (
+            ("vrlw128", 0x18000050, 0, "<<"),
+            ("vslw128", 0x180000d0, 1, "<<"),
+            ("vsraw128", 0x18000150, 2, "s>>"),
+            ("vsrw128", 0x180001d0, 3, ">>"),
+        )
+        self.assertIn("runLaneShifts(manifest, base);", script)
+        self.assertIn(
+            'recordSuite("LANE-SHIFT", passed, failed, problems)', script)
+        self.assertIn('if (!expected.equals(result) || !inputA.equals(afterA) ||',
+                      script)
+        self.assertIn('!inputB.equals(afterB))', script)
+        self.assertIn('!fixtureMatches(address, originalWord)', script)
+        self.assertIn('emulator.writeMemory(address, opcode);', script)
+        self.assertIn('emulator.readMemory(address, 4)', script)
+        self.assertNotIn('currentProgram.getMemory().setBytes(', script)
+        declared = re.findall(
+            r'new LaneShift\("([^"]+)",\s*(0x[0-9a-fA-F]+)L,\s*(\d+)\)',
+            script)
+        self.assertEqual(declared, [
+            (name, f"0x{selector:08x}", str(op)) for
+            name, selector, op, _ in operations])
+
+        src_match = re.search(
+            r'private static final int\[\]\[\] LANE_SHIFT_SOURCES = '
+            r'\{([\s\S]*?)\n    \};', script)
+        ctl_match = re.search(
+            r'private static final int\[\]\[\] LANE_SHIFT_COUNTS = '
+            r'\{([\s\S]*?)\n    \};', script)
+        self.assertIsNotNone(src_match)
+        self.assertIsNotNone(ctl_match)
+        read_arrays = lambda match: [
+            [int(v.strip(), 0) & 0xffffffff
+             for v in row.split(",") if v.strip()]
+            for row in re.findall(r'\{([^}]+)\}', match.group(1))]
+        inputs = read_arrays(src_match)
+        controls = read_arrays(ctl_match)
+        self.assertEqual(len(inputs), 2)
+        self.assertEqual(len(controls), 10)
+        self.assertTrue(all(len(row) == 4 for row in inputs + controls))
+        self.assertEqual(
+            sorted(value for row in controls[:8] for value in row),
+            list(range(32)))
+        self.assertTrue(
+            all(any(value & ~31 for value in row) for row in controls[8:]))
+
+        count = 0
+        mask = 0xffffffff
+        for name, selector, operation, op_text in operations:
+            rules = re.findall(
+                r'(?m)^:' + name + r' [^\n]+ is [^\n]+', sleigh)
+            self.assertEqual(len(rules), 4, name)
+            for lane in range(4):
+                self.assertIn(
+                    f"xenonInputALane{lane}:4 = xenonA({lane * 4});",
+                    sleigh)
+                self.assertIn(
+                    f"xenonInputBLane{lane}:4 = xenonB({lane * 4});",
+                    sleigh)
+                self.assertIn(f"sh{lane}:4 = xenonInputBLane{lane} & 31;",
+                              sleigh)
+                self.assertIn(
+                    f"xenonResultLane{lane}:4 = xenonInputALane{lane} "
+                    + op_text + (f" sh{lane};" if operation != 0
+                                 else f" sh{lane})"),
+                    sleigh)
+            for variant in range(4):
+                mbh, oe = variant & 1, variant >> 1
+                word = (selector | (1 << 21) | (2 << 16) |
+                        (3 << 11) | (mbh << 5) | (oe << 10))
+                self.assertEqual(word & 0xfc0003d0, selector)
+                self.assertEqual((word >> 5) & 1, mbh)
+                self.assertEqual((word >> 10) & 1, oe)
+                for row_a in inputs:
+                    for row_b in controls:
+                        actual = []
+                        for a, b in zip(row_a, row_b):
+                            sh = b & 31
+                            if operation == 0:
+                                value = ((a << sh) |
+                                         (a >> ((32 - sh) & 31))) & mask
+                            elif operation == 1:
+                                value = (a << sh) & mask
+                            elif operation == 2:
+                                signed = a if a < (1 << 31) else a - (1 << 32)
+                                value = (signed >> sh) & mask
+                            else:
+                                value = a >> sh
+                            actual.append(value)
+                        expected_bytes = b"".join(
+                            value.to_bytes(4, "big")
+                            for value in reversed(actual))
+                        self.assertEqual(len(expected_bytes), 16)
+                        count += 1
+        self.assertEqual(count, 320)
 
     def test_unified_numerical_script_is_only_entrypoint(self):
         from pathlib import Path
