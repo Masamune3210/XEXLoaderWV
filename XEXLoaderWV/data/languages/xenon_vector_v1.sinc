@@ -1208,7 +1208,8 @@ define pcodeop xenonVrlimi128;
 {
     build RA_OR_ZERO;
     ea:$(REGISTER_SIZE) = RA_OR_ZERO + B;
-    off:4 = (ea & 15);
+    offsetFull:$(REGISTER_SIZE) = ea & 15;
+    off:4 = offsetFull(0);
     byteValue0:4 = off;
     octet0:1 = byteValue0(0);
     part0:16 = zext(octet0) << 120;
@@ -1264,7 +1265,8 @@ define pcodeop xenonVrlimi128;
 {
     build RA_OR_ZERO;
     ea:$(REGISTER_SIZE) = RA_OR_ZERO + B;
-    off:4 = (ea & 15);
+    offsetFull:$(REGISTER_SIZE) = ea & 15;
+    off:4 = offsetFull(0);
     byteValue0:4 = off;
     octet0:1 = byteValue0(0);
     part0:16 = zext(octet0) << 120;
@@ -1320,7 +1322,8 @@ define pcodeop xenonVrlimi128;
 {
     build RA_OR_ZERO;
     ea:$(REGISTER_SIZE) = RA_OR_ZERO + B;
-    off:4 = (ea & 15);
+    offsetFull:$(REGISTER_SIZE) = ea & 15;
+    off:4 = offsetFull(0);
     byteValue0:4 = (16 - off) + 0;
     octet0:1 = byteValue0(0);
     part0:16 = zext(octet0) << 120;
@@ -1376,7 +1379,8 @@ define pcodeop xenonVrlimi128;
 {
     build RA_OR_ZERO;
     ea:$(REGISTER_SIZE) = RA_OR_ZERO + B;
-    off:4 = (ea & 15);
+    offsetFull:$(REGISTER_SIZE) = ea & 15;
+    off:4 = offsetFull(0);
     byteValue0:4 = (16 - off) + 0;
     octet0:1 = byteValue0(0);
     part0:16 = zext(octet0) << 120;
