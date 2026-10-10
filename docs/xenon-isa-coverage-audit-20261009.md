@@ -1,3 +1,7 @@
+## Ghidra Java auditor accepts the generated manifest and diagnoses mistaken coverage TSV selection (2026-10-10)
+
+The Python fixture manifest header remains `offset`, `word_be`, `expected_mnemonic`, `sleigh_status`, `variant` (TAB-separated). The adjacent `xenon_isa_coverage_v1.tsv` is a different table with a different header. The user hit the old script's generic "Manifest header does not match fixture generator v1" exception, without any detail about which TSV was selected. The new `ghidra_scripts/AuditXenonIsaFixtureV1.java` recognizes and automatically redirects an explicitly selected coverage TSV to the sibling fixture TSV, accepts an optional UTF-8 BOM, and prints actual/expected headers plus the absolute path when invalid. A new regression test verifies the Python generator and Java auditor share the same fixture column names. **17 Python tests expected; revised Ghidra script not yet run.** The auditor source itself must be refreshed in Ghidra's active script directory. No SLEIGH/extension rebuild needed.
+
 ## Fixture generation is an automatic Gradle build prerequisite (2026-10-10)
 
 Gradle generateXenonIsaFixture is now an unconditional dependency of verifyXenonSleigh and thus of buildExtension, build and assemble. Builds from inner XEXLoaderWV/ refresh the 336-word big-endian fixture, manifest TSV, coverage TSV and Markdown report under build/xenon-isa-audit/ before SLEIGH compilation. It watches both vector SLEIGH includes, slaspec, both pinned Xenia inventories and generator. No manual Python generator invocation is needed.
