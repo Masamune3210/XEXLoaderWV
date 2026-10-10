@@ -1,3 +1,7 @@
+## Exact native left/right byte-permutation masks (2026-10-10)
+
+`lvsl128` and `lvsr128` are no longer opaque. Based on Xenia's pinned load-vector-mask implementation and vector tests, they generate the 16-byte sequence `off+i` or `16-off+i` respectively (`i=0..15`, `off=(RA+RB)&15`). Every output octet has a native p-code assembly, no CALL_OTHER. The current **84-family source inventory is 47 native, 37 opaque, 0 missing**, with **12 expected Python tests**, no new build/runtime results yet. The source-only checks verify both 16-octet generators plus each of the 172 new family constructors. Do not infer native p-code guarantees byte-order correctness or that all opaque families are semantically implemented.
+
 ## Native VMX128 multiply refinement (2026-10-10)
 
 The earlier `vmulfp128` userop has been replaced with 4×32-bit native floating multiplication and explicitly widened 128-bit lane assembly. Combined pinned-inventory source status is now **45 native, 39 opaque, 0 missing** across all 84 families. Native FP still needs empirical p-code comparison for NaN, subnormal, rounding and exception behavior. Updated tests cover this change. The successful pre-batch Gradle build and last 134/336 runtime report **do not** verify the new supplementary SLEIGH include.
