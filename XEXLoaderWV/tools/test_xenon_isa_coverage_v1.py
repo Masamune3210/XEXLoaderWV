@@ -182,6 +182,49 @@ class XenonIsaInventoryTests(unittest.TestCase):
         ):
             self.assertIn(fragment, gradle)
 
+    def test_pcode_fields_are_available_as_pattern_operands(self):
+        # SleighCompile rejects references to token fields whose constructor
+        # pattern fixes their value as FIELD=constant.
+        import re
+
+        fields = (
+            "BITS_6_10", "BITS_4_5", "BITS_0_1", "XOP_3_10",
+            "XOP_1_10", "BIT_9", "A_BITS", "BITS_21_25", "Rc",
+        )
+        for source_file in (audit.SLEIGH, audit.ADDITIONAL_SLEIGH):
+            source = source_file.read_text(encoding="utf-8")
+            for match in re.finditer(
+                r"(?m)^:([A-Za-z_][A-Za-z_0-9]*) [^\n]+ is ([^\n]+)\n"
+                r"\{\n([\s\S]*?)\n\}", source
+            ):
+                mnemonic, pattern, body = match.groups()
+                for field in fields:
+                    if not re.search(r"\b" + field + r"\b", body):
+                        continue
+                    self.assertRegex(
+                        pattern, r"\b" + field + r"\b",
+                        (source_file.name, mnemonic, field))
+                    self.assertNotRegex(
+                        pattern, r"\b" + field + r"\s*=",
+                        (source_file.name, mnemonic, field))
+
+    def test_vpkd3d128_opaque_shift_and_prior_destination(self):
+        # VX128_4 embeds z in instruction bits 6-7. The four fixed
+        # constructor alternatives must pass 0..3 to the userop.
+        # Xenia's pack permutes the packed VB with the prior VD.
+        import re
+
+        source = audit.ADDITIONAL_SLEIGH.read_text(encoding="utf-8")
+        constructors = re.findall(
+            r"(?m)^:vpkd3d128 [^\n]+ is ([^\n]+)\n"
+            r"\{\n([\s\S]*?)\n\}", source)
+        self.assertEqual(len(constructors), 4)
+        for offset, (pattern, body) in enumerate(constructors):
+            self.assertIn(f"BITS_6_10={24 + offset}", pattern)
+            self.assertIn(
+                f"xenonVpkd3d128(xenonB, xenonD, A_BITS:4, {offset}:4)",
+                body)
+
     def test_remaining_family_complete_selectors(self):
         # All 46 previously missing families have a decoder. Check every
         # pinned sample word against exactly one corresponding new rule.
