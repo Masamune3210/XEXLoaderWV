@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import ghidra.app.emulator.DefaultEmulator;
 import ghidra.app.emulator.EmulatorHelper;
 import ghidra.app.script.GhidraScript;
 import ghidra.program.model.address.Address;
@@ -1006,6 +1007,23 @@ public class AuditXenonNumericalPcode extends GhidraScript {
             emulator.writeRegister(
                 currentProgram.getLanguage().getProgramCounter(),
                 address.getOffset());
+            // Diagnose the emulator-private decode on precisely one failing
+            // example per odd-VA variant. No Program memory is modified.
+            String decoded = "";
+            boolean checkDecode = !permute && (variant & 1) != 0 &&
+                pattern == 0 && selector == 0;
+            if (checkDecode) {
+                if (emulator.getEmulator() instanceof DefaultEmulator) {
+                    List<String> instructions =
+                        ((DefaultEmulator) emulator.getEmulator())
+                            .disassemble(1);
+                    decoded = instructions.isEmpty() ?
+                        "<no decoded instruction>" : instructions.get(0);
+                }
+                else {
+                    decoded = "<unexpected emulator implementation>";
+                }
+            }
             if (!emulator.step(monitor))
                 return label + ": emulator step failed: " +
                     emulator.getLastError();
@@ -1024,7 +1042,19 @@ public class AuditXenonNumericalPcode extends GhidraScript {
                     " expectedB=" + hex128(vb) +
                     " actualB=" + hex128(afterB) +
                     (permute ? " expectedC=" + hex128(vc) +
-                     " actualC=" + hex128(afterC) : "");
+                     " actualC=" + hex128(afterC) : "") +
+                    (checkDecode ? " emulatorDecoded=[" + decoded +
+                        "] afterPC=" + emulator.getExecutionAddress() +
+                        " alternativeDestRegisters=" +
+                        "xv33:" + hex128(
+                            emulator.readRegister(
+                                vectorRegister("xv33"))) +
+                        ",xv65:" + hex128(
+                            emulator.readRegister(
+                                vectorRegister("xv65"))) +
+                        ",xv97:" + hex128(
+                            emulator.readRegister(
+                                vectorRegister("xv97"))) : "");
         }
         finally {
             emulator.dispose();
