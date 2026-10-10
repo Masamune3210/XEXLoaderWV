@@ -57,3 +57,35 @@ gradle buildExtension
 ```
 
 If you are building from Eclipse or another IDE, make sure it uses a compatible JDK and Gradle version for the Ghidra version you are targeting.
+
+
+## Xbox 360 retail 17559 kernel PE analysis
+
+This extension includes `Xbox360RetailKernelPdataAnalyzer`, an **early Ghidra analyzer**
+for the verified Microsoft retail 17559 `xboxkrnl.exe`. The normal **PE loader**
+still imports this file; the analyzer is independently discovered by Ghidra,
+and runs at `FORMAT_ANALYSIS + 1` before generic function discovery.
+
+- Requires `PowerPC:BE:64:A2ALT-32addr`, PE image base `0x80040000` and the
+  *exact verified retail* executable SHA-256
+  `e1d1c87dbcbec01c71c5400cc129a462fa46738d267e29151a91c5354bdf6cb8`.
+  Other builds are intentionally untouched.
+- Validates the 3,188 non-overlapping big-endian `.pdata` records and the
+  931-slot little-endian PE export directory before modifying the Program.
+- Seeds bounded disassembly and explicit function bodies for established
+  `.pdata` ranges. Uses the existing `ImportRenamer` ordinal-name mapping
+  for all 921 populated exports, including 17 code aliases.
+- Marks the 317 code exports not covered by `.pdata` as external entrypoints
+  without guessing their function lengths. Names non-executable data exports,
+  but does not turn them into functions.
+- Does not change any imported bytes, function signatures, or datatypes.
+
+**For a clean test**, build/install this extension, restart Ghidra, then
+import `xboxkrnl.exe` as a regular PE and enable the
+`Xbox 360 Retail Kernel 17559 .pdata` analyzer in the initial Auto Analyze
+dialog. Confirm the Auto Analysis log's function counts, and inspect the
+exported functions before importing XAM through the XEX loader.
+
+The earlier standalone export/.pdata scripts are for diagnostic purposes; do
+not run them on this clean-import test. The kernel analyzer has not yet been
+compiled or end-to-end tested with Ghidra 12.1.3.
