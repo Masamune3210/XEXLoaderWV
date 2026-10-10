@@ -1,0 +1,12 @@
+# Additional Xenon vector X-form instructions without 128 suffix
+# Xenia decoder pinned at 95a5c3ee250f80c3b9d139658649d9ffb6db3eec
+# These are not stock base-ISA coverage claims; compare Ghidra inherited A2ALT too.
+mnemonic	primary	mask	value	xenia_line
+lvlx	31	0xfc0007fe	0x7c00040e	393
+lvrx	31	0xfc0007fe	0x7c00044e	400
+stvlx	31	0xfc0007fe	0x7c00050e	406
+stvrx	31	0xfc0007fe	0x7c00054e	411
+lvlxl	31	0xfc0007fe	0x7c00060e	416
+lvrxl	31	0xfc0007fe	0x7c00064e	420
+stvlxl	31	0xfc0007fe	0x7c00070e	423
+stvrxl	31	0xfc0007fe	0x7c00074e	426
