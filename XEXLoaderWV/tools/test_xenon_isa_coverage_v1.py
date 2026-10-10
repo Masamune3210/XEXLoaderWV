@@ -778,11 +778,16 @@ class XenonIsaInventoryTests(unittest.TestCase):
                     self.assertIn(
                         f"{input_name}{i}:4 = xenonB({i*4});", body)
                     if mode == "toward-zero":
+                        # The variable is declared once before either branch.
+                        # Repeated sized declarations fail SleighCompile.
                         self.assertIn(
-                            f"roundOutput{i}:4 = floor(roundInput{i});",
+                            f"roundOutput{i}:4 = 0:4;",
                             body)
                         self.assertIn(
-                            f"roundOutput{i}:4 = ceil(roundInput{i});",
+                            f"roundOutput{i} = floor(roundInput{i});",
+                            body)
+                        self.assertIn(
+                            f"roundOutput{i} = ceil(roundInput{i});",
                             body)
                         self.assertIn(
                             f"roundNegative{i}:1 = roundInput{i} f< 0:4;",
