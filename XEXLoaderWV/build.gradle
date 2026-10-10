@@ -166,6 +166,38 @@ tasks.register("prepareXenonIsa") {
                 src.contains("define pcodeop stvepxlOp;")) {
             throw new GradleException("Xenon ISA collision filtering failed")
         }
+        // Ghidra's generic Power ISA OP=4 maddhd/maddhdu/maddld
+        // constructors overlap valid Xenon vsldoi128 words. In particular,
+        // its XOP_0_5=48 decodes 0x10221830 as scalar maddhd rather than
+        // vsldoi128 with extended VA=xv34. The other two selectors overlap
+        // valid destination-extension bits. Remove only these three
+        // constructors in the Xenon-specific generated copy, not upstream.
+        for (def spec : [
+                [name: "maddhd",  xo: 48, result: "D = tmpp(8);"],
+                [name: "maddhdu", xo: 49, result: "D = tmpp(8);"],
+                [name: "maddld",  xo: 51, result: "D = tmpp:8;"]]) {
+            String head = ":" + spec.name + " D,A,B,C"
+            int start = src.indexOf(head)
+            int end = start < 0 ? -1 : src.indexOf("\n}", start)
+            String expectedSelector =
+                'is $(NOTVLE) & OP=4 & D & A & B & C & XOP_0_5=' +
+                spec.xo + ' {'
+            String body = end < 0 ? "" : src.substring(start, end + 2)
+            if (start < 0 || end <= start ||
+                    src.indexOf(head, start + head.length()) >= 0 ||
+                    !body.contains(expectedSelector) ||
+                    !body.contains("tmpp:16 = (tmpa * tmpb) + tmpc;") ||
+                    !body.contains(spec.result) ||
+                    body.indexOf("}") != body.lastIndexOf("}")) {
+                throw new GradleException("Installed Ghidra " + spec.name +
+                    " layout changed; refusing unsafe Xenon ISA filtering")
+            }
+            src = src.substring(0, start) + src.substring(end + 2)
+            if (src.contains(head)) {
+                throw new GradleException("Failed to exclude " +
+                    spec.name + " from Xenon-only ISA")
+            }
+        }
         xenonLegacyIsa.setText(
             "# Generated from installed Ghidra ppc_isa.sinc; do not edit.\n" +
             src, "UTF-8")
