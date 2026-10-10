@@ -1000,6 +1000,90 @@ class XenonIsaInventoryTests(unittest.TestCase):
                      "vrfim128", "vrfip128", "vrfiz128"):
             self.assertEqual(expected[name], "native-pcode")
 
+    def test_vmadd_finite_exact_pcode_paths_preserve_operand_order(self):
+        # Native floating-point multiplication followed by addition is NOT
+        # generally a fused multiply-add. Verify that the p-code only uses
+        # the exact small-integer region and retains its opaque fallback.
+        import re
+        import struct
+
+        source = audit.ADDITIONAL_SLEIGH.read_text(encoding="utf-8")
+        families = {
+            "vmaddfp128": ("sourceA{i} f* sourceB{i}",
+                           "product{i} f+ sourceD{i}"),
+            "vmaddcfp128": ("sourceA{i} f* sourceD{i}",
+                            "product{i} f+ sourceB{i}"),
+            "vnmsubfp128": ("sourceA{i} f* sourceB{i}",
+                            "sourceD{i} f- product{i}"),
+        }
+        for family, (product, result) in families.items():
+            bodies = re.findall(
+                r"(?m)^:" + family + r" [^\\n]+ is [^\\n]+\\n"
+                r"\\{\\n([\\s\\S]*?)\\n\\}", source)
+            self.assertEqual(len(bodies), 4, family)
+            for body in bodies:
+                self.assertIn("lowerSafe:4 = 0xc3800000:4;", body)
+                self.assertIn("upperSafe:4 = 0x43800000:4;", body)
+                self.assertIn("goto <fp_opaque>;", body)
+                self.assertIn("goto <fp_done>;", body)
+                self.assertIn(
+                    f"xenonD = shifted0 | shifted1 | shifted2 | shifted3;",
+                    body)
+                for i in range(4):
+                    self.assertIn(
+                        f"product{i}:4 = {product.format(i=i)};", body)
+                    self.assertIn(
+                        f"output{i}:4 = {result.format(i=i)};", body)
+                    self.assertIn(
+                        f"outputZero{i}:1 = (output{i} & "
+                        "0x7fffffff:4) == 0:4;", body)
+                    self.assertIn(
+                        f"if (outputZero{i}) goto <fp_opaque>;", body)
+                    self.assertIn(
+                        f"shifted{i}:16 = zext(output{i})" +
+                        (f" << {32 * i}" if i else "") + ";", body)
+                    for letter, vec in (("A", "xenonA"), ("B", "xenonB"),
+                                        ("D", "xenonD")):
+                        v = f"source{letter}{i}"
+                        self.assertIn(f"{v}:4 = {vec}({i*4});", body)
+                        self.assertIn(
+                            f"if (nan({v})) goto <fp_opaque>;", body)
+                        self.assertIn(
+                            f"if ({v} f< lowerSafe) goto <fp_opaque>;", body)
+                        self.assertIn(
+                            f"if ({v} f> upperSafe) goto <fp_opaque>;", body)
+                        self.assertIn(
+                            f"int{letter}{i}:4 = trunc({v});", body)
+                        self.assertIn(
+                            f"asFloat{letter}{i}:4 = "
+                            f"int2float(int{letter}{i});", body)
+                        self.assertIn(
+                            f"if (integral{letter}{i} == 0:1) "
+                            "goto <fp_opaque>;", body)
+                self.assertIn(
+                    "unresolved:16 = xenon" +
+                    {"vmaddfp128": "Vmaddfp128",
+                     "vmaddcfp128": "Vmaddcfp128",
+                     "vnmsubfp128": "Vnmsubfp128"}[family] +
+                    "(xenonA, xenonB, xenonD);", body)
+
+        # Every integer product and final value is exactly representable
+        # in binary32 within the guarded range; no fused-vs-unfused
+        # rounding discrepancy can exist on these nonzero examples.
+        def f32(value):
+            return struct.unpack(">f", struct.pack(">f", value))[0]
+
+        values = [-256, -129, -31, -3, -1, 1, 7, 23, 127, 256]
+        for a in values:
+            for b in values:
+                for d in (-256, -17, 3, 71, 256):
+                    for name in families:
+                        answer = (a * b + d if name == "vmaddfp128"
+                                  else a * d + b if name == "vmaddcfp128"
+                                  else d - a * b)
+                        if answer != 0:
+                            self.assertEqual(f32(answer), float(answer))
+
     def test_ghidra_numerical_pack_audit_vectors_are_consistent(self):
         # The companion Ghidra Java script actually steps native p-code.
         # Validate its independent boundary-case oracle without Ghidra.
