@@ -4,7 +4,6 @@
 // A single stable script name. Run in the disposable Xenon ISA fixture,
 // select xenon_isa_fixture_v1.tsv once, and receive all numerical diagnostics.
 // Program bytes are never changed; probes use EmulatorHelper private memory.
-// @category Xbox360
 //
 // Run in a disposable PowerPC:BE:64:XENON-32addr Program made from
 // build/xenon-isa-audit/xenon_isa_fixture_v1.bin. Select the sibling
@@ -34,6 +33,18 @@ import ghidra.program.model.lang.Register;
 import ghidra.program.model.listing.Instruction;
 
 public class AuditXenonNumericalPcode extends GhidraScript {
+    private final List<String> combinedProblems = new ArrayList<>();
+    private int combinedPassed = 0;
+    private int combinedFailed = 0;
+
+    private void recordSuite(String suite, int passed, int failed,
+                             List<String> problems) {
+        combinedPassed += passed;
+        combinedFailed += failed;
+        for (String problem : problems)
+            combinedProblems.add(suite + ": " + problem);
+    }
+
     private static final String LANGUAGE = "PowerPC:BE:64:XENON-32addr";
     private static final long SELECTOR_MASK = 0xfc0007f0L;
     private static final long SELECTOR_VALUE = 0x180007f0L;
@@ -570,6 +581,7 @@ public class AuditXenonNumericalPcode extends GhidraScript {
         println("UNRESOLVED / INCORRECT STATES (" + problems.size() + ")");
         if (problems.isEmpty()) println("None");
         for (String problem : problems) println(problem);
+        recordSuite("PACK", passed, failed, problems);
     }
 
     private static final class Family {
@@ -857,6 +869,7 @@ public class AuditXenonNumericalPcode extends GhidraScript {
         println("UNRESOLVED / INCORRECT STATES (" + problems.size() + ")");
         if (problems.isEmpty()) println("None");
         for (String problem : problems) println(problem);
+        recordSuite("GUARDED-FP", passed, failed, problems);
     }
 
     @Override
@@ -959,9 +972,22 @@ public class AuditXenonNumericalPcode extends GhidraScript {
         println("UNRESOLVED / INCORRECT STATES (" + problems.size() + ")");
         if (problems.isEmpty()) println("None");
         for (String problem : problems) println(problem);
+        recordSuite("D3D", passed, failed, problems);
 
-        // The run is deliberately one entry point and one manifest selection.
+        // One script entry point and exactly one manifest selection.
         runSaturatingPacks(manifest, base);
         runGuardedFp(manifest, base);
+
+        println("");
+        println("============================================================");
+        println("XENON NUMERICAL P-CODE COMBINED RESULT");
+        println("============================================================");
+        println("Cases: " + (combinedPassed + combinedFailed) +
+            "; passed: " + combinedPassed + "; failed: " + combinedFailed);
+        println("UNRESOLVED / INCORRECT STATES (" +
+            combinedProblems.size() + ")");
+        if (combinedProblems.isEmpty()) println("None");
+        for (String issue : combinedProblems) println(issue);
+        println("============================================================");
     }
 }
