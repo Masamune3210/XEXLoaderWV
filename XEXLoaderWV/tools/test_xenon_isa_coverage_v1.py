@@ -44,7 +44,7 @@ class XenonIsaInventoryTests(unittest.TestCase):
         statuses = Counter(
             constructors.get(row["mnemonic"], "missing") for row in self.rows)
         self.assertEqual(statuses, Counter(
-            {"native-pcode": 47, "opaque-userop": 37}))
+            {"native-pcode": 52, "opaque-userop": 32}))
         self.assertIn("xenonVupkd3d128", custom_ops)
         self.assertNotIn("xenonVmulfp128", custom_ops)
         self.assertEqual(constructors.get("vmulfp128"), "native-pcode")
@@ -234,7 +234,7 @@ class XenonIsaInventoryTests(unittest.TestCase):
         former_missing, ops = audit.parse_sleigh(rest)
         self.assertEqual(len(former_missing), 46)
         self.assertEqual(Counter(former_missing.values()), Counter(
-            {"native-pcode": 13, "opaque-userop": 33}))
+            {"native-pcode": 15, "opaque-userop": 31}))
         original, _ = audit.parse_sleigh(
             audit.SLEIGH.read_text(encoding="utf-8"))
         self.assertEqual(set(former_missing) & set(original), set())
@@ -372,6 +372,74 @@ class XenonIsaInventoryTests(unittest.TestCase):
                 word = row["value"] | (fill & (~row["mask"] & 0xFFFFFFFF))
                 self.assertEqual(
                     audit.decode_expectation(row["mnemonic"], word), "decode")
+
+    def test_native_xenon_permute_rotate_and_dot_shapes(self):
+        # Follow pinned Xenia's vector swizzle, blend and dot-product
+        # layouts. These checks establish operand and lane propagation,
+        # not numerical execution or IEEE exception equivalence.
+        import re
+
+        main = audit.SLEIGH.read_text(encoding="utf-8")
+        supplement = audit.ADDITIONAL_SLEIGH.read_text(encoding="utf-8")
+        cases = (
+            ("vpermwi128", main, 8),
+            ("vrlimi128", main, 4),
+            ("vperm128", supplement, 2),
+            ("vmsum4fp128", main, 4),
+            ("vmsum3fp128", supplement, 4),
+        )
+        for name, source, count in cases:
+            pattern = (r"(?m)^:" + name +
+                       r" [^\n]+ is ([^\n]+)\n\{\n([\s\S]*?)\n\}")
+            bodies = re.findall(pattern, source)
+            self.assertEqual(len(bodies), count, name)
+            op = "xenon" + name[0].upper() + name[1:]
+            self.assertNotIn("define pcodeop " + op + ";", source)
+            for _, body in bodies:
+                self.assertIn("xenonD = ", body, name)
+                self.assertNotIn(op + "(", body, name)
+
+        for i, (_, body) in enumerate(re.findall(
+                r"(?m)^:vpermwi128 [^\n]+ is ([^\n]+)\n"
+                r"\{\n([\s\S]*?)\n\}", main)):
+            self.assertIn(f"permutation:4 = A_BITS:4 | {32*i}:4;",
+                          body)
+            self.assertEqual(len(re.findall(r"(?m)^    packedWord\d+:16",
+                                            body)), 4)
+
+        for i, (_, body) in enumerate(re.findall(
+                r"(?m)^:vrlimi128 [^\n]+ is ([^\n]+)\n"
+                r"\{\n([\s\S]*?)\n\}", main)):
+            if i:
+                self.assertIn(
+                    f"rotated:16 = (xenonB << {32*i}) | "
+                    f"(xenonB >> {128-32*i});", body)
+            else:
+                self.assertIn("rotated:16 = xenonB;", body)
+            self.assertIn("fromOld:16 = xenonD & ~selectMask;", body)
+            self.assertEqual(len(re.findall(r"(?m)^    expandedMask\d+:16",
+                                            body)), 4)
+
+        for _, body in re.findall(
+                r"(?m)^:vperm128 [^\n]+ is ([^\n]+)\n"
+                r"\{\n([\s\S]*?)\n\}", supplement):
+            self.assertEqual(len(re.findall(
+                r"(?m)^    assembledOctet\d+:16", body)), 16)
+            self.assertIn("controlByte15:1 = xenonC(15);", body)
+            self.assertIn("byteB15:1 = fromB15(0);", body)
+
+        for name, source, lanes in (
+                ("vmsum3fp128", supplement, 3),
+                ("vmsum4fp128", main, 4)):
+            bodies = re.findall(
+                r"(?m)^:" + name + r" [^\n]+ is [^\n]+\n"
+                r"\{\n([\s\S]*?)\n\}", source)
+            for body in bodies:
+                self.assertEqual(len(re.findall(
+                    r"(?m)^    product\d+:4 = .* f\* .*;", body)),
+                    lanes)
+                self.assertEqual(len(re.findall(
+                    r"(?m)^    dotLane\d+:16", body)), 4)
 
     def test_fixture_generation(self):
         with tempfile.TemporaryDirectory() as folder:
