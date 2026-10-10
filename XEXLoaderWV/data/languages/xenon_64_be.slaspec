@@ -12,7 +12,8 @@
 @define CTR_OFFSET "32"
 
 @include "$(PowerPC)/data/languages/ppc_common.sinc"
-@include "$(PowerPC)/data/languages/ppc_isa.sinc"
+# Variant-local restrictions for conflicting generic PPC/A2 encodings.
+@include "xenon_ppc_isa.sinc"
 @include "$(PowerPC)/data/languages/ppc_a2.sinc"
 @include "$(PowerPC)/data/languages/quicciii.sinc"
 @include "$(PowerPC)/data/languages/FPRC.sinc"
