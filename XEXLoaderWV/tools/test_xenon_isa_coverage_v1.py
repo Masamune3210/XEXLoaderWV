@@ -1091,6 +1091,86 @@ class XenonIsaInventoryTests(unittest.TestCase):
                               unpack_half(halves[1]), 0, 0x3f800000],
                              expected)
 
+    def test_vupkd3d_2101010_and_short4_exact_unpacks(self):
+        import re
+
+        source = audit.SLEIGH.read_text(encoding="utf-8")
+        bodies = re.findall(
+            r"(?m)^:vupkd3d128 [^\n]+ is [^\n]+\n"
+            r"\{\n([\s\S]*?)\n\}", source)
+        self.assertEqual(len(bodies), 2)
+        for body in bodies:
+            self.assertIn("if (unpackType == 2:4) goto <unpack_2101010>;", body)
+            self.assertIn("if (unpackType == 4:4) goto <unpack_short4>;", body)
+            self.assertIn("packed210:4 = xenonB(0);", body)
+            for letter, shift in (("R", 0), ("G", 10), ("B", 20)):
+                extract = (f"(packed210 >> {shift}) & 0x3ff:4"
+                           if shift else "packed210 & 0x3ff:4")
+                self.assertIn(f"raw{letter}10:4 = {extract};", body)
+                self.assertIn(
+                    f"signed{letter}10:4 = (raw{letter}10 << 22) s>> 22;",
+                    body)
+                self.assertIn(
+                    f"decoded{letter}10:4 = 0x40400000:4 + signed{letter}10;",
+                    body)
+                self.assertIn(
+                    f"overflow{letter}10:1 = raw{letter}10 == 0x200:4;",
+                    body)
+                self.assertIn(
+                    f"decoded{letter}10 = 0x7fc00000:4;", body)
+            self.assertIn(
+                "rawAlpha2:4 = (packed210 >> 30) & 3:4;", body)
+            self.assertIn(
+                "decodedAlpha2:4 = 0x3f800000:4 | rawAlpha2;", body)
+            for letter, off in (("X", 6), ("Y", 4),
+                                ("Z", 2), ("W", 0)):
+                self.assertIn(
+                    f"half{letter}:2 = xenonB({off});", body)
+                self.assertIn(
+                    f"signed{letter}16:4 = sext(half{letter});", body)
+                self.assertIn(
+                    f"decoded{letter}16:4 = 0x40400000:4 + signed{letter}16;",
+                    body)
+                self.assertIn(
+                    f"overflow{letter}16:1 = half{letter} == 0x8000:2;",
+                    body)
+                self.assertIn(
+                    f"decoded{letter}16 = 0x7fc00000:4;", body)
+            self.assertIn(
+                "xenonD = placeR10 | placeG10 | placeB10 | placeA2;", body)
+            self.assertIn(
+                "xenonD = placeX16 | placeY16 | placeZ16 | placeW16;", body)
+
+        def signed_component(bits, width):
+            sign = 1 << (width - 1)
+            if bits == sign:
+                return 0x7fc00000
+            number = bits - (1 << width) if bits & sign else bits
+            return (0x40400000 + number) & 0xffffffff
+
+        def unpack210(word):
+            xyz = [signed_component((word >> shift) & 0x3ff, 10)
+                   for shift in (0, 10, 20)]
+            return xyz + [0x3f800000 | ((word >> 30) & 3)]
+
+        for packed, expected in {
+            0x400001ff: [0x404001ff, 0x40400000,
+                         0x40400000, 0x3f800001],
+            0x40000201: [0x403ffe01, 0x40400000,
+                         0x40400000, 0x3f800001],
+            0x40000200: [0x7fc00000, 0x40400000,
+                         0x40400000, 0x3f800001],
+        }.items():
+            self.assertEqual(unpack210(packed), expected)
+
+        def unpackshort4(packed):
+            return [signed_component((packed >> shift) & 0xffff, 16)
+                    for shift in (48, 32, 16, 0)]
+
+        self.assertEqual(unpackshort4(0x7fffffff007ffff8),
+                         [0x40407fff, 0x403fffff,
+                          0x4040007f, 0x403ffff8])
+
     def test_vmadd_finite_exact_pcode_paths_preserve_operand_order(self):
         # Native floating-point multiplication followed by addition is NOT
         # generally a fused multiply-add. Verify that the p-code only uses
