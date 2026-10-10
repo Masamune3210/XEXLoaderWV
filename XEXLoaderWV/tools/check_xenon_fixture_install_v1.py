@@ -100,6 +100,8 @@ def main() -> int:
         ("SLEIGH SHA-256", digest(combined_source.encode("utf-8"))),
         ("Inventory SHA-256", digest(INVENTORY.read_bytes())),
         ("Extra inventory SHA-256", digest(EXTRA_INVENTORY.read_bytes())),
+        ("Language specification SHA-256", digest(
+            (LANG / "xenon_64_be.slaspec").read_bytes())),
         ("Generator SHA-256", digest(
             (ROOT / "tools/audit_xenon_isa_coverage_v1.py").read_bytes())),
     )
