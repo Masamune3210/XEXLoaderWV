@@ -1,3 +1,7 @@
+## Constrained-token SLEIGH compilation fix (2026-10-10)
+
+The bulk Xenon language first reached xenon_vector_remaining_v1.sinc:902 and failed because vpkd3d128 referenced BITS_6_10:4 after constraining BITS_6_10=24..27 separately in four constructors. Each now passes its known z shift (0..3) as a constant, and also supplies **prior VD** to the opaque pack userop, as Xenia's blending semantics require. New tests scan token references versus all 267 pattern lists and verify the four pack variants. Local static audit found no other constrained-pattern token reads. There are now 15 Python test methods, not yet run by the user, and the revised SLEIGH is still uncompiled. Coverage remains 47 native / 37 opaque / 0 missing.
+
 ## Exact native left/right byte-permutation masks (2026-10-10)
 
 `lvsl128` and `lvsr128` are no longer opaque. Based on Xenia's pinned load-vector-mask implementation and vector tests, they generate the 16-byte sequence `off+i` or `16-off+i` respectively (`i=0..15`, `off=(RA+RB)&15`). Every output octet has a native p-code assembly, no CALL_OTHER. The current **84-family source inventory is 47 native, 37 opaque, 0 missing**, with **12 expected Python tests**, no new build/runtime results yet. The source-only checks verify both 16-octet generators plus each of the 172 new family constructors. Do not infer native p-code guarantees byte-order correctness or that all opaque families are semantically implemented.
