@@ -698,9 +698,17 @@ public class AuditXenonNumericalPcode extends GhidraScript {
     }
 
     // BITS_4_5=1/3 and BITS_6_10=3/19 (or 4/20, 5/21).
-    // These 4 encodings all select the same mnemonic and low 32 registers.
-    // VD=vs33; VA=vs34; VB=vs35. The other three selector variants
-    // toggle unmasked opcode bit 5 and/or bit 10.
+    // Bits 5 and 10 encode high VA register bits, NOT ignored opcode bits.
+    // VD=vs33 and VB=vs35 remain fixed. VA occupies four different banks.
+    // These cases test the identical native semantics across all four banks.
+    private static String guardedFpSourceAName(int variant) {
+        if ((variant & ~3) != 0)
+            throw new IllegalArgumentException("Invalid FP variant " + variant);
+        // bit 5 = MBH; bit 10 = OE, see xenonA in xenon_vector_v1.sinc.
+        String[] names = { "vs34", "xv34", "xv66", "xv98" };
+        return names[variant];
+    }
+
     private static long probeWord(Family family, int variant) {
         long word = family.selector | (1L << 21) | (2L << 16) |
             (3L << 11) | ((long) (variant & 1) << 5) |
@@ -708,9 +716,11 @@ public class AuditXenonNumericalPcode extends GhidraScript {
         if ((word & FP_SELECTOR_MASK) != family.selector ||
                 ((word >>> 21) & 31) != 1 ||
                 ((word >>> 16) & 31) != 2 ||
-                ((word >>> 11) & 31) != 3)
+                ((word >>> 11) & 31) != 3 ||
+                ((word >>> 5) & 1) != (variant & 1) ||
+                ((word >>> 10) & 1) != ((variant >>> 1) & 1))
             throw new IllegalArgumentException(
-                "FP opcode selector / register fields changed");
+                "FP opcode selector / extended A register fields changed");
         return word;
     }
 
@@ -718,9 +728,11 @@ public class AuditXenonNumericalPcode extends GhidraScript {
                            int variant) throws Exception {
         long word = probeWord(family, variant);
         String label = family.name + " " + pattern.name +
-            " variant=" + variant + " word=" + String.format("%08X", word);
+            " variant=" + variant + " A=" +
+            guardedFpSourceAName(variant) +
+            " word=" + String.format("%08X", word);
         Register destination = vectorRegister("vs33");
-        Register a = vectorRegister("vs34");
+        Register a = vectorRegister(guardedFpSourceAName(variant));
         Register b = vectorRegister("vs35");
         BigInteger inputA = vector(pattern.a);
         BigInteger inputB = vector(pattern.b);
