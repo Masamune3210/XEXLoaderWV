@@ -138,3 +138,23 @@ new heuristics to all other no-`.pdata` exports.
 This targeted addition is not yet runtime-tested. Existing correct-import
 kernel databases otherwise pass the V2 boundary checks and can already
 be used for XAM import/linkage investigation.
+
+
+### Kernel decoder limitations and preserved error bookmarks
+
+The latest verified 17559 kernel Ghidra archive passes the read-only
+`.pdata`/export V2 audit (**3188/3188 functions; 886/886 code exports**) but
+still stores **17 Bad Instruction bookmarks**: 16 actual Xenon vector
+instructions absent from the stock PowerPC SLEIGH language (10 `lvx128`,
+four `lvlx`, one `lvrx`, one `vupkd3d128`), plus a fall-through-into-padding
+bookmark after the `KeBugCheckEx` call in `KeLeaveUserMode`. Function-boundary
+success does not imply all instructions or their p-code are recovered.
+
+`ghidra_scripts/AnnotateXboxKrnl17559MissingVectorInstructionsV1.java`
+can attach SHA- and opcode-verified EOL comments identifying the 16 decoded
+mnemonics in an existing Program. **It deliberately leaves all error bookmarks,
+instruction bytes and function definitions alone**, and cannot substitute for
+a Xenon VMX128-compatible language module. Check that `KeBugCheckEx` is marked
+No Return and that its call at `0x80073730` terminates control flow before
+removing the one obsolete padding bookmark. Do not clear legitimate
+unsupported-instruction bookmarks to manufacture a clean audit.
