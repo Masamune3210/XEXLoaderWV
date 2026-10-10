@@ -342,9 +342,11 @@ xenonB: xv127 is vrBR=31 & BITS_0_1=3 { export xv127; }
 # rather than fabricating byte-level behavior or treating it as NOP.
 :vupkd3d128 xenonD,xenonB,UIMM is OP=6 & xenonD & xenonB & UIMM & XOP_3_10=254
 {
-    xenonD = xenonVupkd3d128(xenonB, UIMM:4);
+    unpacked:16 = xenonVupkd3d128(xenonB, UIMM:4);
+    xenonD = unpacked;
 }
 :vupkd3d128 xenonD,xenonB,UIMM is OP=6 & xenonD & xenonB & UIMM & XOP_3_10=255
 {
-    xenonD = xenonVupkd3d128(xenonB, UIMM:4);
+    unpacked:16 = xenonVupkd3d128(xenonB, UIMM:4);
+    xenonD = unpacked;
 }
