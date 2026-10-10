@@ -796,7 +796,7 @@ class XenonIsaInventoryTests(unittest.TestCase):
             audit.write_results(self.rows, audit.SLEIGH, audit.INVENTORY, out)
             with (out / "xenon_isa_fixture_v1.tsv").open(
                     encoding="utf-8", newline="") as handle:
-                self.assertEqual(tuple(handle.readline().strip().split("\\t")),
+                self.assertEqual(tuple(handle.readline().strip().split("\t")),
                                  expected)
 
     def test_unified_numerical_script_is_only_entrypoint(self):
@@ -806,6 +806,10 @@ class XenonIsaInventoryTests(unittest.TestCase):
         script = (root / "AuditXenonNumericalPcode.java").read_text(
             encoding="utf-8")
         self.assertEqual(script.count("protected void run()"), 1)
+        self.assertIn("XENON NUMERICAL P-CODE COMBINED RESULT", script)
+        self.assertIn("recordSuite(\"PACK\", passed, failed, problems)", script)
+        self.assertIn("recordSuite(\"D3D\", passed, failed, problems)", script)
+        self.assertIn("recordSuite(\"GUARDED-FP\", passed, failed, problems)", script)
         self.assertIn("runSaturatingPacks(manifest, base);", script)
         self.assertIn("runGuardedFp(manifest, base);", script)
         self.assertIn("XENON D3D UNPACK NATIVE NUMERICAL P-CODE AUDIT", script)
