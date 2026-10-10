@@ -1034,17 +1034,21 @@ class XenonIsaInventoryTests(unittest.TestCase):
                     body)
             self.assertIn("xenonD = laneR | laneG | laneB | laneA;", body)
             self.assertIn(
-                "if (unpackType == 1:4) goto <unpack_short2_positive>;", body)
+                "if (unpackType == 1:4) goto <unpack_short2_signed>;", body)
             for statement in (
                 "packedShorts:4 = xenonB(0);",
-                "highHalf:4 = (packedShorts >> 16) & 0xffff:4;",
-                "lowHalf:4 = packedShorts & 0xffff:4;",
-                "highSign:1 = (highHalf & 0x8000:4) != 0:4;",
-                "lowSign:1 = (lowHalf & 0x8000:4) != 0:4;",
-                "if (highSign) goto <unpack_opaque>;",
-                "if (lowSign) goto <unpack_opaque>;",
-                "shortX:4 = 0x40400000:4 | highHalf;",
-                "shortY:4 = 0x40400000:4 | lowHalf;",
+                "rawHigh:2 = packedShorts(2);",
+                "rawLow:2 = packedShorts(0);",
+                "signedHigh:4 = sext(rawHigh);",
+                "signedLow:4 = sext(rawLow);",
+                "shortX:4 = 0x40400000:4 + signedHigh;",
+                "shortY:4 = 0x40400000:4 + signedLow;",
+                "highOverflow:1 = rawHigh == 0x8000:2;",
+                "lowOverflow:1 = rawLow == 0x8000:2;",
+                "if (highOverflow) goto <short_high_nan>;",
+                "if (lowOverflow) goto <short_low_nan>;",
+                "shortX = 0x7fc00000:4;",
+                "shortY = 0x7fc00000:4;",
                 "placeX:16 = zext(shortX) << 96;",
                 "placeY:16 = zext(shortY) << 64;",
                 "shortOne:16 = 0x3f800000:16;",
@@ -1073,11 +1077,19 @@ class XenonIsaInventoryTests(unittest.TestCase):
             0x00000000: [0x40400000, 0x40400000, 0, 0x3f800000],
             0x12345678: [0x40401234, 0x40405678, 0, 0x3f800000],
             0x7fff0001: [0x40407fff, 0x40400001, 0, 0x3f800000],
+            0x7fff8001: [0x40407fff, 0x403f8001, 0, 0x3f800000],
+            0x4000c000: [0x40404000, 0x403fc000, 0, 0x3f800000],
+            0x00008000: [0x40400000, 0x7fc00000, 0, 0x3f800000],
+            0x80008000: [0x7fc00000, 0x7fc00000, 0, 0x3f800000],
         }.items():
-            hi, lo = (packed >> 16) & 0xffff, packed & 0xffff
-            self.assertFalse((hi | lo) & 0x8000)
-            self.assertEqual([0x40400000 | hi,
-                              0x40400000 | lo, 0, 0x3f800000], expected)
+            halves = ((packed >> 16) & 0xffff, packed & 0xffff)
+            def unpack_half(value):
+                signed = value if value < 0x8000 else value - 0x10000
+                return (0x7fc00000 if value == 0x8000 else
+                        (0x40400000 + signed) & 0xffffffff)
+            self.assertEqual([unpack_half(halves[0]),
+                              unpack_half(halves[1]), 0, 0x3f800000],
+                             expected)
 
     def test_vmadd_finite_exact_pcode_paths_preserve_operand_order(self):
         # Native floating-point multiplication followed by addition is NOT
