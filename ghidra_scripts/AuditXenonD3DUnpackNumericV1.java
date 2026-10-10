@@ -220,13 +220,13 @@ public class AuditXenonD3DUnpackNumericV1 extends GhidraScript {
                 manifest.toPath(), StandardCharsets.UTF_8)) {
             String heading = reader.readLine();
             if (heading == null || !heading.startsWith(
-                    "offset\\tword_be\\texpected_mnemonic\\t")) {
+                    "offset\tword_be\texpected_mnemonic\t")) {
                 printerr("Incorrect fixture manifest: " + manifest);
                 return;
             }
             String line;
             while ((line = reader.readLine()) != null) {
-                String[] columns = line.split("\\t", -1);
+                String[] columns = line.split("\t", -1);
                 if (columns.length != 6 ||
                         !"vupkd3d128".equals(columns[2]) ||
                         !"decode".equals(columns[5]))
