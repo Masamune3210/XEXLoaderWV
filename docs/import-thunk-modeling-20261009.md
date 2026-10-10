@@ -1,3 +1,10 @@
+## Fix: conditional p-code temporary redeclarations block SleighCompile (2026-10-10)
+
+- User's Ghidra 12.1.3 SleighCompile failed at `xenon_vector_remaining_v1.sinc:3988`: `symbol 'convertedInt0' (from ...:3985) redefined as variable declaration/assignment`. The subsequent Java `NullPointerException` is compiler error-path fallout, **not** an independent problem to fix.
+- Full source scan revealed **40 duplicate sized assignments** across 6 constructor variants: `vcfpsxws128` (2 × 4 lanes × 2 redundant declarations), `vcfpuxws128` (same), and `vrfiz128` (2 × 4 lanes × 1 redundant declaration). Each affected lane now has one `:4` declaration initialized before branching, and all conditional writes use unsized `name = ...`. No opcode selectors, register dependencies, numeric branches or fixture words were changed. Source fix `4a41cbd`.
+- Added 2 regression test methods in `tools/test_xenon_isa_coverage_v1.py`: prohibit duplicate sized temporary declarations per constructor across *both* Xenon SLEIGH files; assert per-lane single declarations and correctly assigned branch paths. **34 test methods** now in suite. GitHub source-level scan: 174 supplementary constructors, **0 duplicate typed locals**, **24/24 fixed lane-local declaration paths** correct. Test changes `8b655f0`, `ecd71a6`.
+- **Verification:** source-level checks passed; neither the new 34 Python tests nor SleighCompile has been executed by the assistant. Next step is a single post-pull compile (and Python tests if convenient). If another compiler error appears, address it as part of a batch; do not ask for repeated unchanged decode-only audits. Keep branch on `fix/import-thunk-modeling-20261009`.
+
 ## Post-semantics Ghidra decoding audit (2026-10-10)
 
 - **User-verified Ghidra runtime** for the updated Xenon language, after the large native/hybrid p-code tranche and 32-method regression suite: `AuditXenonIsaFixtureV1.java` reports **344 samples, 328 correct mnemonics, 16 correctly rejected reserved Rc=1 words, 0 unreadable/byte mismatches, 86/86 families meeting 4/4 expectations, 0 unresolved or incorrect states**.
