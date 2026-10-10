@@ -6,6 +6,8 @@
 // ONLY precisely matching stale Bad Instruction bookmarks AFTER checking
 // the correct mnemonic. Preserves all program bytes, functions and labels.
 import java.util.Locale;
+import java.util.ArrayList;
+import java.util.List;
 import ghidra.app.cmd.disassemble.DisassembleCommand;
 import ghidra.app.script.GhidraScript;
 import ghidra.program.model.address.Address;
@@ -79,12 +81,13 @@ public class RepairAuditXboxKrnl17559XenonVmxV2 extends GhidraScript {
             return;
         }
         int pass=0, missing=0, wrong=0, badBytes=0, retried=0, cleared=0;
+        List<String> issues = new ArrayList<>();
         for (Expect test: CASES) {
             monitor.checkCancelled();
             Address a=addr(test.address);
             if (readWord(test.address)!=test.word) {
                 badBytes++;
-                printerr(String.format("BAD BYTES 0x%08X expected %08X",
+                issues.add(String.format("BAD OPCODE BYTES 0x%08X expected %08X",
                     test.address,test.word));
                 continue;
             }
@@ -99,13 +102,13 @@ public class RepairAuditXboxKrnl17559XenonVmxV2 extends GhidraScript {
             }
             if (instruction==null) {
                 missing++;
-                printerr(String.format("UNDECODED 0x%08X 0x%08X %s",
+                issues.add(String.format("UNDECODED 0x%08X 0x%08X %s",
                     test.address,test.word,test.mnemonic));
                 continue;
             }
             if (!test.mnemonic.equalsIgnoreCase(instruction.getMnemonicString())) {
                 wrong++;
-                printerr(String.format("WRONG DECODE 0x%08X wanted=%s actual=%s",
+                issues.add(String.format("WRONG DECODE 0x%08X wanted=%s actual=%s",
                     test.address,test.mnemonic,instruction.getMnemonicString()));
                 continue;
             }
@@ -123,15 +126,19 @@ public class RepairAuditXboxKrnl17559XenonVmxV2 extends GhidraScript {
                     cleared++;
                 }
             }
-            println(String.format("PASS %08X %-14s",test.address,test.mnemonic));
+            // Successful sites are counted; leave all actionable issues at the end.
         }
         println("======================================================");
-        println(String.format("Xenon 17559 decode: %d/%d correct, %d undecoded, %d wrong, %d changed bytes",
+        println(String.format("Xenon 17559 decode: %d/%d correct, %d undecoded, %d wrong, %d opcode mismatches",
             pass,CASES.length,missing,wrong,badBytes));
         println("Newly disassembled instructions=" + retried +
                 ", confirmed stale error bookmarks cleared=" + cleared);
         println("A successful decoder audit does not imply complete numerical");
         println("p-code for opaque VMX128 user operations. All bytes, symbols,");
         println("function signatures, and function extents were preserved.");
+        println("======================================================");
+        println("UNRESOLVED OPCODE/INSTRUCTION STATES (" + issues.size() + ")");
+        if (issues.isEmpty()) println("None");
+        for (String issue:issues) println(issue);
     }
 }
