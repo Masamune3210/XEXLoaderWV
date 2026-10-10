@@ -474,9 +474,6 @@ xenonA: "xv127" is vrAR=31 & MBH=1 & OE=1 { export xv127; }
 # rather than fabricating byte-level behavior or treating it as NOP.
 :vupkd3d128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=254
 {
-    // Xenia's UNPACK_D3DCOLOR test verifies the type=0 bit pattern:
-    // 0xAARRGGBB -> {0x3f8000RR, 0x3f8000GG, 0x3f8000BB, 0x3f8000AA}.
-    // Other D3D unpack formats retain the existing opaque userop.
     unpackType:4 = A_BITS:4 >> 2;
     if (unpackType == 0:4) goto <unpack_color>;
     if (unpackType == 1:4) goto <unpack_short2_signed>;
@@ -500,9 +497,6 @@ xenonA: "xv127" is vrAR=31 & MBH=1 & OE=1 { export xv127; }
     xenonD = laneR | laneG | laneB | laneA;
     goto <unpack_done>;
 <unpack_short2_signed>
-    // Xenia x64 EmitSHORT_2: sign-extend each packed halfword, then
-    // integer-add the 3.0f IEEE-754 word. Signed -32768 triggers
-    // its overflow sentinel, returning the canonical quiet NaN.
     packedShorts:4 = xenonB(0);
     rawHigh:2 = packedShorts(2);
     rawLow:2 = packedShorts(0);
@@ -528,8 +522,6 @@ xenonA: "xv127" is vrAR=31 & MBH=1 & OE=1 { export xv127; }
     xenonD = placeX | placeY | shortOne;
     goto <unpack_done>;
 <unpack_2101010>
-    // Xenia EmitUINT_2101010: low-to-high signed 10-bit XYZ, unsigned 2-bit W.
-    // A signed -512 XYZ component encodes the negative-overflow quiet NaN.
     packed210:4 = xenonB(0);
     rawR10:4 = packed210 & 0x3ff:4;
     signedR10:4 = (rawR10 << 22) s>> 22;
@@ -567,8 +559,6 @@ xenonA: "xv127" is vrAR=31 & MBH=1 & OE=1 { export xv127; }
     xenonD = placeR10 | placeG10 | placeB10 | placeA2;
     goto <unpack_done>;
 <unpack_short4>
-    // Xenia EmitSHORT_4: four signed halfwords from the low 64 bits.
-    // Sign-extend, integer-add 3.0f, substitute QNaN on 0x8000.
     halfX:2 = xenonB(6);
     signedX16:4 = sext(halfX);
     decodedX16:4 = 0x40400000:4 + signedX16;
@@ -618,9 +608,6 @@ xenonA: "xv127" is vrAR=31 & MBH=1 & OE=1 { export xv127; }
 }
 :vupkd3d128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=255
 {
-    // Xenia's UNPACK_D3DCOLOR test verifies the type=0 bit pattern:
-    // 0xAARRGGBB -> {0x3f8000RR, 0x3f8000GG, 0x3f8000BB, 0x3f8000AA}.
-    // Other D3D unpack formats retain the existing opaque userop.
     unpackType:4 = A_BITS:4 >> 2;
     if (unpackType == 0:4) goto <unpack_color>;
     if (unpackType == 1:4) goto <unpack_short2_signed>;
@@ -644,9 +631,6 @@ xenonA: "xv127" is vrAR=31 & MBH=1 & OE=1 { export xv127; }
     xenonD = laneR | laneG | laneB | laneA;
     goto <unpack_done>;
 <unpack_short2_signed>
-    // Xenia x64 EmitSHORT_2: sign-extend each packed halfword, then
-    // integer-add the 3.0f IEEE-754 word. Signed -32768 triggers
-    // its overflow sentinel, returning the canonical quiet NaN.
     packedShorts:4 = xenonB(0);
     rawHigh:2 = packedShorts(2);
     rawLow:2 = packedShorts(0);
@@ -672,8 +656,6 @@ xenonA: "xv127" is vrAR=31 & MBH=1 & OE=1 { export xv127; }
     xenonD = placeX | placeY | shortOne;
     goto <unpack_done>;
 <unpack_2101010>
-    // Xenia EmitUINT_2101010: low-to-high signed 10-bit XYZ, unsigned 2-bit W.
-    // A signed -512 XYZ component encodes the negative-overflow quiet NaN.
     packed210:4 = xenonB(0);
     rawR10:4 = packed210 & 0x3ff:4;
     signedR10:4 = (rawR10 << 22) s>> 22;
@@ -711,8 +693,6 @@ xenonA: "xv127" is vrAR=31 & MBH=1 & OE=1 { export xv127; }
     xenonD = placeR10 | placeG10 | placeB10 | placeA2;
     goto <unpack_done>;
 <unpack_short4>
-    // Xenia EmitSHORT_4: four signed halfwords from the low 64 bits.
-    // Sign-extend, integer-add 3.0f, substitute QNaN on 0x8000.
     halfX:2 = xenonB(6);
     signedX16:4 = sext(halfX);
     decodedX16:4 = 0x40400000:4 + signedX16;
