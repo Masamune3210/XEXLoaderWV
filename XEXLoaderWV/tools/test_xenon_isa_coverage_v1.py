@@ -1025,9 +1025,12 @@ class XenonIsaInventoryTests(unittest.TestCase):
                                 ("B", 32), ("A", 0)):
                 tail = f" << {shift}" if shift else ""
                 self.assertIn(
-                    f"lane{name}:16 = zext(0x3f800000:4 | " +
+                    f"encoded{name}:4 = 0x3f800000:4 | " +
                     {"R": "red", "G": "green",
-                     "B": "blue", "A": "alpha"}[name] + f"){tail};",
+                     "B": "blue", "A": "alpha"}[name] + ";",
+                    body)
+                self.assertIn(
+                    f"lane{name}:16 = zext(encoded{name}){tail};",
                     body)
             self.assertIn("xenonD = laneR | laneG | laneB | laneA;", body)
             self.assertIn(
