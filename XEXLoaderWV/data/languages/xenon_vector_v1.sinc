@@ -288,6 +288,138 @@ xenonB: "xv125" is vrBR=29 & BITS_0_1=3 { export xv125; }
 xenonB: "xv126" is vrBR=30 & BITS_0_1=3 { export xv126; }
 xenonB: "xv127" is vrBR=31 & BITS_0_1=3 { export xv127; }
 
+# Complete VX128 format uses two high bits of VA in instruction bits
+# 5 and 10 (LSB numbering), yielding 128 distinct VA registers.
+# Name strings must be quoted to avoid turning them into SLEIGH operands.
+xenonA: "vs32" is vrAR=0 & MBH=0 & OE=0 { export vs32; }
+xenonA: "vs33" is vrAR=1 & MBH=0 & OE=0 { export vs33; }
+xenonA: "vs34" is vrAR=2 & MBH=0 & OE=0 { export vs34; }
+xenonA: "vs35" is vrAR=3 & MBH=0 & OE=0 { export vs35; }
+xenonA: "vs36" is vrAR=4 & MBH=0 & OE=0 { export vs36; }
+xenonA: "vs37" is vrAR=5 & MBH=0 & OE=0 { export vs37; }
+xenonA: "vs38" is vrAR=6 & MBH=0 & OE=0 { export vs38; }
+xenonA: "vs39" is vrAR=7 & MBH=0 & OE=0 { export vs39; }
+xenonA: "vs40" is vrAR=8 & MBH=0 & OE=0 { export vs40; }
+xenonA: "vs41" is vrAR=9 & MBH=0 & OE=0 { export vs41; }
+xenonA: "vs42" is vrAR=10 & MBH=0 & OE=0 { export vs42; }
+xenonA: "vs43" is vrAR=11 & MBH=0 & OE=0 { export vs43; }
+xenonA: "vs44" is vrAR=12 & MBH=0 & OE=0 { export vs44; }
+xenonA: "vs45" is vrAR=13 & MBH=0 & OE=0 { export vs45; }
+xenonA: "vs46" is vrAR=14 & MBH=0 & OE=0 { export vs46; }
+xenonA: "vs47" is vrAR=15 & MBH=0 & OE=0 { export vs47; }
+xenonA: "vs48" is vrAR=16 & MBH=0 & OE=0 { export vs48; }
+xenonA: "vs49" is vrAR=17 & MBH=0 & OE=0 { export vs49; }
+xenonA: "vs50" is vrAR=18 & MBH=0 & OE=0 { export vs50; }
+xenonA: "vs51" is vrAR=19 & MBH=0 & OE=0 { export vs51; }
+xenonA: "vs52" is vrAR=20 & MBH=0 & OE=0 { export vs52; }
+xenonA: "vs53" is vrAR=21 & MBH=0 & OE=0 { export vs53; }
+xenonA: "vs54" is vrAR=22 & MBH=0 & OE=0 { export vs54; }
+xenonA: "vs55" is vrAR=23 & MBH=0 & OE=0 { export vs55; }
+xenonA: "vs56" is vrAR=24 & MBH=0 & OE=0 { export vs56; }
+xenonA: "vs57" is vrAR=25 & MBH=0 & OE=0 { export vs57; }
+xenonA: "vs58" is vrAR=26 & MBH=0 & OE=0 { export vs58; }
+xenonA: "vs59" is vrAR=27 & MBH=0 & OE=0 { export vs59; }
+xenonA: "vs60" is vrAR=28 & MBH=0 & OE=0 { export vs60; }
+xenonA: "vs61" is vrAR=29 & MBH=0 & OE=0 { export vs61; }
+xenonA: "vs62" is vrAR=30 & MBH=0 & OE=0 { export vs62; }
+xenonA: "vs63" is vrAR=31 & MBH=0 & OE=0 { export vs63; }
+xenonA: "xv32" is vrAR=0 & MBH=1 & OE=0 { export xv32; }
+xenonA: "xv33" is vrAR=1 & MBH=1 & OE=0 { export xv33; }
+xenonA: "xv34" is vrAR=2 & MBH=1 & OE=0 { export xv34; }
+xenonA: "xv35" is vrAR=3 & MBH=1 & OE=0 { export xv35; }
+xenonA: "xv36" is vrAR=4 & MBH=1 & OE=0 { export xv36; }
+xenonA: "xv37" is vrAR=5 & MBH=1 & OE=0 { export xv37; }
+xenonA: "xv38" is vrAR=6 & MBH=1 & OE=0 { export xv38; }
+xenonA: "xv39" is vrAR=7 & MBH=1 & OE=0 { export xv39; }
+xenonA: "xv40" is vrAR=8 & MBH=1 & OE=0 { export xv40; }
+xenonA: "xv41" is vrAR=9 & MBH=1 & OE=0 { export xv41; }
+xenonA: "xv42" is vrAR=10 & MBH=1 & OE=0 { export xv42; }
+xenonA: "xv43" is vrAR=11 & MBH=1 & OE=0 { export xv43; }
+xenonA: "xv44" is vrAR=12 & MBH=1 & OE=0 { export xv44; }
+xenonA: "xv45" is vrAR=13 & MBH=1 & OE=0 { export xv45; }
+xenonA: "xv46" is vrAR=14 & MBH=1 & OE=0 { export xv46; }
+xenonA: "xv47" is vrAR=15 & MBH=1 & OE=0 { export xv47; }
+xenonA: "xv48" is vrAR=16 & MBH=1 & OE=0 { export xv48; }
+xenonA: "xv49" is vrAR=17 & MBH=1 & OE=0 { export xv49; }
+xenonA: "xv50" is vrAR=18 & MBH=1 & OE=0 { export xv50; }
+xenonA: "xv51" is vrAR=19 & MBH=1 & OE=0 { export xv51; }
+xenonA: "xv52" is vrAR=20 & MBH=1 & OE=0 { export xv52; }
+xenonA: "xv53" is vrAR=21 & MBH=1 & OE=0 { export xv53; }
+xenonA: "xv54" is vrAR=22 & MBH=1 & OE=0 { export xv54; }
+xenonA: "xv55" is vrAR=23 & MBH=1 & OE=0 { export xv55; }
+xenonA: "xv56" is vrAR=24 & MBH=1 & OE=0 { export xv56; }
+xenonA: "xv57" is vrAR=25 & MBH=1 & OE=0 { export xv57; }
+xenonA: "xv58" is vrAR=26 & MBH=1 & OE=0 { export xv58; }
+xenonA: "xv59" is vrAR=27 & MBH=1 & OE=0 { export xv59; }
+xenonA: "xv60" is vrAR=28 & MBH=1 & OE=0 { export xv60; }
+xenonA: "xv61" is vrAR=29 & MBH=1 & OE=0 { export xv61; }
+xenonA: "xv62" is vrAR=30 & MBH=1 & OE=0 { export xv62; }
+xenonA: "xv63" is vrAR=31 & MBH=1 & OE=0 { export xv63; }
+xenonA: "xv64" is vrAR=0 & MBH=0 & OE=1 { export xv64; }
+xenonA: "xv65" is vrAR=1 & MBH=0 & OE=1 { export xv65; }
+xenonA: "xv66" is vrAR=2 & MBH=0 & OE=1 { export xv66; }
+xenonA: "xv67" is vrAR=3 & MBH=0 & OE=1 { export xv67; }
+xenonA: "xv68" is vrAR=4 & MBH=0 & OE=1 { export xv68; }
+xenonA: "xv69" is vrAR=5 & MBH=0 & OE=1 { export xv69; }
+xenonA: "xv70" is vrAR=6 & MBH=0 & OE=1 { export xv70; }
+xenonA: "xv71" is vrAR=7 & MBH=0 & OE=1 { export xv71; }
+xenonA: "xv72" is vrAR=8 & MBH=0 & OE=1 { export xv72; }
+xenonA: "xv73" is vrAR=9 & MBH=0 & OE=1 { export xv73; }
+xenonA: "xv74" is vrAR=10 & MBH=0 & OE=1 { export xv74; }
+xenonA: "xv75" is vrAR=11 & MBH=0 & OE=1 { export xv75; }
+xenonA: "xv76" is vrAR=12 & MBH=0 & OE=1 { export xv76; }
+xenonA: "xv77" is vrAR=13 & MBH=0 & OE=1 { export xv77; }
+xenonA: "xv78" is vrAR=14 & MBH=0 & OE=1 { export xv78; }
+xenonA: "xv79" is vrAR=15 & MBH=0 & OE=1 { export xv79; }
+xenonA: "xv80" is vrAR=16 & MBH=0 & OE=1 { export xv80; }
+xenonA: "xv81" is vrAR=17 & MBH=0 & OE=1 { export xv81; }
+xenonA: "xv82" is vrAR=18 & MBH=0 & OE=1 { export xv82; }
+xenonA: "xv83" is vrAR=19 & MBH=0 & OE=1 { export xv83; }
+xenonA: "xv84" is vrAR=20 & MBH=0 & OE=1 { export xv84; }
+xenonA: "xv85" is vrAR=21 & MBH=0 & OE=1 { export xv85; }
+xenonA: "xv86" is vrAR=22 & MBH=0 & OE=1 { export xv86; }
+xenonA: "xv87" is vrAR=23 & MBH=0 & OE=1 { export xv87; }
+xenonA: "xv88" is vrAR=24 & MBH=0 & OE=1 { export xv88; }
+xenonA: "xv89" is vrAR=25 & MBH=0 & OE=1 { export xv89; }
+xenonA: "xv90" is vrAR=26 & MBH=0 & OE=1 { export xv90; }
+xenonA: "xv91" is vrAR=27 & MBH=0 & OE=1 { export xv91; }
+xenonA: "xv92" is vrAR=28 & MBH=0 & OE=1 { export xv92; }
+xenonA: "xv93" is vrAR=29 & MBH=0 & OE=1 { export xv93; }
+xenonA: "xv94" is vrAR=30 & MBH=0 & OE=1 { export xv94; }
+xenonA: "xv95" is vrAR=31 & MBH=0 & OE=1 { export xv95; }
+xenonA: "xv96" is vrAR=0 & MBH=1 & OE=1 { export xv96; }
+xenonA: "xv97" is vrAR=1 & MBH=1 & OE=1 { export xv97; }
+xenonA: "xv98" is vrAR=2 & MBH=1 & OE=1 { export xv98; }
+xenonA: "xv99" is vrAR=3 & MBH=1 & OE=1 { export xv99; }
+xenonA: "xv100" is vrAR=4 & MBH=1 & OE=1 { export xv100; }
+xenonA: "xv101" is vrAR=5 & MBH=1 & OE=1 { export xv101; }
+xenonA: "xv102" is vrAR=6 & MBH=1 & OE=1 { export xv102; }
+xenonA: "xv103" is vrAR=7 & MBH=1 & OE=1 { export xv103; }
+xenonA: "xv104" is vrAR=8 & MBH=1 & OE=1 { export xv104; }
+xenonA: "xv105" is vrAR=9 & MBH=1 & OE=1 { export xv105; }
+xenonA: "xv106" is vrAR=10 & MBH=1 & OE=1 { export xv106; }
+xenonA: "xv107" is vrAR=11 & MBH=1 & OE=1 { export xv107; }
+xenonA: "xv108" is vrAR=12 & MBH=1 & OE=1 { export xv108; }
+xenonA: "xv109" is vrAR=13 & MBH=1 & OE=1 { export xv109; }
+xenonA: "xv110" is vrAR=14 & MBH=1 & OE=1 { export xv110; }
+xenonA: "xv111" is vrAR=15 & MBH=1 & OE=1 { export xv111; }
+xenonA: "xv112" is vrAR=16 & MBH=1 & OE=1 { export xv112; }
+xenonA: "xv113" is vrAR=17 & MBH=1 & OE=1 { export xv113; }
+xenonA: "xv114" is vrAR=18 & MBH=1 & OE=1 { export xv114; }
+xenonA: "xv115" is vrAR=19 & MBH=1 & OE=1 { export xv115; }
+xenonA: "xv116" is vrAR=20 & MBH=1 & OE=1 { export xv116; }
+xenonA: "xv117" is vrAR=21 & MBH=1 & OE=1 { export xv117; }
+xenonA: "xv118" is vrAR=22 & MBH=1 & OE=1 { export xv118; }
+xenonA: "xv119" is vrAR=23 & MBH=1 & OE=1 { export xv119; }
+xenonA: "xv120" is vrAR=24 & MBH=1 & OE=1 { export xv120; }
+xenonA: "xv121" is vrAR=25 & MBH=1 & OE=1 { export xv121; }
+xenonA: "xv122" is vrAR=26 & MBH=1 & OE=1 { export xv122; }
+xenonA: "xv123" is vrAR=27 & MBH=1 & OE=1 { export xv123; }
+xenonA: "xv124" is vrAR=28 & MBH=1 & OE=1 { export xv124; }
+xenonA: "xv125" is vrAR=29 & MBH=1 & OE=1 { export xv125; }
+xenonA: "xv126" is vrAR=30 & MBH=1 & OE=1 { export xv126; }
+xenonA: "xv127" is vrAR=31 & MBH=1 & OE=1 { export xv127; }
+
 # Opcode 4, VX128_1: [OP:6][VD:5][RA:5][RB:5][OPC:7][VDh:2][11].
 # Seven-bit OPC is 12 for lvx128. Since stock token XOP_3_10 also
 # covers high register bit 1, we have two constructor patterns.
@@ -349,4 +481,162 @@ xenonB: "xv127" is vrBR=31 & BITS_0_1=3 { export xv127; }
 {
     unpacked:16 = xenonVupkd3d128(xenonB, A_BITS:4);
     xenonD = unpacked;
+}
+
+# --------------------------------------------------------------------
+# Remaining concrete VMX128 instructions observed in the newly imported
+# 17559 Xenon-language database. All masks follow Xenia's PPC decoder:
+# https://github.com/xenia-project/xenia/blob/master/src/xenia/cpu/ppc/ppc_opcode_lookup_gen.cc
+# Raw instruction words from xboxkrnl.exe(6).gzf have been checked.
+# --------------------------------------------------------------------
+
+# In format VX128, A occupies seven bits (vrAR plus bits 5 and 10).
+# The fixed instruction selector occupies bits 6..9 and bit 4.
+# BITS_6_10 includes bit 10, and BITS_4_5 includes bit 5, so the
+# four high-A combinations need disjoint SLEIGH pattern alternatives.
+define pcodeop xenonVmulfp128;
+define pcodeop xenonVmsum4fp128;
+define pcodeop xenonVpermwi128;
+define pcodeop xenonVrlimi128;
+:vmulfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=2 & BITS_4_5=1
+{
+    out:16 = xenonVmulfp128(xenonA, xenonB);
+    xenonD = out;
+}
+:vmulfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=2 & BITS_4_5=3
+{
+    out:16 = xenonVmulfp128(xenonA, xenonB);
+    xenonD = out;
+}
+:vmulfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=18 & BITS_4_5=1
+{
+    out:16 = xenonVmulfp128(xenonA, xenonB);
+    xenonD = out;
+}
+:vmulfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=18 & BITS_4_5=3
+{
+    out:16 = xenonVmulfp128(xenonA, xenonB);
+    xenonD = out;
+}
+:vmsum4fp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=7 & BITS_4_5=1
+{
+    out:16 = xenonVmsum4fp128(xenonA, xenonB);
+    xenonD = out;
+}
+:vmsum4fp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=7 & BITS_4_5=3
+{
+    out:16 = xenonVmsum4fp128(xenonA, xenonB);
+    xenonD = out;
+}
+:vmsum4fp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=23 & BITS_4_5=1
+{
+    out:16 = xenonVmsum4fp128(xenonA, xenonB);
+    xenonD = out;
+}
+:vmsum4fp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=23 & BITS_4_5=3
+{
+    out:16 = xenonVmsum4fp128(xenonA, xenonB);
+    xenonD = out;
+}
+:vor128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=11 & BITS_4_5=1
+{
+    xenonD = xenonA | xenonB;
+}
+:vor128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=11 & BITS_4_5=3
+{
+    xenonD = xenonA | xenonB;
+}
+:vor128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=27 & BITS_4_5=1
+{
+    xenonD = xenonA | xenonB;
+}
+:vor128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=27 & BITS_4_5=3
+{
+    xenonD = xenonA | xenonB;
+}
+
+# VX128_1 indexed store: selector bits 3..10 are 0x38 / 0x39
+# depending on the destination's extended high-register bit.
+# Kept as a real 16-byte memory store, not an opaque userop.
+:stvx128 xenonD,RA_OR_ZERO,B is OP=4 & xenonD & RA_OR_ZERO & B & XOP_3_10=56 & BITS_0_1=3
+{
+    build RA_OR_ZERO;
+    ea:$(REGISTER_SIZE) = (RA_OR_ZERO + B) & 0xfffffffffffffff0;
+    *[ram]:16 ea = xenonD;
+}
+:stvx128 xenonD,RA_OR_ZERO,B is OP=4 & xenonD & RA_OR_ZERO & B & XOP_3_10=57 & BITS_0_1=3
+{
+    build RA_OR_ZERO;
+    ea:$(REGISTER_SIZE) = (RA_OR_ZERO + B) & 0xfffffffffffffff0;
+    *[ram]:16 ea = xenonD;
+}
+
+# VX128_P permute-word-immediate: bits 10:9=01 and bits 5:4=01,
+# low five immediate bits A_BITS, upper three in bits 6..8.
+# Preserve source, dest, and both parts of the immediate in p-code.
+# Numeric lane permute semantics remain explicit/opaque pending a
+# verified word-lane implementation.
+:vpermwi128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & BITS_4_5=1 & BITS_6_10=8
+{
+    out:16 = xenonVpermwi128(xenonB, A_BITS:4, 0:4);
+    xenonD = out;
+}
+:vpermwi128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & BITS_4_5=1 & BITS_6_10=9
+{
+    out:16 = xenonVpermwi128(xenonB, A_BITS:4, 1:4);
+    xenonD = out;
+}
+:vpermwi128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & BITS_4_5=1 & BITS_6_10=10
+{
+    out:16 = xenonVpermwi128(xenonB, A_BITS:4, 2:4);
+    xenonD = out;
+}
+:vpermwi128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & BITS_4_5=1 & BITS_6_10=11
+{
+    out:16 = xenonVpermwi128(xenonB, A_BITS:4, 3:4);
+    xenonD = out;
+}
+:vpermwi128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & BITS_4_5=1 & BITS_6_10=12
+{
+    out:16 = xenonVpermwi128(xenonB, A_BITS:4, 4:4);
+    xenonD = out;
+}
+:vpermwi128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & BITS_4_5=1 & BITS_6_10=13
+{
+    out:16 = xenonVpermwi128(xenonB, A_BITS:4, 5:4);
+    xenonD = out;
+}
+:vpermwi128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & BITS_4_5=1 & BITS_6_10=14
+{
+    out:16 = xenonVpermwi128(xenonB, A_BITS:4, 6:4);
+    xenonD = out;
+}
+:vpermwi128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & BITS_4_5=1 & BITS_6_10=15
+{
+    out:16 = xenonVpermwi128(xenonB, A_BITS:4, 7:4);
+    xenonD = out;
+}
+
+# VX128_4 rotate-left-immediate/mask-insert: bits 10:8=111,
+# bits 5:4=01, 2-bit rotate selector in bits 7:6.
+# This writes back a blend of prior VD and rotated VB.
+:vrlimi128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & BITS_4_5=1 & BITS_6_10=28
+{
+    out:16 = xenonVrlimi128(xenonD, xenonB, A_BITS:4, 0:4);
+    xenonD = out;
+}
+:vrlimi128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & BITS_4_5=1 & BITS_6_10=29
+{
+    out:16 = xenonVrlimi128(xenonD, xenonB, A_BITS:4, 1:4);
+    xenonD = out;
+}
+:vrlimi128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & BITS_4_5=1 & BITS_6_10=30
+{
+    out:16 = xenonVrlimi128(xenonD, xenonB, A_BITS:4, 2:4);
+    xenonD = out;
+}
+:vrlimi128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & BITS_4_5=1 & BITS_6_10=31
+{
+    out:16 = xenonVrlimi128(xenonD, xenonB, A_BITS:4, 3:4);
+    xenonD = out;
 }
