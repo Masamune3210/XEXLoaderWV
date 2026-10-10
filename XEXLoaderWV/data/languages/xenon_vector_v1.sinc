@@ -329,7 +329,6 @@ xenonB: xv127 is vrBR=31 & BITS_0_1=3 { export xv127; }
     vrD = data >> shift;
     goto <done>;
 <aligned_case>
-    // SLEIGH constants are limited to 8 bytes; widen a sized zero.
     vrD = zext(0:8);
 <done>
 }
