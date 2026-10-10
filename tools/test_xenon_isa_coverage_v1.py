@@ -44,8 +44,10 @@ class XenonIsaInventoryTests(unittest.TestCase):
         statuses = Counter(
             constructors.get(row["mnemonic"], "missing") for row in self.rows)
         self.assertEqual(statuses, Counter(
-            {"missing": 72, "native-pcode": 7, "opaque-userop": 5}))
+            {"missing": 67, "native-pcode": 12, "opaque-userop": 5}))
         self.assertIn("xenonVupkd3d128", custom_ops)
+        for name in ("vand128", "vandc128", "vnor128", "vxor128", "vsel128"):
+            self.assertEqual(constructors.get(name), "native-pcode", name)
 
     def test_fixture_generation(self):
         with tempfile.TemporaryDirectory() as folder:
