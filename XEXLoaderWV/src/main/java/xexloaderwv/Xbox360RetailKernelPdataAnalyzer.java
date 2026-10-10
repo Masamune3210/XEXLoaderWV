@@ -115,12 +115,14 @@ public class Xbox360RetailKernelPdataAnalyzer extends AbstractAnalyzer {
         MemoryBlock tx = memory.getBlock(at(program, TEXT_START));
         require(pd != null && ".pdata".equals(pd.getName()) &&
                 pd.getStart().getOffset() == PDATA_START &&
-                pd.getSize() == 0x63A0L, "Unexpected .pdata mapping");
+                pd.getSize() >= 0x63A0L && pd.getSize() <= 0x6400L,
+            "Unexpected .pdata mapping");
         require(ex != null && ".edata".equals(ex.getName()) &&
                 ex.getStart().getOffset() == EXPORT_START, "Unexpected .edata mapping");
         require(tx != null && ".text".equals(tx.getName()) &&
                 tx.isExecute() && tx.getStart().getOffset() == TEXT_START &&
-                tx.getSize() == 0x1006C8L, "Unexpected executable .text mapping");
+                tx.getSize() >= 0x1006C8L && tx.getSize() <= 0x100800L,
+            "Unexpected executable .text mapping");
 
         Metadata metadata = new Metadata();
         long previousEnd = TEXT_START;
