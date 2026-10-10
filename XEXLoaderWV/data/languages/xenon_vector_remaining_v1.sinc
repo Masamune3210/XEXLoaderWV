@@ -12,12 +12,12 @@ define pcodeop xenonVnmsubfp128;
 
 
 
-define pcodeop xenonVpkuhum128;
 
-define pcodeop xenonVpkuwum128;
-define pcodeop xenonVslo128;
 
-define pcodeop xenonVsro128;
+
+
+
+
 # Updates sticky VSCR.SAT when any saturated pack lane exceeds range.
 # VSCR itself still needs a register-backed model shared with mfvscr/mtvscr.
 define pcodeop xenonSetVscrSatIf;
