@@ -26,6 +26,18 @@ FILLS = (("zero", 0), ("ones", 0xFFFFFFFF),
 XENIA_COMMIT = "95a5c3ee250f80c3b9d139658649d9ffb6db3eec"
 
 
+def decode_expectation(name: str, word: int) -> str:
+    """Distinguish documented X-form Rc=0 from decoder-permissive Rc=1.
+
+    Cell Vector/SIMD PEM v2.07c documents bit 31 = 0 for the eight
+    indexed left/right vector loads/stores. Xenia's opcode lookup masks
+    this bit out; include both encodings to test a strict SLEIGH decoder.
+    This is a Cell encoding reference, not Xenon hardware validation.
+    """
+    return ("reserved-rc1" if name in EXTRA_NAMES and (word & 1)
+            else "decode")
+
+
 def read_inventory(path: Path) -> list[dict]:
     with path.open(encoding="utf-8", newline="") as f:
         rows = list(csv.DictReader(
@@ -136,7 +148,8 @@ def write_results(rows: list[dict], sleigh_path: Path, inventory_path: Path,
             if hits != [name]:
                 raise ValueError(f"Fixture ambiguity: {word:08X} -> {hits}")
             samples.append((f"0x{len(binary):08X}", f"{word:08X}",
-                            name, status, variant))
+                            name, status, variant,
+                            decode_expectation(name, word)))
             binary.extend(word.to_bytes(4, "big"))
 
     def write_tsv(name: str, headings: tuple, items: list) -> None:
@@ -147,7 +160,7 @@ def write_results(rows: list[dict], sleigh_path: Path, inventory_path: Path,
 
     write_tsv("xenon_isa_fixture_v1.tsv",
               ("offset", "word_be", "expected_mnemonic", "sleigh_status",
-               "variant"), samples)
+               "variant", "decode_expectation"), samples)
     (output / "xenon_isa_fixture_v1.bin").write_bytes(binary)
     write_tsv("xenon_isa_coverage_v1.tsv",
               ("mnemonic", "primary", "mask", "value",
@@ -180,6 +193,11 @@ def write_results(rows: list[dict], sleigh_path: Path, inventory_path: Path,
         f"**{counts['native-pcode']}**. Opaque custom userops: "
         f"**{counts['opaque-userop']}**. Missing: **{counts['missing']}**.",
         f"Fixture: **{len(samples)}** sample words, **{len(binary)}** bytes.",
+        f"Expected decode: **{sum(row[5] == 'decode' for row in samples)}**; "
+        f"reserved Rc=1 expected rejection: "
+        f"**{sum(row[5] == 'reserved-rc1' for row in samples)}**.",
+        "The Rc=1 distinction follows Cell Vector/SIMD PEM v2.07c",
+        "X-form instruction diagrams; Xenon hardware behavior is unverified.",
         "",
         "This is source coverage only, NOT verified runtime decoding, and",
         "native SLEIGH p-code does not necessarily mean correct semantics.",
@@ -211,6 +229,9 @@ def write_results(rows: list[dict], sleigh_path: Path, inventory_path: Path,
     print(f"Families={len(rows)} native={counts['native-pcode']} "
           f"opaque={counts['opaque-userop']} missing={counts['missing']}; "
           f"fixture={len(samples)} words / {len(binary)} bytes")
+    print("Expectations: decode=%d reserved-rc1=%d" % (
+        sum(row[5] == "decode" for row in samples),
+        sum(row[5] == "reserved-rc1" for row in samples)))
     print("Generated:", output)
 
 
