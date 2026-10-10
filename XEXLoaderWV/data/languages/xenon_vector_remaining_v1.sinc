@@ -40,8 +40,8 @@ define pcodeop xenonVmaxfp128;
 define pcodeop xenonVminfp128;
 define pcodeop xenonVupkhsb128;
 define pcodeop xenonVupklsb128;
-define pcodeop xenonVupkhsh128;
-define pcodeop xenonVupklsh128;
+
+
 
 # vsldoi128: native; Xenia mask/value fc000010/10000010
 :vsldoi128 xenonD,xenonA,xenonB,BITS_6_10 is OP=4 & xenonD & xenonA & xenonB & BITS_6_10 & BITS_4_5=1
@@ -2310,15 +2310,39 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 # powerpc-rs independently records mask fc1f07f0 with 180007a0/180007e0.
 # VA128=0x60 (A_BITS=0 and both extended VA bits set) is NOT a byte unpack.
 # Xenia's byte-unpack decoder hides this distinction in its emitter.
-# Preserve numeric uncertainty with separate opaque result-producing userops.
+# Signed 16-bit halves widen to signed 32-bit words (4 source halfwords).
+# Big-endian register ordering: high takes source words 0-3, low takes 4-7.
+# Signed halfword unpack does not saturate or update CR6/VSCR.
 :vupkhsh128 xenonD,xenonB is OP=6 & xenonD & A_BITS=0 & xenonB & BITS_6_10=30 & BITS_4_5=2
 {
-    result:16 = xenonVupkhsh128(xenonB);
-    xenonD = result;
+    sourceHalf0:2 = xenonB(14);
+    signedWord0:4 = sext(sourceHalf0);
+    placedWord0:16 = zext(signedWord0) << 96;
+    sourceHalf1:2 = xenonB(12);
+    signedWord1:4 = sext(sourceHalf1);
+    placedWord1:16 = zext(signedWord1) << 64;
+    sourceHalf2:2 = xenonB(10);
+    signedWord2:4 = sext(sourceHalf2);
+    placedWord2:16 = zext(signedWord2) << 32;
+    sourceHalf3:2 = xenonB(8);
+    signedWord3:4 = sext(sourceHalf3);
+    placedWord3:16 = zext(signedWord3);
+    xenonD = placedWord0 | placedWord1 | placedWord2 | placedWord3;
 }
 
 :vupklsh128 xenonD,xenonB is OP=6 & xenonD & A_BITS=0 & xenonB & BITS_6_10=31 & BITS_4_5=2
 {
-    result:16 = xenonVupklsh128(xenonB);
-    xenonD = result;
+    sourceHalf0:2 = xenonB(6);
+    signedWord0:4 = sext(sourceHalf0);
+    placedWord0:16 = zext(signedWord0) << 96;
+    sourceHalf1:2 = xenonB(4);
+    signedWord1:4 = sext(sourceHalf1);
+    placedWord1:16 = zext(signedWord1) << 64;
+    sourceHalf2:2 = xenonB(2);
+    signedWord2:4 = sext(sourceHalf2);
+    placedWord2:16 = zext(signedWord2) << 32;
+    sourceHalf3:2 = xenonB(0);
+    signedWord3:4 = sext(sourceHalf3);
+    placedWord3:16 = zext(signedWord3);
+    xenonD = placedWord0 | placedWord1 | placedWord2 | placedWord3;
 }
