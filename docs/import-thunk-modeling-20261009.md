@@ -1,3 +1,10 @@
+## Full signed SHORT_2 unpack resolved from upstream emitter (2026-10-10)
+
+- Followed the earlier type-1 positive subset through pinned Xenia backend `src/xenia/cpu/backend/x64/x64_seq_vector.cc`, `EmitSHORT_2`: it shuffles the two 16-bit source halves from the low 32 bits, sign-extends each, **integer-adds** the binary32 bit pattern `0x40400000` (3.0f), then substitutes canonical `0x7fc00000` quiet NaN for the `0x8000` signed-overflow sentinel. No floating-point division/normalization step is involved.
+- Implemented this **entire type-1 signed-halfword operation** in both `vupkd3d128` constructors (`8f5a3b2`), with separate typed locals and conditional labels for each NaN sentinel; preserves the established native type-0 D3DCOLOR path and original userop for types 2..6. Now supports positive and negative 16-bit words including `0x8000`, without a guessed numeric shortcut. The family remains `opaque-userop` because not all formats are implemented.
+- The existing `test_vupkd3d_d3dcolor_integer_lane_mapping` has new full signed SHORT_2 structural assertions and numerical vectors (`67d2af1`): `0x7fff8001 -> 40407fff,403f8001,00000000,3f800000`; `0x4000c000 -> 40404000,403fc000,00000000,3f800000`; `0x00008000 -> 40400000,7fc00000,00000000,3f800000`, plus zero and both-NaN sentinels.
+- The **older adjacent handoff entry** describes the superseded *positive-only* interim implementation. Current code and this entry take precedence. No new SLEIGH compilation or Ghidra execution has occurred since these changes; regression source still has **39** test methods. Only a successful Ghidra build and numeric runtime audit can establish the new p-code executes as expected.
+
 ## Xenon native D3D unpack subset (2026-10-10)
 
 - Continued actual SLEIGH processor semantics: `XEXLoaderWV/data/languages/xenon_vector_v1.sinc` now implements **two exact-known `vupkd3d128` formats** in both opcode constructors (commits `d98fd70`, `87f79d1`, `9c61094`, `af80f45`), while retaining `xenonVupkd3d128` for the remaining formats and signed SHORT_2 cases. No opcode selector, fixture word or register definition changed. Family remains classified `opaque-userop`.
