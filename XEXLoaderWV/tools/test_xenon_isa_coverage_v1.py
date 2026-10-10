@@ -848,6 +848,30 @@ class XenonIsaInventoryTests(unittest.TestCase):
         self.assertEqual(ops - called, set(),
                          "Unused opaque userop declarations")
 
+    def test_freshness_checker_expected_family_statuses_match_sleigh(self):
+        import ast
+
+        source = audit.read_sleigh_source(audit.SLEIGH)
+        statuses, unused = audit.parse_sleigh(source)
+        checker = (HERE / "check_xenon_fixture_install_v1.py").read_text(
+            encoding="utf-8")
+        module = ast.parse(checker)
+        assignments = [node for node in module.body
+                       if isinstance(node, ast.Assign)
+                       and any(isinstance(t, ast.Name) and t.id == "EXPECTED"
+                               for t in node.targets)]
+        self.assertEqual(len(assignments), 1)
+        expected = ast.literal_eval(assignments[0].value)
+        self.assertGreaterEqual(len(expected), 35)
+        for name, classification in expected.items():
+            self.assertEqual(statuses.get(name), classification, name)
+        for name in ("vpkshss128", "vpkuwus128",
+                     "vcfpsxws128", "vcfpuxws128"):
+            self.assertEqual(expected[name], "opaque-userop")
+        for name in ("vupkhsh128", "vupklsh128", "vcmpbfp128",
+                     "vrfim128", "vrfip128", "vrfiz128"):
+            self.assertEqual(expected[name], "native-pcode")
+
     def test_fixture_generation(self):
         with tempfile.TemporaryDirectory() as folder:
             out = Path(folder)
