@@ -799,6 +799,12 @@ class XenonIsaInventoryTests(unittest.TestCase):
                 self.assertIn(
                     f"lowerBit{lane}:4 = zext(bfpBelow{lane}) << 30;",
                     body)
+                if index % 4 in (2, 3):
+                    self.assertIn(
+                        f"bfpOut{lane}:1 = bfpAbove{lane} | bfpBelow{lane};",
+                        body)
+                else:
+                    self.assertNotIn(f"bfpOut{lane}:", body)
             self.assertEqual("cr6 =" in body, index % 4 in (2, 3))
 
     def test_saturating_pack_clamps_and_tracks_vscr_dependency(self):
