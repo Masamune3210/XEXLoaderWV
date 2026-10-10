@@ -158,6 +158,62 @@ class XenonIsaInventoryTests(unittest.TestCase):
         for lane in range(4):
             self.assertIn(f"xenonResultLane{lane}:4 =", source)
 
+    def test_no_duplicate_typed_pcode_temporary_declarations(self):
+        # SleighCompile rejects a second NAME:SIZE assignment anywhere in
+        # one constructor, even when each declaration is in a different
+        # control-flow branch. Reassign a previously declared temp using
+        # NAME = ... instead. Check both Xenon SLEIGH source files.
+        import re
+
+        for path in (audit.SLEIGH, audit.ADDITIONAL_SLEIGH):
+            source = path.read_text(encoding="utf-8")
+            constructors = re.findall(
+                r"(?m)^:([A-Za-z]\w*) [^\n]+ is [^\n]+\n"
+                r"\{\n([\s\S]*?)\n\}", source)
+            for name, body in constructors:
+                declarations = re.findall(
+                    r"(?m)^\s*(?:local\s+)?([A-Za-z_]\w*):\d+\s*=",
+                    body)
+                unique = set(declarations)
+                self.assertEqual(len(declarations), len(unique),
+                                 f"{path.name}: {name}: "
+                                 f"duplicate typed locals "
+                                 f"{[x for x in unique if declarations.count(x)>1]}")
+
+    def test_saturating_conversion_and_rounding_branch_assignment(self):
+        # The compiler error at xenon_vector_remaining_v1.sinc:3988
+        # was caused by declaring convertedInt0:4 separately in all
+        # three branches. Ensure each lane has one typed initializer,
+        # with bare assignments along all possible control-flow paths.
+        import re
+
+        source = audit.ADDITIONAL_SLEIGH.read_text(encoding="utf-8")
+        for family, alternatives, paths in (
+            ("vcfpsxws128", 2, 3),
+            ("vcfpuxws128", 2, 3),
+            ("vrfiz128", 2, 2),
+        ):
+            bodies = re.findall(
+                r"(?m)^:" + family + r" [^\n]+ is [^\n]+\n"
+                r"\{\n([\s\S]*?)\n\}", source)
+            self.assertEqual(len(bodies), alternatives)
+            prefix = "roundOutput" if family == "vrfiz128" else "convertedInt"
+            for body in bodies:
+                for lane in range(4):
+                    name = f"{prefix}{lane}"
+                    self.assertEqual(
+                        len(re.findall(
+                            r"(?m)^\s*" + name + r":4\s*=\s*0:4;",
+                            body)), 1, (family, name))
+                    self.assertEqual(
+                        len(re.findall(
+                            r"(?m)^\s*" + name + r"\s*=", body)),
+                        paths, (family, name))
+                    self.assertNotRegex(
+                        body, r"(?m)^\s*" + name +
+                        r":4\s*=\s*(?!0:4;)",
+                        (family, name))
+
     def test_embedded_dcbzl_collision_filter_wiring(self):
         # Stock ppc_common includes the embedded dcbzl alias, which has the
         # same opcode selector as Xenon's dcbz128. Only the Xenon variant
