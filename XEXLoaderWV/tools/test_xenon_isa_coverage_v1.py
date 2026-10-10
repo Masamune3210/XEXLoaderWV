@@ -71,6 +71,76 @@ class XenonIsaInventoryTests(unittest.TestCase):
             self.assertNotEqual((probe >> 21) & 31, (probe >> 16) & 31)
             self.assertNotEqual((probe >> 21) & 31, (probe >> 11) & 31)
 
+    def test_native_d3d_unpack_numeric_probe_oracles(self):
+        # 96 emulator-private numerical probes must retain the exact
+        # vupkd3d128 selector, dest/source separation, and independently
+        # specified packed-bit results before Ghidra runtime execution.
+        import re
+
+        source = (audit.ROOT.parent /
+                  "ghidra_scripts/AuditXenonD3DUnpackNumericV1.java").read_text(
+                      encoding="utf-8")
+        self.assertIn("emulator.writeMemory(address, bytes);", source)
+        self.assertIn("emulator.readMemory(address, 4)", source)
+        self.assertIn('vector(bank == 0 ? "vs33" : "xv65")', source)
+        self.assertIn('vector("vs35")', source)
+        self.assertNotIn("currentProgram.getMemory().setBytes(", source)
+        self.assertIn("originalFixtureMatches(address, originalWord)", source)
+        self.assertIn("for (int bank = 0; bank < 2; bank++)", source)
+        self.assertIn("for (int low = 0; low < 4; low++)", source)
+        pattern = re.compile(
+            r'new TestCase\("([^"]+)",\s*(\d+),\s*(0x[0-9a-fA-F]+)L,\s*'
+            r'((?:0x[0-9a-fA-F]+L|0L)(?:,\s*'
+            r'(?:0x[0-9a-fA-F]+L|0L)){3})\)')
+        cases = pattern.findall(source)
+        self.assertEqual(len(cases), 12)
+        self.assertEqual({int(fmt) for _, fmt, _, _ in cases},
+                         {0, 1, 2, 4})
+
+        def sign(value, bits):
+            return value - (1 << bits) if value & (1 << (bits - 1)) else value
+
+        def component(value, bits):
+            if value == -(1 << (bits - 1)):
+                return 0x7fc00000
+            return (0x40400000 + value) & 0xffffffff
+
+        for label, format_string, packed_string, words_string in cases:
+            fmt, packed = int(format_string), int(packed_string, 16)
+            expected = [int(x[:-1], 0)
+                        for x in re.findall(r'(?:0x[0-9a-fA-F]+|0)L',
+                                            words_string)]
+            self.assertEqual(len(expected), 4, label)
+            if fmt == 0:
+                rgba = [(packed >> 16) & 255, (packed >> 8) & 255,
+                        packed & 255, (packed >> 24) & 255]
+                actual = [0x3f800000 | value for value in rgba]
+            elif fmt == 1:
+                actual = [
+                    component(sign((packed >> 16) & 0xffff, 16), 16),
+                    component(sign(packed & 0xffff, 16), 16),
+                    0, 0x3f800000]
+            elif fmt == 2:
+                actual = [
+                    component(sign((packed >> shift) & 0x3ff, 10), 10)
+                    for shift in (0, 10, 20)]
+                actual.append(0x3f800000 | ((packed >> 30) & 3))
+            else:
+                actual = [
+                    component(sign((packed >> shift) & 0xffff, 16), 16)
+                    for shift in (48, 32, 16, 0)]
+            self.assertEqual(actual, expected, label)
+
+            for bank in (0, 1):
+                for low in range(4):
+                    word = (0x180007f0 | (1 << 21) | (3 << 11) |
+                            ((fmt * 4 + low) << 16) | (bank << 3))
+                    self.assertEqual(word & 0xfc0007f0, 0x180007f0)
+                    self.assertEqual((word >> 21) & 31, 1)
+                    self.assertEqual((word >> 11) & 31, 3)
+                    self.assertEqual((word >> 16) & 31, fmt * 4 + low)
+                    self.assertEqual((word >> 3) & 1, bank)
+
     def test_sleigh_semantics_reject_cpp_style_comments(self):
         # C++ // comments inside Sleigh constructor actions are NOT valid.
         # A single such comment can make the parser reject all subsequent
