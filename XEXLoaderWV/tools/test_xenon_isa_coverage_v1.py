@@ -209,10 +209,10 @@ class XenonIsaInventoryTests(unittest.TestCase):
                         len(re.findall(
                             r"(?m)^\s*" + name + r"\s*=", body)),
                         paths, (family, name))
-                    self.assertNotRegex(
-                        body, r"(?m)^\s*" + name +
-                        r":4\s*=\s*(?!0:4;)",
-                        (family, name))
+                    self.assertEqual(
+                        re.findall(
+                            r"(?m)^\s*" + name + r":4\s*=\s*([^\n]+)",
+                            body), ["0:4;"], (family, name))
 
     def test_embedded_dcbzl_collision_filter_wiring(self):
         # Stock ppc_common includes the embedded dcbzl alias, which has the
