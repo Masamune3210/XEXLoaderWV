@@ -37,6 +37,11 @@ EXPECTED = {
     "stvlx": "native-pcode",
     "lvlxl": "native-pcode",
     "lvrxl": "native-pcode",
+    "vpermwi128": "native-pcode",
+    "vrlimi128": "native-pcode",
+    "vperm128": "native-pcode",
+    "vmsum3fp128": "native-pcode",
+    "vmsum4fp128": "native-pcode",
 }
 
 
