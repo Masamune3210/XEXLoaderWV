@@ -1071,6 +1071,9 @@ class XenonIsaInventoryTests(unittest.TestCase):
                       script)
         self.assertIn("emulator.step(monitor)", script)
         self.assertIn("emulator.readRegister(destination)", script)
+        self.assertIn("Map<Address, Long> fixtureWords", script)
+        self.assertIn("!fixtureWordMatches(address, fixtureWords.get(address))", script)
+        self.assertIn("!fixtureWordMatches(patternAddress, fixtureWords.get(patternAddress))", script)
 
     def test_fixture_generation(self):
         with tempfile.TemporaryDirectory() as folder:
