@@ -886,6 +886,8 @@ class XenonIsaInventoryTests(unittest.TestCase):
         self.assertIn("runWholeVectorShifts(manifest, base);", script)
         self.assertIn("runLaneShifts(manifest, base);", script)
         self.assertIn("runLogicalOps(manifest, base);", script)
+        self.assertIn("runWordMerges(manifest, base);", script)
+        self.assertIn("XENON WORD MERGE NATIVE NUMERICAL P-CODE AUDIT", script)
         self.assertIn("XENON VECTOR BITWISE NATIVE NUMERICAL P-CODE AUDIT", script)
         self.assertIn("XENON PER-LANE WORD SHIFT NATIVE NUMERICAL P-CODE AUDIT", script)
         self.assertIn("XENON WHOLE-VECTOR SHIFT NATIVE NUMERICAL P-CODE AUDIT", script)
@@ -1340,6 +1342,90 @@ class XenonIsaInventoryTests(unittest.TestCase):
                                              expected_bit)
                     cases += 1
         self.assertEqual(cases, 288)
+
+    def test_native_word_merges_exact_lane_order(self):
+        # Real merge constructors take the high (3,2) or low (1,0)
+        # 32-bit word pairs of independent VA/VB, alternating A/B.
+        import re
+
+        script = (audit.ROOT.parent / "ghidra_scripts" /
+                  "AuditXenonNumericalPcode.java").read_text(
+                      encoding="utf-8")
+        source = audit.SLEIGH.read_text(encoding="utf-8")
+        operations = (
+            ("vmrghw128", 0x18000300, True),
+            ("vmrglw128", 0x18000340, False),
+        )
+        declared = re.findall(
+            r'new WordMerge\("([^"]+)",\s*(0x[0-9a-fA-F]+)L,\s*'
+            r'(true|false)\)', script)
+        self.assertEqual(
+            declared,
+            [(name, f"0x{opcode:08x}", str(high).lower())
+             for name, opcode, high in operations])
+        self.assertIn("runWordMerges(manifest, base);", script)
+        self.assertIn(
+            'recordSuite("WORD-MERGE", passed, failed, problems)', script)
+        self.assertIn("BigInteger initialD = expected.xor(MASK128);", script)
+        self.assertIn("emulator.writeRegister(destination, initialD);",
+                      script)
+        self.assertIn("!fixtureMatches(address, originalWord)", script)
+        self.assertIn("emulator.writeMemory(address, opcode);", script)
+        self.assertIn("emulator.readMemory(address, 4)", script)
+        self.assertIn("emulator.readRegister(aReg)", script)
+        self.assertIn("emulator.readRegister(bReg)", script)
+        self.assertNotIn("currentProgram.getMemory().setBytes(", script)
+
+        patterns = re.findall(
+            r'new LogicalPattern\("([^"]+)",\s*'
+            r'"([0-9a-f]{32})",\s*"([0-9a-f]{32})",\s*'
+            r'"([0-9a-f]{32})"\)', script)
+        self.assertEqual(len(patterns), 12)
+        mask128 = (1 << 128) - 1
+        cases = 0
+        for name, opcode, high in operations:
+            constructors = re.findall(
+                r"(?m)^:" + name + r" [^\n]+\n"
+                r"\{\n([\s\S]*?)\n\}", source)
+            self.assertEqual(len(constructors), 4, name)
+            first_offset, second_offset = (12, 8) if high else (4, 0)
+            for body in constructors:
+                self.assertIn(
+                    f"aFirst:4 = xenonA({first_offset});", body)
+                self.assertIn(
+                    f"bFirst:4 = xenonB({first_offset});", body)
+                self.assertIn(
+                    f"aSecond:4 = xenonA({second_offset});", body)
+                self.assertIn(
+                    f"bSecond:4 = xenonB({second_offset});", body)
+                self.assertIn(
+                    "xenonD = first | second | third | fourth;", body)
+            for variant in range(4):
+                word = (opcode | (1 << 21) | (2 << 16) |
+                        (3 << 11) | ((variant & 1) << 5) |
+                        ((variant >> 1) << 10))
+                self.assertEqual(word & 0xfc0003d0, opcode)
+                self.assertEqual((word >> 5) & 1, variant & 1)
+                self.assertEqual((word >> 10) & 1, variant >> 1)
+                for _, text_a, text_b, _ in patterns:
+                    a, b = int(text_a, 16), int(text_b, 16)
+                    words_a = [(a >> (i * 32)) & 0xffffffff
+                               for i in range(4)]
+                    words_b = [(b >> (i * 32)) & 0xffffffff
+                               for i in range(4)]
+                    upper = 3 if high else 1
+                    expected_words = [
+                        words_a[upper], words_b[upper],
+                        words_a[upper - 1], words_b[upper - 1],
+                    ]
+                    result_bytes = b"".join(
+                        word.to_bytes(4, "big") for word in expected_words)
+                    result = int.from_bytes(result_bytes, "big")
+                    self.assertTrue(0 <= result <= mask128)
+                    self.assertNotEqual(result ^ mask128, result)
+                    self.assertEqual(len(result_bytes), 16)
+                    cases += 1
+        self.assertEqual(cases, 96)
 
     def test_unified_numerical_script_is_only_entrypoint(self):
         from pathlib import Path
