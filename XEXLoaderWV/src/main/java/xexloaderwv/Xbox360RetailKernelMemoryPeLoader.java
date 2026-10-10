@@ -19,6 +19,7 @@ import ghidra.app.util.bin.format.pe.SectionFlags;
 import ghidra.app.util.bin.format.pe.SectionHeader;
 import ghidra.app.util.importer.MessageLog;
 import ghidra.app.util.opinion.LoadSpec;
+import ghidra.app.util.opinion.LoaderTier;
 import ghidra.app.util.opinion.PeLoader;
 import ghidra.program.database.mem.FileBytes;
 import ghidra.program.model.address.Address;
@@ -27,6 +28,7 @@ import ghidra.program.model.address.AddressSpace;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.MemoryBlock;
 import ghidra.util.task.TaskMonitor;
+import ghidra.util.Msg;
 
 /**
  * Import the exact, SHA256-verified Xbox 360 retail 17559 kernel as a PE
@@ -49,6 +51,20 @@ public class Xbox360RetailKernelMemoryPeLoader extends PeLoader {
     @Override
     public String getName() {
         return LOADER_NAME;
+    }
+
+    @Override
+    public LoaderTier getTier() {
+        // The built-in generic PE loader also recognizes the original
+        // firmware-derived file, but loads its sections from incorrect
+        // COFF PointerToRawData offsets. Our loader is SHA256-limited to
+        // this one verified memory image, so prefer it for that image.
+        return LoaderTier.SPECIALIZED_TARGET_LOADER;
+    }
+
+    @Override
+    public int getTierPriority() {
+        return 0;
     }
 
     private static String sha256(ByteProvider provider) throws IOException {
@@ -152,7 +168,10 @@ public class Xbox360RetailKernelMemoryPeLoader extends PeLoader {
             }
             result.put(section, address);
         }
-        log.appendMsg("Xbox 360 kernel 17559: sections loaded from their actual memory-image RVAs");
+        String message = "Xbox 360 kernel 17559: memory-image loader mapped " +
+            result.size() + " sections from actual RVAs, not COFF raw-file pointers";
+        log.appendMsg(message);
+        Msg.info(getClass(), message);
         return result;
     }
 }
