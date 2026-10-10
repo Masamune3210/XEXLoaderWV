@@ -773,101 +773,965 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 # vpkshss128: opaque; Xenia mask/value fc0003d0/14000200
 :vpkshss128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=8 & BITS_4_5=0
 {
-    result:16 = xenonVpkshss128(xenonA, xenonB);
-    xenonD = result;
+    packInput0:2 = xenonA(14);
+    packOverflow0:1 = packInput0 s< 0xff80:2 | packInput0 s> 127:2;
+    packTrunc0:1 = packInput0(0);
+    packWide0:16 = zext(packTrunc0) << 120;
+    packInput1:2 = xenonA(12);
+    packOverflow1:1 = packInput1 s< 0xff80:2 | packInput1 s> 127:2;
+    packTrunc1:1 = packInput1(0);
+    packWide1:16 = zext(packTrunc1) << 112;
+    packInput2:2 = xenonA(10);
+    packOverflow2:1 = packInput2 s< 0xff80:2 | packInput2 s> 127:2;
+    packTrunc2:1 = packInput2(0);
+    packWide2:16 = zext(packTrunc2) << 104;
+    packInput3:2 = xenonA(8);
+    packOverflow3:1 = packInput3 s< 0xff80:2 | packInput3 s> 127:2;
+    packTrunc3:1 = packInput3(0);
+    packWide3:16 = zext(packTrunc3) << 96;
+    packInput4:2 = xenonA(6);
+    packOverflow4:1 = packInput4 s< 0xff80:2 | packInput4 s> 127:2;
+    packTrunc4:1 = packInput4(0);
+    packWide4:16 = zext(packTrunc4) << 88;
+    packInput5:2 = xenonA(4);
+    packOverflow5:1 = packInput5 s< 0xff80:2 | packInput5 s> 127:2;
+    packTrunc5:1 = packInput5(0);
+    packWide5:16 = zext(packTrunc5) << 80;
+    packInput6:2 = xenonA(2);
+    packOverflow6:1 = packInput6 s< 0xff80:2 | packInput6 s> 127:2;
+    packTrunc6:1 = packInput6(0);
+    packWide6:16 = zext(packTrunc6) << 72;
+    packInput7:2 = xenonA(0);
+    packOverflow7:1 = packInput7 s< 0xff80:2 | packInput7 s> 127:2;
+    packTrunc7:1 = packInput7(0);
+    packWide7:16 = zext(packTrunc7) << 64;
+    packInput8:2 = xenonB(14);
+    packOverflow8:1 = packInput8 s< 0xff80:2 | packInput8 s> 127:2;
+    packTrunc8:1 = packInput8(0);
+    packWide8:16 = zext(packTrunc8) << 56;
+    packInput9:2 = xenonB(12);
+    packOverflow9:1 = packInput9 s< 0xff80:2 | packInput9 s> 127:2;
+    packTrunc9:1 = packInput9(0);
+    packWide9:16 = zext(packTrunc9) << 48;
+    packInput10:2 = xenonB(10);
+    packOverflow10:1 = packInput10 s< 0xff80:2 | packInput10 s> 127:2;
+    packTrunc10:1 = packInput10(0);
+    packWide10:16 = zext(packTrunc10) << 40;
+    packInput11:2 = xenonB(8);
+    packOverflow11:1 = packInput11 s< 0xff80:2 | packInput11 s> 127:2;
+    packTrunc11:1 = packInput11(0);
+    packWide11:16 = zext(packTrunc11) << 32;
+    packInput12:2 = xenonB(6);
+    packOverflow12:1 = packInput12 s< 0xff80:2 | packInput12 s> 127:2;
+    packTrunc12:1 = packInput12(0);
+    packWide12:16 = zext(packTrunc12) << 24;
+    packInput13:2 = xenonB(4);
+    packOverflow13:1 = packInput13 s< 0xff80:2 | packInput13 s> 127:2;
+    packTrunc13:1 = packInput13(0);
+    packWide13:16 = zext(packTrunc13) << 16;
+    packInput14:2 = xenonB(2);
+    packOverflow14:1 = packInput14 s< 0xff80:2 | packInput14 s> 127:2;
+    packTrunc14:1 = packInput14(0);
+    packWide14:16 = zext(packTrunc14) << 8;
+    packInput15:2 = xenonB(0);
+    packOverflow15:1 = packInput15 s< 0xff80:2 | packInput15 s> 127:2;
+    packTrunc15:1 = packInput15(0);
+    packWide15:16 = zext(packTrunc15);
+    packHasOverflow:1 = packOverflow0 | packOverflow1 | packOverflow2 | packOverflow3 | packOverflow4 | packOverflow5 | packOverflow6 | packOverflow7 | packOverflow8 | packOverflow9 | packOverflow10 | packOverflow11 | packOverflow12 | packOverflow13 | packOverflow14 | packOverflow15;
+    if (packHasOverflow) goto <pack_unresolved_saturation>;
+    xenonD = packWide0 | packWide1 | packWide2 | packWide3 | packWide4 | packWide5 | packWide6 | packWide7 | packWide8 | packWide9 | packWide10 | packWide11 | packWide12 | packWide13 | packWide14 | packWide15;
+    goto <pack_end>;
+<pack_unresolved_saturation>
+    saturatingResult:16 = xenonVpkshss128(xenonA, xenonB);
+    xenonD = saturatingResult;
+<pack_end>
 }
 
 :vpkshss128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=8 & BITS_4_5=2
 {
-    result:16 = xenonVpkshss128(xenonA, xenonB);
-    xenonD = result;
+    packInput0:2 = xenonA(14);
+    packOverflow0:1 = packInput0 s< 0xff80:2 | packInput0 s> 127:2;
+    packTrunc0:1 = packInput0(0);
+    packWide0:16 = zext(packTrunc0) << 120;
+    packInput1:2 = xenonA(12);
+    packOverflow1:1 = packInput1 s< 0xff80:2 | packInput1 s> 127:2;
+    packTrunc1:1 = packInput1(0);
+    packWide1:16 = zext(packTrunc1) << 112;
+    packInput2:2 = xenonA(10);
+    packOverflow2:1 = packInput2 s< 0xff80:2 | packInput2 s> 127:2;
+    packTrunc2:1 = packInput2(0);
+    packWide2:16 = zext(packTrunc2) << 104;
+    packInput3:2 = xenonA(8);
+    packOverflow3:1 = packInput3 s< 0xff80:2 | packInput3 s> 127:2;
+    packTrunc3:1 = packInput3(0);
+    packWide3:16 = zext(packTrunc3) << 96;
+    packInput4:2 = xenonA(6);
+    packOverflow4:1 = packInput4 s< 0xff80:2 | packInput4 s> 127:2;
+    packTrunc4:1 = packInput4(0);
+    packWide4:16 = zext(packTrunc4) << 88;
+    packInput5:2 = xenonA(4);
+    packOverflow5:1 = packInput5 s< 0xff80:2 | packInput5 s> 127:2;
+    packTrunc5:1 = packInput5(0);
+    packWide5:16 = zext(packTrunc5) << 80;
+    packInput6:2 = xenonA(2);
+    packOverflow6:1 = packInput6 s< 0xff80:2 | packInput6 s> 127:2;
+    packTrunc6:1 = packInput6(0);
+    packWide6:16 = zext(packTrunc6) << 72;
+    packInput7:2 = xenonA(0);
+    packOverflow7:1 = packInput7 s< 0xff80:2 | packInput7 s> 127:2;
+    packTrunc7:1 = packInput7(0);
+    packWide7:16 = zext(packTrunc7) << 64;
+    packInput8:2 = xenonB(14);
+    packOverflow8:1 = packInput8 s< 0xff80:2 | packInput8 s> 127:2;
+    packTrunc8:1 = packInput8(0);
+    packWide8:16 = zext(packTrunc8) << 56;
+    packInput9:2 = xenonB(12);
+    packOverflow9:1 = packInput9 s< 0xff80:2 | packInput9 s> 127:2;
+    packTrunc9:1 = packInput9(0);
+    packWide9:16 = zext(packTrunc9) << 48;
+    packInput10:2 = xenonB(10);
+    packOverflow10:1 = packInput10 s< 0xff80:2 | packInput10 s> 127:2;
+    packTrunc10:1 = packInput10(0);
+    packWide10:16 = zext(packTrunc10) << 40;
+    packInput11:2 = xenonB(8);
+    packOverflow11:1 = packInput11 s< 0xff80:2 | packInput11 s> 127:2;
+    packTrunc11:1 = packInput11(0);
+    packWide11:16 = zext(packTrunc11) << 32;
+    packInput12:2 = xenonB(6);
+    packOverflow12:1 = packInput12 s< 0xff80:2 | packInput12 s> 127:2;
+    packTrunc12:1 = packInput12(0);
+    packWide12:16 = zext(packTrunc12) << 24;
+    packInput13:2 = xenonB(4);
+    packOverflow13:1 = packInput13 s< 0xff80:2 | packInput13 s> 127:2;
+    packTrunc13:1 = packInput13(0);
+    packWide13:16 = zext(packTrunc13) << 16;
+    packInput14:2 = xenonB(2);
+    packOverflow14:1 = packInput14 s< 0xff80:2 | packInput14 s> 127:2;
+    packTrunc14:1 = packInput14(0);
+    packWide14:16 = zext(packTrunc14) << 8;
+    packInput15:2 = xenonB(0);
+    packOverflow15:1 = packInput15 s< 0xff80:2 | packInput15 s> 127:2;
+    packTrunc15:1 = packInput15(0);
+    packWide15:16 = zext(packTrunc15);
+    packHasOverflow:1 = packOverflow0 | packOverflow1 | packOverflow2 | packOverflow3 | packOverflow4 | packOverflow5 | packOverflow6 | packOverflow7 | packOverflow8 | packOverflow9 | packOverflow10 | packOverflow11 | packOverflow12 | packOverflow13 | packOverflow14 | packOverflow15;
+    if (packHasOverflow) goto <pack_unresolved_saturation>;
+    xenonD = packWide0 | packWide1 | packWide2 | packWide3 | packWide4 | packWide5 | packWide6 | packWide7 | packWide8 | packWide9 | packWide10 | packWide11 | packWide12 | packWide13 | packWide14 | packWide15;
+    goto <pack_end>;
+<pack_unresolved_saturation>
+    saturatingResult:16 = xenonVpkshss128(xenonA, xenonB);
+    xenonD = saturatingResult;
+<pack_end>
 }
 
 :vpkshss128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=24 & BITS_4_5=0
 {
-    result:16 = xenonVpkshss128(xenonA, xenonB);
-    xenonD = result;
+    packInput0:2 = xenonA(14);
+    packOverflow0:1 = packInput0 s< 0xff80:2 | packInput0 s> 127:2;
+    packTrunc0:1 = packInput0(0);
+    packWide0:16 = zext(packTrunc0) << 120;
+    packInput1:2 = xenonA(12);
+    packOverflow1:1 = packInput1 s< 0xff80:2 | packInput1 s> 127:2;
+    packTrunc1:1 = packInput1(0);
+    packWide1:16 = zext(packTrunc1) << 112;
+    packInput2:2 = xenonA(10);
+    packOverflow2:1 = packInput2 s< 0xff80:2 | packInput2 s> 127:2;
+    packTrunc2:1 = packInput2(0);
+    packWide2:16 = zext(packTrunc2) << 104;
+    packInput3:2 = xenonA(8);
+    packOverflow3:1 = packInput3 s< 0xff80:2 | packInput3 s> 127:2;
+    packTrunc3:1 = packInput3(0);
+    packWide3:16 = zext(packTrunc3) << 96;
+    packInput4:2 = xenonA(6);
+    packOverflow4:1 = packInput4 s< 0xff80:2 | packInput4 s> 127:2;
+    packTrunc4:1 = packInput4(0);
+    packWide4:16 = zext(packTrunc4) << 88;
+    packInput5:2 = xenonA(4);
+    packOverflow5:1 = packInput5 s< 0xff80:2 | packInput5 s> 127:2;
+    packTrunc5:1 = packInput5(0);
+    packWide5:16 = zext(packTrunc5) << 80;
+    packInput6:2 = xenonA(2);
+    packOverflow6:1 = packInput6 s< 0xff80:2 | packInput6 s> 127:2;
+    packTrunc6:1 = packInput6(0);
+    packWide6:16 = zext(packTrunc6) << 72;
+    packInput7:2 = xenonA(0);
+    packOverflow7:1 = packInput7 s< 0xff80:2 | packInput7 s> 127:2;
+    packTrunc7:1 = packInput7(0);
+    packWide7:16 = zext(packTrunc7) << 64;
+    packInput8:2 = xenonB(14);
+    packOverflow8:1 = packInput8 s< 0xff80:2 | packInput8 s> 127:2;
+    packTrunc8:1 = packInput8(0);
+    packWide8:16 = zext(packTrunc8) << 56;
+    packInput9:2 = xenonB(12);
+    packOverflow9:1 = packInput9 s< 0xff80:2 | packInput9 s> 127:2;
+    packTrunc9:1 = packInput9(0);
+    packWide9:16 = zext(packTrunc9) << 48;
+    packInput10:2 = xenonB(10);
+    packOverflow10:1 = packInput10 s< 0xff80:2 | packInput10 s> 127:2;
+    packTrunc10:1 = packInput10(0);
+    packWide10:16 = zext(packTrunc10) << 40;
+    packInput11:2 = xenonB(8);
+    packOverflow11:1 = packInput11 s< 0xff80:2 | packInput11 s> 127:2;
+    packTrunc11:1 = packInput11(0);
+    packWide11:16 = zext(packTrunc11) << 32;
+    packInput12:2 = xenonB(6);
+    packOverflow12:1 = packInput12 s< 0xff80:2 | packInput12 s> 127:2;
+    packTrunc12:1 = packInput12(0);
+    packWide12:16 = zext(packTrunc12) << 24;
+    packInput13:2 = xenonB(4);
+    packOverflow13:1 = packInput13 s< 0xff80:2 | packInput13 s> 127:2;
+    packTrunc13:1 = packInput13(0);
+    packWide13:16 = zext(packTrunc13) << 16;
+    packInput14:2 = xenonB(2);
+    packOverflow14:1 = packInput14 s< 0xff80:2 | packInput14 s> 127:2;
+    packTrunc14:1 = packInput14(0);
+    packWide14:16 = zext(packTrunc14) << 8;
+    packInput15:2 = xenonB(0);
+    packOverflow15:1 = packInput15 s< 0xff80:2 | packInput15 s> 127:2;
+    packTrunc15:1 = packInput15(0);
+    packWide15:16 = zext(packTrunc15);
+    packHasOverflow:1 = packOverflow0 | packOverflow1 | packOverflow2 | packOverflow3 | packOverflow4 | packOverflow5 | packOverflow6 | packOverflow7 | packOverflow8 | packOverflow9 | packOverflow10 | packOverflow11 | packOverflow12 | packOverflow13 | packOverflow14 | packOverflow15;
+    if (packHasOverflow) goto <pack_unresolved_saturation>;
+    xenonD = packWide0 | packWide1 | packWide2 | packWide3 | packWide4 | packWide5 | packWide6 | packWide7 | packWide8 | packWide9 | packWide10 | packWide11 | packWide12 | packWide13 | packWide14 | packWide15;
+    goto <pack_end>;
+<pack_unresolved_saturation>
+    saturatingResult:16 = xenonVpkshss128(xenonA, xenonB);
+    xenonD = saturatingResult;
+<pack_end>
 }
 
 :vpkshss128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=24 & BITS_4_5=2
 {
-    result:16 = xenonVpkshss128(xenonA, xenonB);
-    xenonD = result;
+    packInput0:2 = xenonA(14);
+    packOverflow0:1 = packInput0 s< 0xff80:2 | packInput0 s> 127:2;
+    packTrunc0:1 = packInput0(0);
+    packWide0:16 = zext(packTrunc0) << 120;
+    packInput1:2 = xenonA(12);
+    packOverflow1:1 = packInput1 s< 0xff80:2 | packInput1 s> 127:2;
+    packTrunc1:1 = packInput1(0);
+    packWide1:16 = zext(packTrunc1) << 112;
+    packInput2:2 = xenonA(10);
+    packOverflow2:1 = packInput2 s< 0xff80:2 | packInput2 s> 127:2;
+    packTrunc2:1 = packInput2(0);
+    packWide2:16 = zext(packTrunc2) << 104;
+    packInput3:2 = xenonA(8);
+    packOverflow3:1 = packInput3 s< 0xff80:2 | packInput3 s> 127:2;
+    packTrunc3:1 = packInput3(0);
+    packWide3:16 = zext(packTrunc3) << 96;
+    packInput4:2 = xenonA(6);
+    packOverflow4:1 = packInput4 s< 0xff80:2 | packInput4 s> 127:2;
+    packTrunc4:1 = packInput4(0);
+    packWide4:16 = zext(packTrunc4) << 88;
+    packInput5:2 = xenonA(4);
+    packOverflow5:1 = packInput5 s< 0xff80:2 | packInput5 s> 127:2;
+    packTrunc5:1 = packInput5(0);
+    packWide5:16 = zext(packTrunc5) << 80;
+    packInput6:2 = xenonA(2);
+    packOverflow6:1 = packInput6 s< 0xff80:2 | packInput6 s> 127:2;
+    packTrunc6:1 = packInput6(0);
+    packWide6:16 = zext(packTrunc6) << 72;
+    packInput7:2 = xenonA(0);
+    packOverflow7:1 = packInput7 s< 0xff80:2 | packInput7 s> 127:2;
+    packTrunc7:1 = packInput7(0);
+    packWide7:16 = zext(packTrunc7) << 64;
+    packInput8:2 = xenonB(14);
+    packOverflow8:1 = packInput8 s< 0xff80:2 | packInput8 s> 127:2;
+    packTrunc8:1 = packInput8(0);
+    packWide8:16 = zext(packTrunc8) << 56;
+    packInput9:2 = xenonB(12);
+    packOverflow9:1 = packInput9 s< 0xff80:2 | packInput9 s> 127:2;
+    packTrunc9:1 = packInput9(0);
+    packWide9:16 = zext(packTrunc9) << 48;
+    packInput10:2 = xenonB(10);
+    packOverflow10:1 = packInput10 s< 0xff80:2 | packInput10 s> 127:2;
+    packTrunc10:1 = packInput10(0);
+    packWide10:16 = zext(packTrunc10) << 40;
+    packInput11:2 = xenonB(8);
+    packOverflow11:1 = packInput11 s< 0xff80:2 | packInput11 s> 127:2;
+    packTrunc11:1 = packInput11(0);
+    packWide11:16 = zext(packTrunc11) << 32;
+    packInput12:2 = xenonB(6);
+    packOverflow12:1 = packInput12 s< 0xff80:2 | packInput12 s> 127:2;
+    packTrunc12:1 = packInput12(0);
+    packWide12:16 = zext(packTrunc12) << 24;
+    packInput13:2 = xenonB(4);
+    packOverflow13:1 = packInput13 s< 0xff80:2 | packInput13 s> 127:2;
+    packTrunc13:1 = packInput13(0);
+    packWide13:16 = zext(packTrunc13) << 16;
+    packInput14:2 = xenonB(2);
+    packOverflow14:1 = packInput14 s< 0xff80:2 | packInput14 s> 127:2;
+    packTrunc14:1 = packInput14(0);
+    packWide14:16 = zext(packTrunc14) << 8;
+    packInput15:2 = xenonB(0);
+    packOverflow15:1 = packInput15 s< 0xff80:2 | packInput15 s> 127:2;
+    packTrunc15:1 = packInput15(0);
+    packWide15:16 = zext(packTrunc15);
+    packHasOverflow:1 = packOverflow0 | packOverflow1 | packOverflow2 | packOverflow3 | packOverflow4 | packOverflow5 | packOverflow6 | packOverflow7 | packOverflow8 | packOverflow9 | packOverflow10 | packOverflow11 | packOverflow12 | packOverflow13 | packOverflow14 | packOverflow15;
+    if (packHasOverflow) goto <pack_unresolved_saturation>;
+    xenonD = packWide0 | packWide1 | packWide2 | packWide3 | packWide4 | packWide5 | packWide6 | packWide7 | packWide8 | packWide9 | packWide10 | packWide11 | packWide12 | packWide13 | packWide14 | packWide15;
+    goto <pack_end>;
+<pack_unresolved_saturation>
+    saturatingResult:16 = xenonVpkshss128(xenonA, xenonB);
+    xenonD = saturatingResult;
+<pack_end>
 }
 
 # vpkshus128: opaque; Xenia mask/value fc0003d0/14000240
 :vpkshus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=9 & BITS_4_5=0
 {
-    result:16 = xenonVpkshus128(xenonA, xenonB);
-    xenonD = result;
+    packInput0:2 = xenonA(14);
+    packOverflow0:1 = packInput0 s< 0:2 | packInput0 s> 255:2;
+    packTrunc0:1 = packInput0(0);
+    packWide0:16 = zext(packTrunc0) << 120;
+    packInput1:2 = xenonA(12);
+    packOverflow1:1 = packInput1 s< 0:2 | packInput1 s> 255:2;
+    packTrunc1:1 = packInput1(0);
+    packWide1:16 = zext(packTrunc1) << 112;
+    packInput2:2 = xenonA(10);
+    packOverflow2:1 = packInput2 s< 0:2 | packInput2 s> 255:2;
+    packTrunc2:1 = packInput2(0);
+    packWide2:16 = zext(packTrunc2) << 104;
+    packInput3:2 = xenonA(8);
+    packOverflow3:1 = packInput3 s< 0:2 | packInput3 s> 255:2;
+    packTrunc3:1 = packInput3(0);
+    packWide3:16 = zext(packTrunc3) << 96;
+    packInput4:2 = xenonA(6);
+    packOverflow4:1 = packInput4 s< 0:2 | packInput4 s> 255:2;
+    packTrunc4:1 = packInput4(0);
+    packWide4:16 = zext(packTrunc4) << 88;
+    packInput5:2 = xenonA(4);
+    packOverflow5:1 = packInput5 s< 0:2 | packInput5 s> 255:2;
+    packTrunc5:1 = packInput5(0);
+    packWide5:16 = zext(packTrunc5) << 80;
+    packInput6:2 = xenonA(2);
+    packOverflow6:1 = packInput6 s< 0:2 | packInput6 s> 255:2;
+    packTrunc6:1 = packInput6(0);
+    packWide6:16 = zext(packTrunc6) << 72;
+    packInput7:2 = xenonA(0);
+    packOverflow7:1 = packInput7 s< 0:2 | packInput7 s> 255:2;
+    packTrunc7:1 = packInput7(0);
+    packWide7:16 = zext(packTrunc7) << 64;
+    packInput8:2 = xenonB(14);
+    packOverflow8:1 = packInput8 s< 0:2 | packInput8 s> 255:2;
+    packTrunc8:1 = packInput8(0);
+    packWide8:16 = zext(packTrunc8) << 56;
+    packInput9:2 = xenonB(12);
+    packOverflow9:1 = packInput9 s< 0:2 | packInput9 s> 255:2;
+    packTrunc9:1 = packInput9(0);
+    packWide9:16 = zext(packTrunc9) << 48;
+    packInput10:2 = xenonB(10);
+    packOverflow10:1 = packInput10 s< 0:2 | packInput10 s> 255:2;
+    packTrunc10:1 = packInput10(0);
+    packWide10:16 = zext(packTrunc10) << 40;
+    packInput11:2 = xenonB(8);
+    packOverflow11:1 = packInput11 s< 0:2 | packInput11 s> 255:2;
+    packTrunc11:1 = packInput11(0);
+    packWide11:16 = zext(packTrunc11) << 32;
+    packInput12:2 = xenonB(6);
+    packOverflow12:1 = packInput12 s< 0:2 | packInput12 s> 255:2;
+    packTrunc12:1 = packInput12(0);
+    packWide12:16 = zext(packTrunc12) << 24;
+    packInput13:2 = xenonB(4);
+    packOverflow13:1 = packInput13 s< 0:2 | packInput13 s> 255:2;
+    packTrunc13:1 = packInput13(0);
+    packWide13:16 = zext(packTrunc13) << 16;
+    packInput14:2 = xenonB(2);
+    packOverflow14:1 = packInput14 s< 0:2 | packInput14 s> 255:2;
+    packTrunc14:1 = packInput14(0);
+    packWide14:16 = zext(packTrunc14) << 8;
+    packInput15:2 = xenonB(0);
+    packOverflow15:1 = packInput15 s< 0:2 | packInput15 s> 255:2;
+    packTrunc15:1 = packInput15(0);
+    packWide15:16 = zext(packTrunc15);
+    packHasOverflow:1 = packOverflow0 | packOverflow1 | packOverflow2 | packOverflow3 | packOverflow4 | packOverflow5 | packOverflow6 | packOverflow7 | packOverflow8 | packOverflow9 | packOverflow10 | packOverflow11 | packOverflow12 | packOverflow13 | packOverflow14 | packOverflow15;
+    if (packHasOverflow) goto <pack_unresolved_saturation>;
+    xenonD = packWide0 | packWide1 | packWide2 | packWide3 | packWide4 | packWide5 | packWide6 | packWide7 | packWide8 | packWide9 | packWide10 | packWide11 | packWide12 | packWide13 | packWide14 | packWide15;
+    goto <pack_end>;
+<pack_unresolved_saturation>
+    saturatingResult:16 = xenonVpkshus128(xenonA, xenonB);
+    xenonD = saturatingResult;
+<pack_end>
 }
 
 :vpkshus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=9 & BITS_4_5=2
 {
-    result:16 = xenonVpkshus128(xenonA, xenonB);
-    xenonD = result;
+    packInput0:2 = xenonA(14);
+    packOverflow0:1 = packInput0 s< 0:2 | packInput0 s> 255:2;
+    packTrunc0:1 = packInput0(0);
+    packWide0:16 = zext(packTrunc0) << 120;
+    packInput1:2 = xenonA(12);
+    packOverflow1:1 = packInput1 s< 0:2 | packInput1 s> 255:2;
+    packTrunc1:1 = packInput1(0);
+    packWide1:16 = zext(packTrunc1) << 112;
+    packInput2:2 = xenonA(10);
+    packOverflow2:1 = packInput2 s< 0:2 | packInput2 s> 255:2;
+    packTrunc2:1 = packInput2(0);
+    packWide2:16 = zext(packTrunc2) << 104;
+    packInput3:2 = xenonA(8);
+    packOverflow3:1 = packInput3 s< 0:2 | packInput3 s> 255:2;
+    packTrunc3:1 = packInput3(0);
+    packWide3:16 = zext(packTrunc3) << 96;
+    packInput4:2 = xenonA(6);
+    packOverflow4:1 = packInput4 s< 0:2 | packInput4 s> 255:2;
+    packTrunc4:1 = packInput4(0);
+    packWide4:16 = zext(packTrunc4) << 88;
+    packInput5:2 = xenonA(4);
+    packOverflow5:1 = packInput5 s< 0:2 | packInput5 s> 255:2;
+    packTrunc5:1 = packInput5(0);
+    packWide5:16 = zext(packTrunc5) << 80;
+    packInput6:2 = xenonA(2);
+    packOverflow6:1 = packInput6 s< 0:2 | packInput6 s> 255:2;
+    packTrunc6:1 = packInput6(0);
+    packWide6:16 = zext(packTrunc6) << 72;
+    packInput7:2 = xenonA(0);
+    packOverflow7:1 = packInput7 s< 0:2 | packInput7 s> 255:2;
+    packTrunc7:1 = packInput7(0);
+    packWide7:16 = zext(packTrunc7) << 64;
+    packInput8:2 = xenonB(14);
+    packOverflow8:1 = packInput8 s< 0:2 | packInput8 s> 255:2;
+    packTrunc8:1 = packInput8(0);
+    packWide8:16 = zext(packTrunc8) << 56;
+    packInput9:2 = xenonB(12);
+    packOverflow9:1 = packInput9 s< 0:2 | packInput9 s> 255:2;
+    packTrunc9:1 = packInput9(0);
+    packWide9:16 = zext(packTrunc9) << 48;
+    packInput10:2 = xenonB(10);
+    packOverflow10:1 = packInput10 s< 0:2 | packInput10 s> 255:2;
+    packTrunc10:1 = packInput10(0);
+    packWide10:16 = zext(packTrunc10) << 40;
+    packInput11:2 = xenonB(8);
+    packOverflow11:1 = packInput11 s< 0:2 | packInput11 s> 255:2;
+    packTrunc11:1 = packInput11(0);
+    packWide11:16 = zext(packTrunc11) << 32;
+    packInput12:2 = xenonB(6);
+    packOverflow12:1 = packInput12 s< 0:2 | packInput12 s> 255:2;
+    packTrunc12:1 = packInput12(0);
+    packWide12:16 = zext(packTrunc12) << 24;
+    packInput13:2 = xenonB(4);
+    packOverflow13:1 = packInput13 s< 0:2 | packInput13 s> 255:2;
+    packTrunc13:1 = packInput13(0);
+    packWide13:16 = zext(packTrunc13) << 16;
+    packInput14:2 = xenonB(2);
+    packOverflow14:1 = packInput14 s< 0:2 | packInput14 s> 255:2;
+    packTrunc14:1 = packInput14(0);
+    packWide14:16 = zext(packTrunc14) << 8;
+    packInput15:2 = xenonB(0);
+    packOverflow15:1 = packInput15 s< 0:2 | packInput15 s> 255:2;
+    packTrunc15:1 = packInput15(0);
+    packWide15:16 = zext(packTrunc15);
+    packHasOverflow:1 = packOverflow0 | packOverflow1 | packOverflow2 | packOverflow3 | packOverflow4 | packOverflow5 | packOverflow6 | packOverflow7 | packOverflow8 | packOverflow9 | packOverflow10 | packOverflow11 | packOverflow12 | packOverflow13 | packOverflow14 | packOverflow15;
+    if (packHasOverflow) goto <pack_unresolved_saturation>;
+    xenonD = packWide0 | packWide1 | packWide2 | packWide3 | packWide4 | packWide5 | packWide6 | packWide7 | packWide8 | packWide9 | packWide10 | packWide11 | packWide12 | packWide13 | packWide14 | packWide15;
+    goto <pack_end>;
+<pack_unresolved_saturation>
+    saturatingResult:16 = xenonVpkshus128(xenonA, xenonB);
+    xenonD = saturatingResult;
+<pack_end>
 }
 
 :vpkshus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=25 & BITS_4_5=0
 {
-    result:16 = xenonVpkshus128(xenonA, xenonB);
-    xenonD = result;
+    packInput0:2 = xenonA(14);
+    packOverflow0:1 = packInput0 s< 0:2 | packInput0 s> 255:2;
+    packTrunc0:1 = packInput0(0);
+    packWide0:16 = zext(packTrunc0) << 120;
+    packInput1:2 = xenonA(12);
+    packOverflow1:1 = packInput1 s< 0:2 | packInput1 s> 255:2;
+    packTrunc1:1 = packInput1(0);
+    packWide1:16 = zext(packTrunc1) << 112;
+    packInput2:2 = xenonA(10);
+    packOverflow2:1 = packInput2 s< 0:2 | packInput2 s> 255:2;
+    packTrunc2:1 = packInput2(0);
+    packWide2:16 = zext(packTrunc2) << 104;
+    packInput3:2 = xenonA(8);
+    packOverflow3:1 = packInput3 s< 0:2 | packInput3 s> 255:2;
+    packTrunc3:1 = packInput3(0);
+    packWide3:16 = zext(packTrunc3) << 96;
+    packInput4:2 = xenonA(6);
+    packOverflow4:1 = packInput4 s< 0:2 | packInput4 s> 255:2;
+    packTrunc4:1 = packInput4(0);
+    packWide4:16 = zext(packTrunc4) << 88;
+    packInput5:2 = xenonA(4);
+    packOverflow5:1 = packInput5 s< 0:2 | packInput5 s> 255:2;
+    packTrunc5:1 = packInput5(0);
+    packWide5:16 = zext(packTrunc5) << 80;
+    packInput6:2 = xenonA(2);
+    packOverflow6:1 = packInput6 s< 0:2 | packInput6 s> 255:2;
+    packTrunc6:1 = packInput6(0);
+    packWide6:16 = zext(packTrunc6) << 72;
+    packInput7:2 = xenonA(0);
+    packOverflow7:1 = packInput7 s< 0:2 | packInput7 s> 255:2;
+    packTrunc7:1 = packInput7(0);
+    packWide7:16 = zext(packTrunc7) << 64;
+    packInput8:2 = xenonB(14);
+    packOverflow8:1 = packInput8 s< 0:2 | packInput8 s> 255:2;
+    packTrunc8:1 = packInput8(0);
+    packWide8:16 = zext(packTrunc8) << 56;
+    packInput9:2 = xenonB(12);
+    packOverflow9:1 = packInput9 s< 0:2 | packInput9 s> 255:2;
+    packTrunc9:1 = packInput9(0);
+    packWide9:16 = zext(packTrunc9) << 48;
+    packInput10:2 = xenonB(10);
+    packOverflow10:1 = packInput10 s< 0:2 | packInput10 s> 255:2;
+    packTrunc10:1 = packInput10(0);
+    packWide10:16 = zext(packTrunc10) << 40;
+    packInput11:2 = xenonB(8);
+    packOverflow11:1 = packInput11 s< 0:2 | packInput11 s> 255:2;
+    packTrunc11:1 = packInput11(0);
+    packWide11:16 = zext(packTrunc11) << 32;
+    packInput12:2 = xenonB(6);
+    packOverflow12:1 = packInput12 s< 0:2 | packInput12 s> 255:2;
+    packTrunc12:1 = packInput12(0);
+    packWide12:16 = zext(packTrunc12) << 24;
+    packInput13:2 = xenonB(4);
+    packOverflow13:1 = packInput13 s< 0:2 | packInput13 s> 255:2;
+    packTrunc13:1 = packInput13(0);
+    packWide13:16 = zext(packTrunc13) << 16;
+    packInput14:2 = xenonB(2);
+    packOverflow14:1 = packInput14 s< 0:2 | packInput14 s> 255:2;
+    packTrunc14:1 = packInput14(0);
+    packWide14:16 = zext(packTrunc14) << 8;
+    packInput15:2 = xenonB(0);
+    packOverflow15:1 = packInput15 s< 0:2 | packInput15 s> 255:2;
+    packTrunc15:1 = packInput15(0);
+    packWide15:16 = zext(packTrunc15);
+    packHasOverflow:1 = packOverflow0 | packOverflow1 | packOverflow2 | packOverflow3 | packOverflow4 | packOverflow5 | packOverflow6 | packOverflow7 | packOverflow8 | packOverflow9 | packOverflow10 | packOverflow11 | packOverflow12 | packOverflow13 | packOverflow14 | packOverflow15;
+    if (packHasOverflow) goto <pack_unresolved_saturation>;
+    xenonD = packWide0 | packWide1 | packWide2 | packWide3 | packWide4 | packWide5 | packWide6 | packWide7 | packWide8 | packWide9 | packWide10 | packWide11 | packWide12 | packWide13 | packWide14 | packWide15;
+    goto <pack_end>;
+<pack_unresolved_saturation>
+    saturatingResult:16 = xenonVpkshus128(xenonA, xenonB);
+    xenonD = saturatingResult;
+<pack_end>
 }
 
 :vpkshus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=25 & BITS_4_5=2
 {
-    result:16 = xenonVpkshus128(xenonA, xenonB);
-    xenonD = result;
+    packInput0:2 = xenonA(14);
+    packOverflow0:1 = packInput0 s< 0:2 | packInput0 s> 255:2;
+    packTrunc0:1 = packInput0(0);
+    packWide0:16 = zext(packTrunc0) << 120;
+    packInput1:2 = xenonA(12);
+    packOverflow1:1 = packInput1 s< 0:2 | packInput1 s> 255:2;
+    packTrunc1:1 = packInput1(0);
+    packWide1:16 = zext(packTrunc1) << 112;
+    packInput2:2 = xenonA(10);
+    packOverflow2:1 = packInput2 s< 0:2 | packInput2 s> 255:2;
+    packTrunc2:1 = packInput2(0);
+    packWide2:16 = zext(packTrunc2) << 104;
+    packInput3:2 = xenonA(8);
+    packOverflow3:1 = packInput3 s< 0:2 | packInput3 s> 255:2;
+    packTrunc3:1 = packInput3(0);
+    packWide3:16 = zext(packTrunc3) << 96;
+    packInput4:2 = xenonA(6);
+    packOverflow4:1 = packInput4 s< 0:2 | packInput4 s> 255:2;
+    packTrunc4:1 = packInput4(0);
+    packWide4:16 = zext(packTrunc4) << 88;
+    packInput5:2 = xenonA(4);
+    packOverflow5:1 = packInput5 s< 0:2 | packInput5 s> 255:2;
+    packTrunc5:1 = packInput5(0);
+    packWide5:16 = zext(packTrunc5) << 80;
+    packInput6:2 = xenonA(2);
+    packOverflow6:1 = packInput6 s< 0:2 | packInput6 s> 255:2;
+    packTrunc6:1 = packInput6(0);
+    packWide6:16 = zext(packTrunc6) << 72;
+    packInput7:2 = xenonA(0);
+    packOverflow7:1 = packInput7 s< 0:2 | packInput7 s> 255:2;
+    packTrunc7:1 = packInput7(0);
+    packWide7:16 = zext(packTrunc7) << 64;
+    packInput8:2 = xenonB(14);
+    packOverflow8:1 = packInput8 s< 0:2 | packInput8 s> 255:2;
+    packTrunc8:1 = packInput8(0);
+    packWide8:16 = zext(packTrunc8) << 56;
+    packInput9:2 = xenonB(12);
+    packOverflow9:1 = packInput9 s< 0:2 | packInput9 s> 255:2;
+    packTrunc9:1 = packInput9(0);
+    packWide9:16 = zext(packTrunc9) << 48;
+    packInput10:2 = xenonB(10);
+    packOverflow10:1 = packInput10 s< 0:2 | packInput10 s> 255:2;
+    packTrunc10:1 = packInput10(0);
+    packWide10:16 = zext(packTrunc10) << 40;
+    packInput11:2 = xenonB(8);
+    packOverflow11:1 = packInput11 s< 0:2 | packInput11 s> 255:2;
+    packTrunc11:1 = packInput11(0);
+    packWide11:16 = zext(packTrunc11) << 32;
+    packInput12:2 = xenonB(6);
+    packOverflow12:1 = packInput12 s< 0:2 | packInput12 s> 255:2;
+    packTrunc12:1 = packInput12(0);
+    packWide12:16 = zext(packTrunc12) << 24;
+    packInput13:2 = xenonB(4);
+    packOverflow13:1 = packInput13 s< 0:2 | packInput13 s> 255:2;
+    packTrunc13:1 = packInput13(0);
+    packWide13:16 = zext(packTrunc13) << 16;
+    packInput14:2 = xenonB(2);
+    packOverflow14:1 = packInput14 s< 0:2 | packInput14 s> 255:2;
+    packTrunc14:1 = packInput14(0);
+    packWide14:16 = zext(packTrunc14) << 8;
+    packInput15:2 = xenonB(0);
+    packOverflow15:1 = packInput15 s< 0:2 | packInput15 s> 255:2;
+    packTrunc15:1 = packInput15(0);
+    packWide15:16 = zext(packTrunc15);
+    packHasOverflow:1 = packOverflow0 | packOverflow1 | packOverflow2 | packOverflow3 | packOverflow4 | packOverflow5 | packOverflow6 | packOverflow7 | packOverflow8 | packOverflow9 | packOverflow10 | packOverflow11 | packOverflow12 | packOverflow13 | packOverflow14 | packOverflow15;
+    if (packHasOverflow) goto <pack_unresolved_saturation>;
+    xenonD = packWide0 | packWide1 | packWide2 | packWide3 | packWide4 | packWide5 | packWide6 | packWide7 | packWide8 | packWide9 | packWide10 | packWide11 | packWide12 | packWide13 | packWide14 | packWide15;
+    goto <pack_end>;
+<pack_unresolved_saturation>
+    saturatingResult:16 = xenonVpkshus128(xenonA, xenonB);
+    xenonD = saturatingResult;
+<pack_end>
 }
 
 # vpkswss128: opaque; Xenia mask/value fc0003d0/14000280
 :vpkswss128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=10 & BITS_4_5=0
 {
-    result:16 = xenonVpkswss128(xenonA, xenonB);
-    xenonD = result;
+    packInput0:4 = xenonA(12);
+    packOverflow0:1 = packInput0 s< 0xffff8000:4 | packInput0 s> 32767:4;
+    packTrunc0:2 = packInput0(0);
+    packWide0:16 = zext(packTrunc0) << 112;
+    packInput1:4 = xenonA(8);
+    packOverflow1:1 = packInput1 s< 0xffff8000:4 | packInput1 s> 32767:4;
+    packTrunc1:2 = packInput1(0);
+    packWide1:16 = zext(packTrunc1) << 96;
+    packInput2:4 = xenonA(4);
+    packOverflow2:1 = packInput2 s< 0xffff8000:4 | packInput2 s> 32767:4;
+    packTrunc2:2 = packInput2(0);
+    packWide2:16 = zext(packTrunc2) << 80;
+    packInput3:4 = xenonA(0);
+    packOverflow3:1 = packInput3 s< 0xffff8000:4 | packInput3 s> 32767:4;
+    packTrunc3:2 = packInput3(0);
+    packWide3:16 = zext(packTrunc3) << 64;
+    packInput4:4 = xenonB(12);
+    packOverflow4:1 = packInput4 s< 0xffff8000:4 | packInput4 s> 32767:4;
+    packTrunc4:2 = packInput4(0);
+    packWide4:16 = zext(packTrunc4) << 48;
+    packInput5:4 = xenonB(8);
+    packOverflow5:1 = packInput5 s< 0xffff8000:4 | packInput5 s> 32767:4;
+    packTrunc5:2 = packInput5(0);
+    packWide5:16 = zext(packTrunc5) << 32;
+    packInput6:4 = xenonB(4);
+    packOverflow6:1 = packInput6 s< 0xffff8000:4 | packInput6 s> 32767:4;
+    packTrunc6:2 = packInput6(0);
+    packWide6:16 = zext(packTrunc6) << 16;
+    packInput7:4 = xenonB(0);
+    packOverflow7:1 = packInput7 s< 0xffff8000:4 | packInput7 s> 32767:4;
+    packTrunc7:2 = packInput7(0);
+    packWide7:16 = zext(packTrunc7);
+    packHasOverflow:1 = packOverflow0 | packOverflow1 | packOverflow2 | packOverflow3 | packOverflow4 | packOverflow5 | packOverflow6 | packOverflow7;
+    if (packHasOverflow) goto <pack_unresolved_saturation>;
+    xenonD = packWide0 | packWide1 | packWide2 | packWide3 | packWide4 | packWide5 | packWide6 | packWide7;
+    goto <pack_end>;
+<pack_unresolved_saturation>
+    saturatingResult:16 = xenonVpkswss128(xenonA, xenonB);
+    xenonD = saturatingResult;
+<pack_end>
 }
 
 :vpkswss128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=10 & BITS_4_5=2
 {
-    result:16 = xenonVpkswss128(xenonA, xenonB);
-    xenonD = result;
+    packInput0:4 = xenonA(12);
+    packOverflow0:1 = packInput0 s< 0xffff8000:4 | packInput0 s> 32767:4;
+    packTrunc0:2 = packInput0(0);
+    packWide0:16 = zext(packTrunc0) << 112;
+    packInput1:4 = xenonA(8);
+    packOverflow1:1 = packInput1 s< 0xffff8000:4 | packInput1 s> 32767:4;
+    packTrunc1:2 = packInput1(0);
+    packWide1:16 = zext(packTrunc1) << 96;
+    packInput2:4 = xenonA(4);
+    packOverflow2:1 = packInput2 s< 0xffff8000:4 | packInput2 s> 32767:4;
+    packTrunc2:2 = packInput2(0);
+    packWide2:16 = zext(packTrunc2) << 80;
+    packInput3:4 = xenonA(0);
+    packOverflow3:1 = packInput3 s< 0xffff8000:4 | packInput3 s> 32767:4;
+    packTrunc3:2 = packInput3(0);
+    packWide3:16 = zext(packTrunc3) << 64;
+    packInput4:4 = xenonB(12);
+    packOverflow4:1 = packInput4 s< 0xffff8000:4 | packInput4 s> 32767:4;
+    packTrunc4:2 = packInput4(0);
+    packWide4:16 = zext(packTrunc4) << 48;
+    packInput5:4 = xenonB(8);
+    packOverflow5:1 = packInput5 s< 0xffff8000:4 | packInput5 s> 32767:4;
+    packTrunc5:2 = packInput5(0);
+    packWide5:16 = zext(packTrunc5) << 32;
+    packInput6:4 = xenonB(4);
+    packOverflow6:1 = packInput6 s< 0xffff8000:4 | packInput6 s> 32767:4;
+    packTrunc6:2 = packInput6(0);
+    packWide6:16 = zext(packTrunc6) << 16;
+    packInput7:4 = xenonB(0);
+    packOverflow7:1 = packInput7 s< 0xffff8000:4 | packInput7 s> 32767:4;
+    packTrunc7:2 = packInput7(0);
+    packWide7:16 = zext(packTrunc7);
+    packHasOverflow:1 = packOverflow0 | packOverflow1 | packOverflow2 | packOverflow3 | packOverflow4 | packOverflow5 | packOverflow6 | packOverflow7;
+    if (packHasOverflow) goto <pack_unresolved_saturation>;
+    xenonD = packWide0 | packWide1 | packWide2 | packWide3 | packWide4 | packWide5 | packWide6 | packWide7;
+    goto <pack_end>;
+<pack_unresolved_saturation>
+    saturatingResult:16 = xenonVpkswss128(xenonA, xenonB);
+    xenonD = saturatingResult;
+<pack_end>
 }
 
 :vpkswss128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=26 & BITS_4_5=0
 {
-    result:16 = xenonVpkswss128(xenonA, xenonB);
-    xenonD = result;
+    packInput0:4 = xenonA(12);
+    packOverflow0:1 = packInput0 s< 0xffff8000:4 | packInput0 s> 32767:4;
+    packTrunc0:2 = packInput0(0);
+    packWide0:16 = zext(packTrunc0) << 112;
+    packInput1:4 = xenonA(8);
+    packOverflow1:1 = packInput1 s< 0xffff8000:4 | packInput1 s> 32767:4;
+    packTrunc1:2 = packInput1(0);
+    packWide1:16 = zext(packTrunc1) << 96;
+    packInput2:4 = xenonA(4);
+    packOverflow2:1 = packInput2 s< 0xffff8000:4 | packInput2 s> 32767:4;
+    packTrunc2:2 = packInput2(0);
+    packWide2:16 = zext(packTrunc2) << 80;
+    packInput3:4 = xenonA(0);
+    packOverflow3:1 = packInput3 s< 0xffff8000:4 | packInput3 s> 32767:4;
+    packTrunc3:2 = packInput3(0);
+    packWide3:16 = zext(packTrunc3) << 64;
+    packInput4:4 = xenonB(12);
+    packOverflow4:1 = packInput4 s< 0xffff8000:4 | packInput4 s> 32767:4;
+    packTrunc4:2 = packInput4(0);
+    packWide4:16 = zext(packTrunc4) << 48;
+    packInput5:4 = xenonB(8);
+    packOverflow5:1 = packInput5 s< 0xffff8000:4 | packInput5 s> 32767:4;
+    packTrunc5:2 = packInput5(0);
+    packWide5:16 = zext(packTrunc5) << 32;
+    packInput6:4 = xenonB(4);
+    packOverflow6:1 = packInput6 s< 0xffff8000:4 | packInput6 s> 32767:4;
+    packTrunc6:2 = packInput6(0);
+    packWide6:16 = zext(packTrunc6) << 16;
+    packInput7:4 = xenonB(0);
+    packOverflow7:1 = packInput7 s< 0xffff8000:4 | packInput7 s> 32767:4;
+    packTrunc7:2 = packInput7(0);
+    packWide7:16 = zext(packTrunc7);
+    packHasOverflow:1 = packOverflow0 | packOverflow1 | packOverflow2 | packOverflow3 | packOverflow4 | packOverflow5 | packOverflow6 | packOverflow7;
+    if (packHasOverflow) goto <pack_unresolved_saturation>;
+    xenonD = packWide0 | packWide1 | packWide2 | packWide3 | packWide4 | packWide5 | packWide6 | packWide7;
+    goto <pack_end>;
+<pack_unresolved_saturation>
+    saturatingResult:16 = xenonVpkswss128(xenonA, xenonB);
+    xenonD = saturatingResult;
+<pack_end>
 }
 
 :vpkswss128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=26 & BITS_4_5=2
 {
-    result:16 = xenonVpkswss128(xenonA, xenonB);
-    xenonD = result;
+    packInput0:4 = xenonA(12);
+    packOverflow0:1 = packInput0 s< 0xffff8000:4 | packInput0 s> 32767:4;
+    packTrunc0:2 = packInput0(0);
+    packWide0:16 = zext(packTrunc0) << 112;
+    packInput1:4 = xenonA(8);
+    packOverflow1:1 = packInput1 s< 0xffff8000:4 | packInput1 s> 32767:4;
+    packTrunc1:2 = packInput1(0);
+    packWide1:16 = zext(packTrunc1) << 96;
+    packInput2:4 = xenonA(4);
+    packOverflow2:1 = packInput2 s< 0xffff8000:4 | packInput2 s> 32767:4;
+    packTrunc2:2 = packInput2(0);
+    packWide2:16 = zext(packTrunc2) << 80;
+    packInput3:4 = xenonA(0);
+    packOverflow3:1 = packInput3 s< 0xffff8000:4 | packInput3 s> 32767:4;
+    packTrunc3:2 = packInput3(0);
+    packWide3:16 = zext(packTrunc3) << 64;
+    packInput4:4 = xenonB(12);
+    packOverflow4:1 = packInput4 s< 0xffff8000:4 | packInput4 s> 32767:4;
+    packTrunc4:2 = packInput4(0);
+    packWide4:16 = zext(packTrunc4) << 48;
+    packInput5:4 = xenonB(8);
+    packOverflow5:1 = packInput5 s< 0xffff8000:4 | packInput5 s> 32767:4;
+    packTrunc5:2 = packInput5(0);
+    packWide5:16 = zext(packTrunc5) << 32;
+    packInput6:4 = xenonB(4);
+    packOverflow6:1 = packInput6 s< 0xffff8000:4 | packInput6 s> 32767:4;
+    packTrunc6:2 = packInput6(0);
+    packWide6:16 = zext(packTrunc6) << 16;
+    packInput7:4 = xenonB(0);
+    packOverflow7:1 = packInput7 s< 0xffff8000:4 | packInput7 s> 32767:4;
+    packTrunc7:2 = packInput7(0);
+    packWide7:16 = zext(packTrunc7);
+    packHasOverflow:1 = packOverflow0 | packOverflow1 | packOverflow2 | packOverflow3 | packOverflow4 | packOverflow5 | packOverflow6 | packOverflow7;
+    if (packHasOverflow) goto <pack_unresolved_saturation>;
+    xenonD = packWide0 | packWide1 | packWide2 | packWide3 | packWide4 | packWide5 | packWide6 | packWide7;
+    goto <pack_end>;
+<pack_unresolved_saturation>
+    saturatingResult:16 = xenonVpkswss128(xenonA, xenonB);
+    xenonD = saturatingResult;
+<pack_end>
 }
 
 # vpkswus128: opaque; Xenia mask/value fc0003d0/140002c0
 :vpkswus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=11 & BITS_4_5=0
 {
-    result:16 = xenonVpkswus128(xenonA, xenonB);
-    xenonD = result;
+    packInput0:4 = xenonA(12);
+    packOverflow0:1 = packInput0 s< 0:4 | packInput0 s> 65535:4;
+    packTrunc0:2 = packInput0(0);
+    packWide0:16 = zext(packTrunc0) << 112;
+    packInput1:4 = xenonA(8);
+    packOverflow1:1 = packInput1 s< 0:4 | packInput1 s> 65535:4;
+    packTrunc1:2 = packInput1(0);
+    packWide1:16 = zext(packTrunc1) << 96;
+    packInput2:4 = xenonA(4);
+    packOverflow2:1 = packInput2 s< 0:4 | packInput2 s> 65535:4;
+    packTrunc2:2 = packInput2(0);
+    packWide2:16 = zext(packTrunc2) << 80;
+    packInput3:4 = xenonA(0);
+    packOverflow3:1 = packInput3 s< 0:4 | packInput3 s> 65535:4;
+    packTrunc3:2 = packInput3(0);
+    packWide3:16 = zext(packTrunc3) << 64;
+    packInput4:4 = xenonB(12);
+    packOverflow4:1 = packInput4 s< 0:4 | packInput4 s> 65535:4;
+    packTrunc4:2 = packInput4(0);
+    packWide4:16 = zext(packTrunc4) << 48;
+    packInput5:4 = xenonB(8);
+    packOverflow5:1 = packInput5 s< 0:4 | packInput5 s> 65535:4;
+    packTrunc5:2 = packInput5(0);
+    packWide5:16 = zext(packTrunc5) << 32;
+    packInput6:4 = xenonB(4);
+    packOverflow6:1 = packInput6 s< 0:4 | packInput6 s> 65535:4;
+    packTrunc6:2 = packInput6(0);
+    packWide6:16 = zext(packTrunc6) << 16;
+    packInput7:4 = xenonB(0);
+    packOverflow7:1 = packInput7 s< 0:4 | packInput7 s> 65535:4;
+    packTrunc7:2 = packInput7(0);
+    packWide7:16 = zext(packTrunc7);
+    packHasOverflow:1 = packOverflow0 | packOverflow1 | packOverflow2 | packOverflow3 | packOverflow4 | packOverflow5 | packOverflow6 | packOverflow7;
+    if (packHasOverflow) goto <pack_unresolved_saturation>;
+    xenonD = packWide0 | packWide1 | packWide2 | packWide3 | packWide4 | packWide5 | packWide6 | packWide7;
+    goto <pack_end>;
+<pack_unresolved_saturation>
+    saturatingResult:16 = xenonVpkswus128(xenonA, xenonB);
+    xenonD = saturatingResult;
+<pack_end>
 }
 
 :vpkswus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=11 & BITS_4_5=2
 {
-    result:16 = xenonVpkswus128(xenonA, xenonB);
-    xenonD = result;
+    packInput0:4 = xenonA(12);
+    packOverflow0:1 = packInput0 s< 0:4 | packInput0 s> 65535:4;
+    packTrunc0:2 = packInput0(0);
+    packWide0:16 = zext(packTrunc0) << 112;
+    packInput1:4 = xenonA(8);
+    packOverflow1:1 = packInput1 s< 0:4 | packInput1 s> 65535:4;
+    packTrunc1:2 = packInput1(0);
+    packWide1:16 = zext(packTrunc1) << 96;
+    packInput2:4 = xenonA(4);
+    packOverflow2:1 = packInput2 s< 0:4 | packInput2 s> 65535:4;
+    packTrunc2:2 = packInput2(0);
+    packWide2:16 = zext(packTrunc2) << 80;
+    packInput3:4 = xenonA(0);
+    packOverflow3:1 = packInput3 s< 0:4 | packInput3 s> 65535:4;
+    packTrunc3:2 = packInput3(0);
+    packWide3:16 = zext(packTrunc3) << 64;
+    packInput4:4 = xenonB(12);
+    packOverflow4:1 = packInput4 s< 0:4 | packInput4 s> 65535:4;
+    packTrunc4:2 = packInput4(0);
+    packWide4:16 = zext(packTrunc4) << 48;
+    packInput5:4 = xenonB(8);
+    packOverflow5:1 = packInput5 s< 0:4 | packInput5 s> 65535:4;
+    packTrunc5:2 = packInput5(0);
+    packWide5:16 = zext(packTrunc5) << 32;
+    packInput6:4 = xenonB(4);
+    packOverflow6:1 = packInput6 s< 0:4 | packInput6 s> 65535:4;
+    packTrunc6:2 = packInput6(0);
+    packWide6:16 = zext(packTrunc6) << 16;
+    packInput7:4 = xenonB(0);
+    packOverflow7:1 = packInput7 s< 0:4 | packInput7 s> 65535:4;
+    packTrunc7:2 = packInput7(0);
+    packWide7:16 = zext(packTrunc7);
+    packHasOverflow:1 = packOverflow0 | packOverflow1 | packOverflow2 | packOverflow3 | packOverflow4 | packOverflow5 | packOverflow6 | packOverflow7;
+    if (packHasOverflow) goto <pack_unresolved_saturation>;
+    xenonD = packWide0 | packWide1 | packWide2 | packWide3 | packWide4 | packWide5 | packWide6 | packWide7;
+    goto <pack_end>;
+<pack_unresolved_saturation>
+    saturatingResult:16 = xenonVpkswus128(xenonA, xenonB);
+    xenonD = saturatingResult;
+<pack_end>
 }
 
 :vpkswus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=27 & BITS_4_5=0
 {
-    result:16 = xenonVpkswus128(xenonA, xenonB);
-    xenonD = result;
+    packInput0:4 = xenonA(12);
+    packOverflow0:1 = packInput0 s< 0:4 | packInput0 s> 65535:4;
+    packTrunc0:2 = packInput0(0);
+    packWide0:16 = zext(packTrunc0) << 112;
+    packInput1:4 = xenonA(8);
+    packOverflow1:1 = packInput1 s< 0:4 | packInput1 s> 65535:4;
+    packTrunc1:2 = packInput1(0);
+    packWide1:16 = zext(packTrunc1) << 96;
+    packInput2:4 = xenonA(4);
+    packOverflow2:1 = packInput2 s< 0:4 | packInput2 s> 65535:4;
+    packTrunc2:2 = packInput2(0);
+    packWide2:16 = zext(packTrunc2) << 80;
+    packInput3:4 = xenonA(0);
+    packOverflow3:1 = packInput3 s< 0:4 | packInput3 s> 65535:4;
+    packTrunc3:2 = packInput3(0);
+    packWide3:16 = zext(packTrunc3) << 64;
+    packInput4:4 = xenonB(12);
+    packOverflow4:1 = packInput4 s< 0:4 | packInput4 s> 65535:4;
+    packTrunc4:2 = packInput4(0);
+    packWide4:16 = zext(packTrunc4) << 48;
+    packInput5:4 = xenonB(8);
+    packOverflow5:1 = packInput5 s< 0:4 | packInput5 s> 65535:4;
+    packTrunc5:2 = packInput5(0);
+    packWide5:16 = zext(packTrunc5) << 32;
+    packInput6:4 = xenonB(4);
+    packOverflow6:1 = packInput6 s< 0:4 | packInput6 s> 65535:4;
+    packTrunc6:2 = packInput6(0);
+    packWide6:16 = zext(packTrunc6) << 16;
+    packInput7:4 = xenonB(0);
+    packOverflow7:1 = packInput7 s< 0:4 | packInput7 s> 65535:4;
+    packTrunc7:2 = packInput7(0);
+    packWide7:16 = zext(packTrunc7);
+    packHasOverflow:1 = packOverflow0 | packOverflow1 | packOverflow2 | packOverflow3 | packOverflow4 | packOverflow5 | packOverflow6 | packOverflow7;
+    if (packHasOverflow) goto <pack_unresolved_saturation>;
+    xenonD = packWide0 | packWide1 | packWide2 | packWide3 | packWide4 | packWide5 | packWide6 | packWide7;
+    goto <pack_end>;
+<pack_unresolved_saturation>
+    saturatingResult:16 = xenonVpkswus128(xenonA, xenonB);
+    xenonD = saturatingResult;
+<pack_end>
 }
 
 :vpkswus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=27 & BITS_4_5=2
 {
-    result:16 = xenonVpkswus128(xenonA, xenonB);
-    xenonD = result;
+    packInput0:4 = xenonA(12);
+    packOverflow0:1 = packInput0 s< 0:4 | packInput0 s> 65535:4;
+    packTrunc0:2 = packInput0(0);
+    packWide0:16 = zext(packTrunc0) << 112;
+    packInput1:4 = xenonA(8);
+    packOverflow1:1 = packInput1 s< 0:4 | packInput1 s> 65535:4;
+    packTrunc1:2 = packInput1(0);
+    packWide1:16 = zext(packTrunc1) << 96;
+    packInput2:4 = xenonA(4);
+    packOverflow2:1 = packInput2 s< 0:4 | packInput2 s> 65535:4;
+    packTrunc2:2 = packInput2(0);
+    packWide2:16 = zext(packTrunc2) << 80;
+    packInput3:4 = xenonA(0);
+    packOverflow3:1 = packInput3 s< 0:4 | packInput3 s> 65535:4;
+    packTrunc3:2 = packInput3(0);
+    packWide3:16 = zext(packTrunc3) << 64;
+    packInput4:4 = xenonB(12);
+    packOverflow4:1 = packInput4 s< 0:4 | packInput4 s> 65535:4;
+    packTrunc4:2 = packInput4(0);
+    packWide4:16 = zext(packTrunc4) << 48;
+    packInput5:4 = xenonB(8);
+    packOverflow5:1 = packInput5 s< 0:4 | packInput5 s> 65535:4;
+    packTrunc5:2 = packInput5(0);
+    packWide5:16 = zext(packTrunc5) << 32;
+    packInput6:4 = xenonB(4);
+    packOverflow6:1 = packInput6 s< 0:4 | packInput6 s> 65535:4;
+    packTrunc6:2 = packInput6(0);
+    packWide6:16 = zext(packTrunc6) << 16;
+    packInput7:4 = xenonB(0);
+    packOverflow7:1 = packInput7 s< 0:4 | packInput7 s> 65535:4;
+    packTrunc7:2 = packInput7(0);
+    packWide7:16 = zext(packTrunc7);
+    packHasOverflow:1 = packOverflow0 | packOverflow1 | packOverflow2 | packOverflow3 | packOverflow4 | packOverflow5 | packOverflow6 | packOverflow7;
+    if (packHasOverflow) goto <pack_unresolved_saturation>;
+    xenonD = packWide0 | packWide1 | packWide2 | packWide3 | packWide4 | packWide5 | packWide6 | packWide7;
+    goto <pack_end>;
+<pack_unresolved_saturation>
+    saturatingResult:16 = xenonVpkswus128(xenonA, xenonB);
+    xenonD = saturatingResult;
+<pack_end>
 }
 
 # vpkuhum128: native; Xenia mask/value fc0003d0/14000300
@@ -1086,26 +1950,306 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 # vpkuhus128: opaque; Xenia mask/value fc0003d0/14000340
 :vpkuhus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=13 & BITS_4_5=0
 {
-    result:16 = xenonVpkuhus128(xenonA, xenonB);
-    xenonD = result;
+    packInput0:2 = xenonA(14);
+    packOverflow0:1 = packInput0 > 255:2;
+    packTrunc0:1 = packInput0(0);
+    packWide0:16 = zext(packTrunc0) << 120;
+    packInput1:2 = xenonA(12);
+    packOverflow1:1 = packInput1 > 255:2;
+    packTrunc1:1 = packInput1(0);
+    packWide1:16 = zext(packTrunc1) << 112;
+    packInput2:2 = xenonA(10);
+    packOverflow2:1 = packInput2 > 255:2;
+    packTrunc2:1 = packInput2(0);
+    packWide2:16 = zext(packTrunc2) << 104;
+    packInput3:2 = xenonA(8);
+    packOverflow3:1 = packInput3 > 255:2;
+    packTrunc3:1 = packInput3(0);
+    packWide3:16 = zext(packTrunc3) << 96;
+    packInput4:2 = xenonA(6);
+    packOverflow4:1 = packInput4 > 255:2;
+    packTrunc4:1 = packInput4(0);
+    packWide4:16 = zext(packTrunc4) << 88;
+    packInput5:2 = xenonA(4);
+    packOverflow5:1 = packInput5 > 255:2;
+    packTrunc5:1 = packInput5(0);
+    packWide5:16 = zext(packTrunc5) << 80;
+    packInput6:2 = xenonA(2);
+    packOverflow6:1 = packInput6 > 255:2;
+    packTrunc6:1 = packInput6(0);
+    packWide6:16 = zext(packTrunc6) << 72;
+    packInput7:2 = xenonA(0);
+    packOverflow7:1 = packInput7 > 255:2;
+    packTrunc7:1 = packInput7(0);
+    packWide7:16 = zext(packTrunc7) << 64;
+    packInput8:2 = xenonB(14);
+    packOverflow8:1 = packInput8 > 255:2;
+    packTrunc8:1 = packInput8(0);
+    packWide8:16 = zext(packTrunc8) << 56;
+    packInput9:2 = xenonB(12);
+    packOverflow9:1 = packInput9 > 255:2;
+    packTrunc9:1 = packInput9(0);
+    packWide9:16 = zext(packTrunc9) << 48;
+    packInput10:2 = xenonB(10);
+    packOverflow10:1 = packInput10 > 255:2;
+    packTrunc10:1 = packInput10(0);
+    packWide10:16 = zext(packTrunc10) << 40;
+    packInput11:2 = xenonB(8);
+    packOverflow11:1 = packInput11 > 255:2;
+    packTrunc11:1 = packInput11(0);
+    packWide11:16 = zext(packTrunc11) << 32;
+    packInput12:2 = xenonB(6);
+    packOverflow12:1 = packInput12 > 255:2;
+    packTrunc12:1 = packInput12(0);
+    packWide12:16 = zext(packTrunc12) << 24;
+    packInput13:2 = xenonB(4);
+    packOverflow13:1 = packInput13 > 255:2;
+    packTrunc13:1 = packInput13(0);
+    packWide13:16 = zext(packTrunc13) << 16;
+    packInput14:2 = xenonB(2);
+    packOverflow14:1 = packInput14 > 255:2;
+    packTrunc14:1 = packInput14(0);
+    packWide14:16 = zext(packTrunc14) << 8;
+    packInput15:2 = xenonB(0);
+    packOverflow15:1 = packInput15 > 255:2;
+    packTrunc15:1 = packInput15(0);
+    packWide15:16 = zext(packTrunc15);
+    packHasOverflow:1 = packOverflow0 | packOverflow1 | packOverflow2 | packOverflow3 | packOverflow4 | packOverflow5 | packOverflow6 | packOverflow7 | packOverflow8 | packOverflow9 | packOverflow10 | packOverflow11 | packOverflow12 | packOverflow13 | packOverflow14 | packOverflow15;
+    if (packHasOverflow) goto <pack_unresolved_saturation>;
+    xenonD = packWide0 | packWide1 | packWide2 | packWide3 | packWide4 | packWide5 | packWide6 | packWide7 | packWide8 | packWide9 | packWide10 | packWide11 | packWide12 | packWide13 | packWide14 | packWide15;
+    goto <pack_end>;
+<pack_unresolved_saturation>
+    saturatingResult:16 = xenonVpkuhus128(xenonA, xenonB);
+    xenonD = saturatingResult;
+<pack_end>
 }
 
 :vpkuhus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=13 & BITS_4_5=2
 {
-    result:16 = xenonVpkuhus128(xenonA, xenonB);
-    xenonD = result;
+    packInput0:2 = xenonA(14);
+    packOverflow0:1 = packInput0 > 255:2;
+    packTrunc0:1 = packInput0(0);
+    packWide0:16 = zext(packTrunc0) << 120;
+    packInput1:2 = xenonA(12);
+    packOverflow1:1 = packInput1 > 255:2;
+    packTrunc1:1 = packInput1(0);
+    packWide1:16 = zext(packTrunc1) << 112;
+    packInput2:2 = xenonA(10);
+    packOverflow2:1 = packInput2 > 255:2;
+    packTrunc2:1 = packInput2(0);
+    packWide2:16 = zext(packTrunc2) << 104;
+    packInput3:2 = xenonA(8);
+    packOverflow3:1 = packInput3 > 255:2;
+    packTrunc3:1 = packInput3(0);
+    packWide3:16 = zext(packTrunc3) << 96;
+    packInput4:2 = xenonA(6);
+    packOverflow4:1 = packInput4 > 255:2;
+    packTrunc4:1 = packInput4(0);
+    packWide4:16 = zext(packTrunc4) << 88;
+    packInput5:2 = xenonA(4);
+    packOverflow5:1 = packInput5 > 255:2;
+    packTrunc5:1 = packInput5(0);
+    packWide5:16 = zext(packTrunc5) << 80;
+    packInput6:2 = xenonA(2);
+    packOverflow6:1 = packInput6 > 255:2;
+    packTrunc6:1 = packInput6(0);
+    packWide6:16 = zext(packTrunc6) << 72;
+    packInput7:2 = xenonA(0);
+    packOverflow7:1 = packInput7 > 255:2;
+    packTrunc7:1 = packInput7(0);
+    packWide7:16 = zext(packTrunc7) << 64;
+    packInput8:2 = xenonB(14);
+    packOverflow8:1 = packInput8 > 255:2;
+    packTrunc8:1 = packInput8(0);
+    packWide8:16 = zext(packTrunc8) << 56;
+    packInput9:2 = xenonB(12);
+    packOverflow9:1 = packInput9 > 255:2;
+    packTrunc9:1 = packInput9(0);
+    packWide9:16 = zext(packTrunc9) << 48;
+    packInput10:2 = xenonB(10);
+    packOverflow10:1 = packInput10 > 255:2;
+    packTrunc10:1 = packInput10(0);
+    packWide10:16 = zext(packTrunc10) << 40;
+    packInput11:2 = xenonB(8);
+    packOverflow11:1 = packInput11 > 255:2;
+    packTrunc11:1 = packInput11(0);
+    packWide11:16 = zext(packTrunc11) << 32;
+    packInput12:2 = xenonB(6);
+    packOverflow12:1 = packInput12 > 255:2;
+    packTrunc12:1 = packInput12(0);
+    packWide12:16 = zext(packTrunc12) << 24;
+    packInput13:2 = xenonB(4);
+    packOverflow13:1 = packInput13 > 255:2;
+    packTrunc13:1 = packInput13(0);
+    packWide13:16 = zext(packTrunc13) << 16;
+    packInput14:2 = xenonB(2);
+    packOverflow14:1 = packInput14 > 255:2;
+    packTrunc14:1 = packInput14(0);
+    packWide14:16 = zext(packTrunc14) << 8;
+    packInput15:2 = xenonB(0);
+    packOverflow15:1 = packInput15 > 255:2;
+    packTrunc15:1 = packInput15(0);
+    packWide15:16 = zext(packTrunc15);
+    packHasOverflow:1 = packOverflow0 | packOverflow1 | packOverflow2 | packOverflow3 | packOverflow4 | packOverflow5 | packOverflow6 | packOverflow7 | packOverflow8 | packOverflow9 | packOverflow10 | packOverflow11 | packOverflow12 | packOverflow13 | packOverflow14 | packOverflow15;
+    if (packHasOverflow) goto <pack_unresolved_saturation>;
+    xenonD = packWide0 | packWide1 | packWide2 | packWide3 | packWide4 | packWide5 | packWide6 | packWide7 | packWide8 | packWide9 | packWide10 | packWide11 | packWide12 | packWide13 | packWide14 | packWide15;
+    goto <pack_end>;
+<pack_unresolved_saturation>
+    saturatingResult:16 = xenonVpkuhus128(xenonA, xenonB);
+    xenonD = saturatingResult;
+<pack_end>
 }
 
 :vpkuhus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=29 & BITS_4_5=0
 {
-    result:16 = xenonVpkuhus128(xenonA, xenonB);
-    xenonD = result;
+    packInput0:2 = xenonA(14);
+    packOverflow0:1 = packInput0 > 255:2;
+    packTrunc0:1 = packInput0(0);
+    packWide0:16 = zext(packTrunc0) << 120;
+    packInput1:2 = xenonA(12);
+    packOverflow1:1 = packInput1 > 255:2;
+    packTrunc1:1 = packInput1(0);
+    packWide1:16 = zext(packTrunc1) << 112;
+    packInput2:2 = xenonA(10);
+    packOverflow2:1 = packInput2 > 255:2;
+    packTrunc2:1 = packInput2(0);
+    packWide2:16 = zext(packTrunc2) << 104;
+    packInput3:2 = xenonA(8);
+    packOverflow3:1 = packInput3 > 255:2;
+    packTrunc3:1 = packInput3(0);
+    packWide3:16 = zext(packTrunc3) << 96;
+    packInput4:2 = xenonA(6);
+    packOverflow4:1 = packInput4 > 255:2;
+    packTrunc4:1 = packInput4(0);
+    packWide4:16 = zext(packTrunc4) << 88;
+    packInput5:2 = xenonA(4);
+    packOverflow5:1 = packInput5 > 255:2;
+    packTrunc5:1 = packInput5(0);
+    packWide5:16 = zext(packTrunc5) << 80;
+    packInput6:2 = xenonA(2);
+    packOverflow6:1 = packInput6 > 255:2;
+    packTrunc6:1 = packInput6(0);
+    packWide6:16 = zext(packTrunc6) << 72;
+    packInput7:2 = xenonA(0);
+    packOverflow7:1 = packInput7 > 255:2;
+    packTrunc7:1 = packInput7(0);
+    packWide7:16 = zext(packTrunc7) << 64;
+    packInput8:2 = xenonB(14);
+    packOverflow8:1 = packInput8 > 255:2;
+    packTrunc8:1 = packInput8(0);
+    packWide8:16 = zext(packTrunc8) << 56;
+    packInput9:2 = xenonB(12);
+    packOverflow9:1 = packInput9 > 255:2;
+    packTrunc9:1 = packInput9(0);
+    packWide9:16 = zext(packTrunc9) << 48;
+    packInput10:2 = xenonB(10);
+    packOverflow10:1 = packInput10 > 255:2;
+    packTrunc10:1 = packInput10(0);
+    packWide10:16 = zext(packTrunc10) << 40;
+    packInput11:2 = xenonB(8);
+    packOverflow11:1 = packInput11 > 255:2;
+    packTrunc11:1 = packInput11(0);
+    packWide11:16 = zext(packTrunc11) << 32;
+    packInput12:2 = xenonB(6);
+    packOverflow12:1 = packInput12 > 255:2;
+    packTrunc12:1 = packInput12(0);
+    packWide12:16 = zext(packTrunc12) << 24;
+    packInput13:2 = xenonB(4);
+    packOverflow13:1 = packInput13 > 255:2;
+    packTrunc13:1 = packInput13(0);
+    packWide13:16 = zext(packTrunc13) << 16;
+    packInput14:2 = xenonB(2);
+    packOverflow14:1 = packInput14 > 255:2;
+    packTrunc14:1 = packInput14(0);
+    packWide14:16 = zext(packTrunc14) << 8;
+    packInput15:2 = xenonB(0);
+    packOverflow15:1 = packInput15 > 255:2;
+    packTrunc15:1 = packInput15(0);
+    packWide15:16 = zext(packTrunc15);
+    packHasOverflow:1 = packOverflow0 | packOverflow1 | packOverflow2 | packOverflow3 | packOverflow4 | packOverflow5 | packOverflow6 | packOverflow7 | packOverflow8 | packOverflow9 | packOverflow10 | packOverflow11 | packOverflow12 | packOverflow13 | packOverflow14 | packOverflow15;
+    if (packHasOverflow) goto <pack_unresolved_saturation>;
+    xenonD = packWide0 | packWide1 | packWide2 | packWide3 | packWide4 | packWide5 | packWide6 | packWide7 | packWide8 | packWide9 | packWide10 | packWide11 | packWide12 | packWide13 | packWide14 | packWide15;
+    goto <pack_end>;
+<pack_unresolved_saturation>
+    saturatingResult:16 = xenonVpkuhus128(xenonA, xenonB);
+    xenonD = saturatingResult;
+<pack_end>
 }
 
 :vpkuhus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=29 & BITS_4_5=2
 {
-    result:16 = xenonVpkuhus128(xenonA, xenonB);
-    xenonD = result;
+    packInput0:2 = xenonA(14);
+    packOverflow0:1 = packInput0 > 255:2;
+    packTrunc0:1 = packInput0(0);
+    packWide0:16 = zext(packTrunc0) << 120;
+    packInput1:2 = xenonA(12);
+    packOverflow1:1 = packInput1 > 255:2;
+    packTrunc1:1 = packInput1(0);
+    packWide1:16 = zext(packTrunc1) << 112;
+    packInput2:2 = xenonA(10);
+    packOverflow2:1 = packInput2 > 255:2;
+    packTrunc2:1 = packInput2(0);
+    packWide2:16 = zext(packTrunc2) << 104;
+    packInput3:2 = xenonA(8);
+    packOverflow3:1 = packInput3 > 255:2;
+    packTrunc3:1 = packInput3(0);
+    packWide3:16 = zext(packTrunc3) << 96;
+    packInput4:2 = xenonA(6);
+    packOverflow4:1 = packInput4 > 255:2;
+    packTrunc4:1 = packInput4(0);
+    packWide4:16 = zext(packTrunc4) << 88;
+    packInput5:2 = xenonA(4);
+    packOverflow5:1 = packInput5 > 255:2;
+    packTrunc5:1 = packInput5(0);
+    packWide5:16 = zext(packTrunc5) << 80;
+    packInput6:2 = xenonA(2);
+    packOverflow6:1 = packInput6 > 255:2;
+    packTrunc6:1 = packInput6(0);
+    packWide6:16 = zext(packTrunc6) << 72;
+    packInput7:2 = xenonA(0);
+    packOverflow7:1 = packInput7 > 255:2;
+    packTrunc7:1 = packInput7(0);
+    packWide7:16 = zext(packTrunc7) << 64;
+    packInput8:2 = xenonB(14);
+    packOverflow8:1 = packInput8 > 255:2;
+    packTrunc8:1 = packInput8(0);
+    packWide8:16 = zext(packTrunc8) << 56;
+    packInput9:2 = xenonB(12);
+    packOverflow9:1 = packInput9 > 255:2;
+    packTrunc9:1 = packInput9(0);
+    packWide9:16 = zext(packTrunc9) << 48;
+    packInput10:2 = xenonB(10);
+    packOverflow10:1 = packInput10 > 255:2;
+    packTrunc10:1 = packInput10(0);
+    packWide10:16 = zext(packTrunc10) << 40;
+    packInput11:2 = xenonB(8);
+    packOverflow11:1 = packInput11 > 255:2;
+    packTrunc11:1 = packInput11(0);
+    packWide11:16 = zext(packTrunc11) << 32;
+    packInput12:2 = xenonB(6);
+    packOverflow12:1 = packInput12 > 255:2;
+    packTrunc12:1 = packInput12(0);
+    packWide12:16 = zext(packTrunc12) << 24;
+    packInput13:2 = xenonB(4);
+    packOverflow13:1 = packInput13 > 255:2;
+    packTrunc13:1 = packInput13(0);
+    packWide13:16 = zext(packTrunc13) << 16;
+    packInput14:2 = xenonB(2);
+    packOverflow14:1 = packInput14 > 255:2;
+    packTrunc14:1 = packInput14(0);
+    packWide14:16 = zext(packTrunc14) << 8;
+    packInput15:2 = xenonB(0);
+    packOverflow15:1 = packInput15 > 255:2;
+    packTrunc15:1 = packInput15(0);
+    packWide15:16 = zext(packTrunc15);
+    packHasOverflow:1 = packOverflow0 | packOverflow1 | packOverflow2 | packOverflow3 | packOverflow4 | packOverflow5 | packOverflow6 | packOverflow7 | packOverflow8 | packOverflow9 | packOverflow10 | packOverflow11 | packOverflow12 | packOverflow13 | packOverflow14 | packOverflow15;
+    if (packHasOverflow) goto <pack_unresolved_saturation>;
+    xenonD = packWide0 | packWide1 | packWide2 | packWide3 | packWide4 | packWide5 | packWide6 | packWide7 | packWide8 | packWide9 | packWide10 | packWide11 | packWide12 | packWide13 | packWide14 | packWide15;
+    goto <pack_end>;
+<pack_unresolved_saturation>
+    saturatingResult:16 = xenonVpkuhus128(xenonA, xenonB);
+    xenonD = saturatingResult;
+<pack_end>
 }
 
 # vpkuwum128: native; Xenia mask/value fc0003d0/14000380
@@ -1257,26 +2401,178 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 # vpkuwus128: opaque; Xenia mask/value fc0003d0/140003c0
 :vpkuwus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=15 & BITS_4_5=0
 {
-    result:16 = xenonVpkuwus128(xenonA, xenonB);
-    xenonD = result;
+    packInput0:4 = xenonA(12);
+    packOverflow0:1 = packInput0 > 65535:4;
+    packTrunc0:2 = packInput0(0);
+    packWide0:16 = zext(packTrunc0) << 112;
+    packInput1:4 = xenonA(8);
+    packOverflow1:1 = packInput1 > 65535:4;
+    packTrunc1:2 = packInput1(0);
+    packWide1:16 = zext(packTrunc1) << 96;
+    packInput2:4 = xenonA(4);
+    packOverflow2:1 = packInput2 > 65535:4;
+    packTrunc2:2 = packInput2(0);
+    packWide2:16 = zext(packTrunc2) << 80;
+    packInput3:4 = xenonA(0);
+    packOverflow3:1 = packInput3 > 65535:4;
+    packTrunc3:2 = packInput3(0);
+    packWide3:16 = zext(packTrunc3) << 64;
+    packInput4:4 = xenonB(12);
+    packOverflow4:1 = packInput4 > 65535:4;
+    packTrunc4:2 = packInput4(0);
+    packWide4:16 = zext(packTrunc4) << 48;
+    packInput5:4 = xenonB(8);
+    packOverflow5:1 = packInput5 > 65535:4;
+    packTrunc5:2 = packInput5(0);
+    packWide5:16 = zext(packTrunc5) << 32;
+    packInput6:4 = xenonB(4);
+    packOverflow6:1 = packInput6 > 65535:4;
+    packTrunc6:2 = packInput6(0);
+    packWide6:16 = zext(packTrunc6) << 16;
+    packInput7:4 = xenonB(0);
+    packOverflow7:1 = packInput7 > 65535:4;
+    packTrunc7:2 = packInput7(0);
+    packWide7:16 = zext(packTrunc7);
+    packHasOverflow:1 = packOverflow0 | packOverflow1 | packOverflow2 | packOverflow3 | packOverflow4 | packOverflow5 | packOverflow6 | packOverflow7;
+    if (packHasOverflow) goto <pack_unresolved_saturation>;
+    xenonD = packWide0 | packWide1 | packWide2 | packWide3 | packWide4 | packWide5 | packWide6 | packWide7;
+    goto <pack_end>;
+<pack_unresolved_saturation>
+    saturatingResult:16 = xenonVpkuwus128(xenonA, xenonB);
+    xenonD = saturatingResult;
+<pack_end>
 }
 
 :vpkuwus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=15 & BITS_4_5=2
 {
-    result:16 = xenonVpkuwus128(xenonA, xenonB);
-    xenonD = result;
+    packInput0:4 = xenonA(12);
+    packOverflow0:1 = packInput0 > 65535:4;
+    packTrunc0:2 = packInput0(0);
+    packWide0:16 = zext(packTrunc0) << 112;
+    packInput1:4 = xenonA(8);
+    packOverflow1:1 = packInput1 > 65535:4;
+    packTrunc1:2 = packInput1(0);
+    packWide1:16 = zext(packTrunc1) << 96;
+    packInput2:4 = xenonA(4);
+    packOverflow2:1 = packInput2 > 65535:4;
+    packTrunc2:2 = packInput2(0);
+    packWide2:16 = zext(packTrunc2) << 80;
+    packInput3:4 = xenonA(0);
+    packOverflow3:1 = packInput3 > 65535:4;
+    packTrunc3:2 = packInput3(0);
+    packWide3:16 = zext(packTrunc3) << 64;
+    packInput4:4 = xenonB(12);
+    packOverflow4:1 = packInput4 > 65535:4;
+    packTrunc4:2 = packInput4(0);
+    packWide4:16 = zext(packTrunc4) << 48;
+    packInput5:4 = xenonB(8);
+    packOverflow5:1 = packInput5 > 65535:4;
+    packTrunc5:2 = packInput5(0);
+    packWide5:16 = zext(packTrunc5) << 32;
+    packInput6:4 = xenonB(4);
+    packOverflow6:1 = packInput6 > 65535:4;
+    packTrunc6:2 = packInput6(0);
+    packWide6:16 = zext(packTrunc6) << 16;
+    packInput7:4 = xenonB(0);
+    packOverflow7:1 = packInput7 > 65535:4;
+    packTrunc7:2 = packInput7(0);
+    packWide7:16 = zext(packTrunc7);
+    packHasOverflow:1 = packOverflow0 | packOverflow1 | packOverflow2 | packOverflow3 | packOverflow4 | packOverflow5 | packOverflow6 | packOverflow7;
+    if (packHasOverflow) goto <pack_unresolved_saturation>;
+    xenonD = packWide0 | packWide1 | packWide2 | packWide3 | packWide4 | packWide5 | packWide6 | packWide7;
+    goto <pack_end>;
+<pack_unresolved_saturation>
+    saturatingResult:16 = xenonVpkuwus128(xenonA, xenonB);
+    xenonD = saturatingResult;
+<pack_end>
 }
 
 :vpkuwus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=31 & BITS_4_5=0
 {
-    result:16 = xenonVpkuwus128(xenonA, xenonB);
-    xenonD = result;
+    packInput0:4 = xenonA(12);
+    packOverflow0:1 = packInput0 > 65535:4;
+    packTrunc0:2 = packInput0(0);
+    packWide0:16 = zext(packTrunc0) << 112;
+    packInput1:4 = xenonA(8);
+    packOverflow1:1 = packInput1 > 65535:4;
+    packTrunc1:2 = packInput1(0);
+    packWide1:16 = zext(packTrunc1) << 96;
+    packInput2:4 = xenonA(4);
+    packOverflow2:1 = packInput2 > 65535:4;
+    packTrunc2:2 = packInput2(0);
+    packWide2:16 = zext(packTrunc2) << 80;
+    packInput3:4 = xenonA(0);
+    packOverflow3:1 = packInput3 > 65535:4;
+    packTrunc3:2 = packInput3(0);
+    packWide3:16 = zext(packTrunc3) << 64;
+    packInput4:4 = xenonB(12);
+    packOverflow4:1 = packInput4 > 65535:4;
+    packTrunc4:2 = packInput4(0);
+    packWide4:16 = zext(packTrunc4) << 48;
+    packInput5:4 = xenonB(8);
+    packOverflow5:1 = packInput5 > 65535:4;
+    packTrunc5:2 = packInput5(0);
+    packWide5:16 = zext(packTrunc5) << 32;
+    packInput6:4 = xenonB(4);
+    packOverflow6:1 = packInput6 > 65535:4;
+    packTrunc6:2 = packInput6(0);
+    packWide6:16 = zext(packTrunc6) << 16;
+    packInput7:4 = xenonB(0);
+    packOverflow7:1 = packInput7 > 65535:4;
+    packTrunc7:2 = packInput7(0);
+    packWide7:16 = zext(packTrunc7);
+    packHasOverflow:1 = packOverflow0 | packOverflow1 | packOverflow2 | packOverflow3 | packOverflow4 | packOverflow5 | packOverflow6 | packOverflow7;
+    if (packHasOverflow) goto <pack_unresolved_saturation>;
+    xenonD = packWide0 | packWide1 | packWide2 | packWide3 | packWide4 | packWide5 | packWide6 | packWide7;
+    goto <pack_end>;
+<pack_unresolved_saturation>
+    saturatingResult:16 = xenonVpkuwus128(xenonA, xenonB);
+    xenonD = saturatingResult;
+<pack_end>
 }
 
 :vpkuwus128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=31 & BITS_4_5=2
 {
-    result:16 = xenonVpkuwus128(xenonA, xenonB);
-    xenonD = result;
+    packInput0:4 = xenonA(12);
+    packOverflow0:1 = packInput0 > 65535:4;
+    packTrunc0:2 = packInput0(0);
+    packWide0:16 = zext(packTrunc0) << 112;
+    packInput1:4 = xenonA(8);
+    packOverflow1:1 = packInput1 > 65535:4;
+    packTrunc1:2 = packInput1(0);
+    packWide1:16 = zext(packTrunc1) << 96;
+    packInput2:4 = xenonA(4);
+    packOverflow2:1 = packInput2 > 65535:4;
+    packTrunc2:2 = packInput2(0);
+    packWide2:16 = zext(packTrunc2) << 80;
+    packInput3:4 = xenonA(0);
+    packOverflow3:1 = packInput3 > 65535:4;
+    packTrunc3:2 = packInput3(0);
+    packWide3:16 = zext(packTrunc3) << 64;
+    packInput4:4 = xenonB(12);
+    packOverflow4:1 = packInput4 > 65535:4;
+    packTrunc4:2 = packInput4(0);
+    packWide4:16 = zext(packTrunc4) << 48;
+    packInput5:4 = xenonB(8);
+    packOverflow5:1 = packInput5 > 65535:4;
+    packTrunc5:2 = packInput5(0);
+    packWide5:16 = zext(packTrunc5) << 32;
+    packInput6:4 = xenonB(4);
+    packOverflow6:1 = packInput6 > 65535:4;
+    packTrunc6:2 = packInput6(0);
+    packWide6:16 = zext(packTrunc6) << 16;
+    packInput7:4 = xenonB(0);
+    packOverflow7:1 = packInput7 > 65535:4;
+    packTrunc7:2 = packInput7(0);
+    packWide7:16 = zext(packTrunc7);
+    packHasOverflow:1 = packOverflow0 | packOverflow1 | packOverflow2 | packOverflow3 | packOverflow4 | packOverflow5 | packOverflow6 | packOverflow7;
+    if (packHasOverflow) goto <pack_unresolved_saturation>;
+    xenonD = packWide0 | packWide1 | packWide2 | packWide3 | packWide4 | packWide5 | packWide6 | packWide7;
+    goto <pack_end>;
+<pack_unresolved_saturation>
+    saturatingResult:16 = xenonVpkuwus128(xenonA, xenonB);
+    xenonD = saturatingResult;
+<pack_end>
 }
 
 # vsro128: native; Xenia mask/value fc0003d0/140003d0
