@@ -1,3 +1,10 @@
+## Xenon selector unit test incorrectly demanded unimplemented constructors (2026-10-10)
+
+- The user ran the seven-test Python suite; **six passed and one failed**, specifically `test_opcode4_memory_and_opcode31_xform_selectors` at `vsldoi128` with `AssertionError: [] is not true`. This was the test's mistake, not a SLEIGH compiler/runtime decode finding: `vsldoi128` is intentionally still in the Xenia inventory but remains one of **46 missing add-on definitions**.
+- Updated the selector unit test to use `audit.parse_sleigh(source)`: for unimplemented opcode-4/31 families assert no constructor exists and skip selector checks; for *implemented* families continue requiring a constructor and exactly one matching selector for every tested valid operand pattern. The separate source-coverage test still checks 31 native, 7 opaque, 46 missing. Clarified the test docstring. Commits `77eea4c` and `7e2a47e`.
+- Independent source/selector cross-check against current branch confirmed **25 implemented opcode-4/31 families**, **one intentionally missing family** (`vsldoi128`) and **100 sample selectors** processed without rule/ambiguity errors. This is not a full execution of the Python test suite; user rerun remains necessary.
+- Next: `git pull` then `python -m unittest discover -s tools -p "test_xenon_isa_coverage_v1.py"` (expect seven tests passing), then continue fixture generation/diagnostic and `gradle buildExtension`. Do not change `vsldoi128` merely to satisfy the former incorrect test.
+
 ## Build blockers corrected: Groovy macro interpolation and Python Windows docstring (2026-10-10)
 
 - User reported `gradle buildExtension` failing at `XEXLoaderWV/build.gradle:97` with `token recognition error at: '('` on `String dcbzOld = ":dcbz A,B is $(NOTVLE) ..."`. Groovy double-quoted strings interpolate `$`, invalidating this literal SLEIGH preprocessor symbol. Fixed **both** `dcbzOld` and `dcbzNew` literals using Groovy single-quoted strings in commit `d4ebef1`.
