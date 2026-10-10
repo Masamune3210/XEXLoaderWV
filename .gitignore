@@ -12,3 +12,8 @@ XEXLoaderWV/dist/
 # Variant-local AltiVec source derived from installed Ghidra during Gradle build
 XEXLoaderWV/data/languages/xenon_altivec_pre207.sinc
 XEXLoaderWV/data/languages/xenon_ppc_isa.sinc
+
+# Python cache from the relocated Gradle-local Xenon audit tooling
+XEXLoaderWV/tools/__pycache__/
+# Legacy fixture output generated before moving tools into the Gradle project
+build/xenon-isa-audit/
