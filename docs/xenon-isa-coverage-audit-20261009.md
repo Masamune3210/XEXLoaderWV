@@ -57,7 +57,10 @@ or Ghidra runtime test.
 
 ## Repeatable workflow
 
-From the repository root (one command per line):
+From the repository root (one command per line), first exercise the
+offline unit checks and then generate the fixtures:
+
+    python -m unittest discover -s tools -p "test_xenon_isa_coverage_v1.py"
 
     python tools/audit_xenon_isa_coverage_v1.py
 
