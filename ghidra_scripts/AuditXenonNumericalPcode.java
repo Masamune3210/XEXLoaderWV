@@ -2074,6 +2074,203 @@ public class AuditXenonNumericalPcode extends GhidraScript {
         recordSuite("LOGIC", passed, failed, problems);
     }
 
+
+    // Word-lane merges use the upper or lower pair of input words.
+    // Reuse twelve independently structured full-width A/B patterns.
+    private static final class WordMerge {
+        final String name;
+        final long selector;
+        final boolean high;
+
+        WordMerge(String name, long selector, boolean high) {
+            this.name = name;
+            this.selector = selector;
+            this.high = high;
+        }
+    }
+
+    private static final WordMerge[] WORD_MERGES = {
+        new WordMerge("vmrghw128", 0x18000300L, true),
+        new WordMerge("vmrglw128", 0x18000340L, false),
+    };
+
+    private static final BigInteger WORD32_MASK =
+        BigInteger.valueOf(0xffffffffL);
+
+    private static BigInteger mergeOracle(WordMerge operation,
+                                           LogicalPattern pattern) {
+        // A3/B3/A2/B2 for merge-high; A1/B1/A0/B0 for merge-low.
+        // Index zero is the least-significant 32-bit word.
+        int upper = operation.high ? 3 : 1;
+        BigInteger result = BigInteger.ZERO;
+        for (int index = upper; index >= upper - 1; index--) {
+            BigInteger a = pattern.a.shiftRight(index * 32)
+                .and(WORD32_MASK);
+            BigInteger b = pattern.b.shiftRight(index * 32)
+                .and(WORD32_MASK);
+            result = result.shiftLeft(32).or(a);
+            result = result.shiftLeft(32).or(b);
+        }
+        return result;
+    }
+
+    private static long mergeWord(WordMerge operation, int variant) {
+        if ((variant & ~3) != 0)
+            throw new IllegalArgumentException("Invalid VA variant");
+        long word = operation.selector | (1L << 21) | (2L << 16) |
+            (3L << 11) | ((long) (variant & 1) << 5) |
+            ((long) (variant & 2) << 9);
+        if ((word & FP_SELECTOR_MASK) != operation.selector ||
+                ((word >>> 21) & 31) != 1 ||
+                ((word >>> 16) & 31) != 2 ||
+                ((word >>> 11) & 31) != 3 ||
+                ((word >>> 5) & 1) != (variant & 1) ||
+                ((word >>> 10) & 1) != ((variant >>> 1) & 1))
+            throw new IllegalArgumentException(
+                "Incorrect VMX128 word-merge encoding");
+        return word;
+    }
+
+    private String executeMerge(WordMerge operation, Address address,
+                                int variant, LogicalPattern pattern)
+            throws Exception {
+        long word = mergeWord(operation, variant);
+        String label = operation.name + " variant=" + variant +
+            " VA=" + guardedFpSourceAName(variant) +
+            " pattern=" + pattern.label + " word=" +
+            String.format("%08X", word);
+        Register destination = vectorRegister("vs33");
+        Register aReg = vectorRegister(guardedFpSourceAName(variant));
+        Register bReg = vectorRegister("vs35");
+        BigInteger expected = mergeOracle(operation, pattern);
+        // Every test must actually write D, even all-zero/all-one cases.
+        BigInteger initialD = expected.xor(MASK128);
+
+        EmulatorHelper emulator = new EmulatorHelper(currentProgram);
+        try {
+            byte[] opcode = wordBytes(word);
+            emulator.writeMemory(address, opcode);
+            if (!Arrays.equals(opcode, emulator.readMemory(address, 4)))
+                return label + ": emulator-private opcode mismatch";
+            emulator.writeRegister(aReg, pattern.a);
+            emulator.writeRegister(bReg, pattern.b);
+            emulator.writeRegister(destination, initialD);
+            emulator.writeRegister(
+                currentProgram.getLanguage().getProgramCounter(),
+                address.getOffset());
+            if (!emulator.step(monitor))
+                return label + ": emulator step failed: " +
+                    emulator.getLastError();
+            BigInteger actual = emulator.readRegister(destination).and(MASK128);
+            BigInteger afterA = emulator.readRegister(aReg).and(MASK128);
+            BigInteger afterB = emulator.readRegister(bReg).and(MASK128);
+            if (!expected.equals(actual) ||
+                    !pattern.a.equals(afterA) ||
+                    !pattern.b.equals(afterB))
+                return label + ": expectedD=" + hex128(expected) +
+                    " actualD=" + hex128(actual) +
+                    " initialD=" + hex128(initialD) +
+                    " expectedA=" + hex128(pattern.a) +
+                    " actualA=" + hex128(afterA) +
+                    " expectedB=" + hex128(pattern.b) +
+                    " actualB=" + hex128(afterB);
+        }
+        finally {
+            emulator.dispose();
+        }
+        return null;
+    }
+
+    private void runWordMerges(File manifest, Address base)
+            throws Exception {
+        Map<String, Address> sites = new LinkedHashMap<>();
+        Map<String, Long> originalWords = new LinkedHashMap<>();
+        try (BufferedReader reader = Files.newBufferedReader(
+                manifest.toPath(), StandardCharsets.UTF_8)) {
+            String heading = reader.readLine();
+            if (heading == null ||
+                    !heading.startsWith("offset\tword_be\texpected_mnemonic\t"))
+                throw new IllegalArgumentException(
+                    "Incorrect Xenon word-merge fixture manifest");
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] columns = line.split("\t", -1);
+                if (columns.length != 6 ||
+                        !"decode".equals(columns[5]))
+                    continue;
+                for (WordMerge operation : WORD_MERGES) {
+                    if (operation.name.equals(columns[2]) &&
+                            !sites.containsKey(operation.name)) {
+                        Address addr = base.add(Long.parseUnsignedLong(
+                            columns[0].replaceFirst("^0x", ""), 16));
+                        sites.put(operation.name, addr);
+                        originalWords.put(operation.name,
+                            Long.parseUnsignedLong(columns[1], 16));
+                    }
+                }
+            }
+        }
+        int passed = 0, failed = 0;
+        List<String> problems = new ArrayList<>();
+        for (WordMerge operation : WORD_MERGES) {
+            Address address = sites.get(operation.name);
+            Long originalWord = originalWords.get(operation.name);
+            if (address == null || originalWord == null ||
+                    (originalWord & FP_SELECTOR_MASK) != operation.selector ||
+                    !fixtureMatches(address, originalWord)) {
+                failed++;
+                problems.add(operation.name +
+                    ": missing/mismatched original fixture bytes");
+                continue;
+            }
+            Instruction instruction = getInstructionAt(address);
+            if (instruction == null) {
+                disassemble(address);
+                instruction = getInstructionAt(address);
+            }
+            if (instruction == null ||
+                    !operation.name.equalsIgnoreCase(
+                        instruction.getMnemonicString())) {
+                failed++;
+                problems.add(operation.name +
+                    ": unexpected fixture mnemonic at " + address);
+                continue;
+            }
+            for (int variant = 0; variant < 4; variant++) {
+                for (LogicalPattern pattern : LOGICAL_PATTERNS) {
+                    monitor.checkCancelled();
+                    try {
+                        String issue = executeMerge(operation, address,
+                            variant, pattern);
+                        if (issue == null) passed++;
+                        else {
+                            failed++;
+                            problems.add(issue);
+                        }
+                    }
+                    catch (Exception error) {
+                        failed++;
+                        problems.add(operation.name + " variant=" + variant +
+                            " pattern=" + pattern.label + ": " + error);
+                    }
+                }
+            }
+        }
+        println("");
+        println("============================================================");
+        println("XENON WORD MERGE NATIVE NUMERICAL P-CODE AUDIT");
+        println("============================================================");
+        println("Language: " + LANGUAGE);
+        println("Cases: " + (passed + failed) + "; passed: " +
+            passed + "; failed: " + failed);
+        println("vmrghw128: A3/B3/A2/B2; vmrglw128: A1/B1/A0/B0.");
+        println("Four VA banks and twelve independent full-width source " +
+            "patterns, with opposite-initialized destination.");
+        println("Source registers and fixture Program bytes preserved.");
+        println("Unresolved details follow in combined result below.");
+        recordSuite("WORD-MERGE", passed, failed, problems);
+    }
+
     @Override
     protected void run() throws Exception {
         String id = currentProgram.getLanguage().getLanguageID()
@@ -2190,6 +2387,7 @@ public class AuditXenonNumericalPcode extends GhidraScript {
         runWholeVectorShifts(manifest, base);
         runLaneShifts(manifest, base);
         runLogicalOps(manifest, base);
+        runWordMerges(manifest, base);
 
         println("");
         println("============================================================");
