@@ -25,7 +25,6 @@ import ghidra.program.model.mem.MemoryBlock;
 import ghidra.program.model.symbol.SourceType;
 import ghidra.program.model.symbol.Symbol;
 import ghidra.program.model.symbol.SymbolTable;
-import ghidra.util.Msg;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 
@@ -80,25 +79,11 @@ public class Xbox360RetailKernelPdataAnalyzer extends AbstractAnalyzer {
 
     @Override
     public boolean canAnalyze(Program program) {
-        if (program == null) return false;
-
-        // Ghidra builds its analyzer list when a Program first opens. PE
-        // provenance properties (including executable SHA-256) are not
-        // guaranteed to be populated at the exact point canAnalyze is called.
-        // Register based on architecture/format only; do not mutate anything
-        // unless the strict SHA-256 and layout checks below pass in added().
-        boolean languageMatches = LANGUAGE.equals(program.getLanguageID().getIdAsString());
-        boolean peMatches = "Portable Executable (PE)".equals(program.getExecutableFormat());
-        boolean eligible = languageMatches && peMatches;
-
-        if ("xboxkrnl.exe".equalsIgnoreCase(program.getName())) {
-            Msg.info(getClass(), "Retail kernel analyzer eligibility: eligible=" + eligible +
-                " language=" + program.getLanguageID().getIdAsString() +
-                " format=" + program.getExecutableFormat() +
-                " base=" + program.getImageBase() +
-                " sha256=" + program.getExecutableSHA256());
-        }
-        return eligible;
+        return program != null &&
+            LANGUAGE.equals(program.getLanguageID().getIdAsString()) &&
+            program.getImageBase().getOffset() == BASE &&
+            SHA256.equalsIgnoreCase(program.getExecutableSHA256()) &&
+            "Portable Executable (PE)".equals(program.getExecutableFormat());
     }
 
     private static Address at(Program program, long value) {
@@ -124,9 +109,6 @@ public class Xbox360RetailKernelPdataAnalyzer extends AbstractAnalyzer {
      * functions. A wrong PE mapping or malformed table cannot half-annotate.
      */
     private static Metadata readAndValidate(Program program, TaskMonitor monitor) throws Exception {
-        require(program.getImageBase().getOffset() == BASE, "Unexpected kernel image base");
-        require(SHA256.equalsIgnoreCase(program.getExecutableSHA256()),
-            "Executable SHA-256 is not verified retail 17559");
         Memory memory = program.getMemory();
         MemoryBlock pd = memory.getBlock(at(program, PDATA_START));
         MemoryBlock ex = memory.getBlock(at(program, EXPORT_START));
@@ -216,15 +198,6 @@ public class Xbox360RetailKernelPdataAnalyzer extends AbstractAnalyzer {
     public boolean added(Program program, AddressSetView set, TaskMonitor monitor,
             MessageLog log) throws CancelledException {
         if (!canAnalyze(program)) return true;
-        Msg.info(getClass(), "Retail kernel Pdata analysis invoked for " + program.getName() +
-            " at " + program.getImageBase() + ", SHA256=" + program.getExecutableSHA256());
-        // canAnalyze() establishes eligibility, not identity. The full image
-        // gate and all table checks must pass before any mutation occurs.
-        if (program.getImageBase().getOffset() != BASE ||
-                !SHA256.equalsIgnoreCase(program.getExecutableSHA256())) {
-            Msg.info(getClass(), "Retail kernel Pdata analysis skipped: image identity mismatch");
-            return true;
-        }
 
         final Metadata metadata;
         try {
