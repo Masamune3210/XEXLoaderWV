@@ -1206,11 +1206,20 @@ class XenonIsaInventoryTests(unittest.TestCase):
                     sleigh)
                 self.assertIn(f"sh{lane}:4 = xenonInputBLane{lane} & 31;",
                               sleigh)
-                self.assertIn(
-                    f"xenonResultLane{lane}:4 = xenonInputALane{lane} "
-                    + op_text + (f" sh{lane};" if operation != 0
-                                 else f" sh{lane})"),
-                    sleigh)
+                if operation == 0:
+                    self.assertIn(
+                        f"xenonResultLane{lane}:4 = "
+                        f"(xenonInputALane{lane} << sh{lane}) |",
+                        sleigh)
+                    self.assertIn(
+                        f"(xenonInputALane{lane} >> back{lane});", sleigh)
+                    self.assertIn(
+                        f"back{lane}:4 = (32 - sh{lane}) & 31;", sleigh)
+                else:
+                    self.assertIn(
+                        f"xenonResultLane{lane}:4 = "
+                        f"xenonInputALane{lane} {op_text} sh{lane};",
+                        sleigh)
             for variant in range(4):
                 mbh, oe = variant & 1, variant >> 1
                 word = (selector | (1 << 21) | (2 << 16) |
