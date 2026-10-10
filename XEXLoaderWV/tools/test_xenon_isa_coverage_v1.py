@@ -214,6 +214,72 @@ class XenonIsaInventoryTests(unittest.TestCase):
                             r"(?m)^\s*" + name + r":4\s*=\s*([^\n]+)",
                             body), ["0:4;"], (family, name))
 
+    def test_vscr_sat_is_register_backed_and_wired_to_legacy_transfers(self):
+        # SAT is architecturally VSCR[31], the least-significant bit.
+        # A saturating pack must set it without clearing an existing SAT.
+        # mfvscr/mtvscr must access that *same* register, not disconnected
+        # stock opaque CALL_OTHER operations or an independent shadow.
+        import re
+
+        slaspec = (audit.ROOT / "data/languages/xenon_64_be.slaspec"
+                   ).read_text(encoding="utf-8")
+        self.assertIn(
+            "define register offset=0x5000 size=4 [ xenonVSCR ];",
+            slaspec)
+        self.assertLess(
+            slaspec.index("define register offset=0x5000"),
+            slaspec.index('@include "xenon_altivec_pre207.sinc"'))
+
+        gradle = (audit.ROOT / "build.gradle").read_text(
+            encoding="utf-8")
+        self.assertIn(
+            'legacy.indexOf(":mfvscr vrD")', gradle)
+        self.assertIn(
+            'legacy.indexOf(":mtvscr vrB")', gradle)
+        match = re.search(
+            r"String nativeTransfers = '''\n([\s\S]*?)\n'''", gradle)
+        self.assertIsNotNone(match)
+        transfer = match.group(1)
+        self.assertIn(
+            ":mfvscr vrD is OP=4", transfer)
+        self.assertIn(
+            "vscrVector:16 = zext(xenonVSCR);", transfer)
+        self.assertIn(
+            "vrD = vscrVector;", transfer)
+        self.assertIn(
+            ":mtvscr vrB is OP=4", transfer)
+        self.assertIn(
+            "xenonVSCR = vrB(0);", transfer)
+        self.assertNotIn(
+            "moveFromVectorStatusAndControlRegister()", transfer)
+        self.assertNotIn(
+            "moveToVectorStatusAndControlRegister(", transfer)
+
+        supplement = audit.ADDITIONAL_SLEIGH.read_text(
+            encoding="utf-8")
+        self.assertNotIn("xenonSetVscrSatIf", supplement)
+        families = (
+            ("vpkshss128", 4, "saturatedAny"),
+            ("vpkshus128", 4, "saturatedAny"),
+            ("vpkswss128", 4, "saturatedAny"),
+            ("vpkswus128", 4, "saturatedAny"),
+            ("vpkuhus128", 4, "saturatedAny"),
+            ("vpkuwus128", 4, "saturatedAny"),
+            ("vcfpsxws128", 2, "conversionSaturated"),
+            ("vcfpuxws128", 2, "conversionSaturated"),
+        )
+        for name, count, flag in families:
+            bodies = re.findall(
+                r"(?m)^:" + name + r" [^\n]+ is [^\n]+\n"
+                r"\{\n([\s\S]*?)\n\}", supplement)
+            self.assertEqual(len(bodies), count, name)
+            for body in bodies:
+                self.assertIn(
+                    "xenonVSCR = xenonVSCR | zext(" + flag + ");",
+                    body)
+                self.assertEqual(
+                    body.count("xenonVSCR = "), 1, name)
+
     def test_embedded_dcbzl_collision_filter_wiring(self):
         # Stock ppc_common includes the embedded dcbzl alias, which has the
         # same opcode selector as Xenon's dcbz128. Only the Xenon variant
