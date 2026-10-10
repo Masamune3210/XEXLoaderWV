@@ -168,6 +168,9 @@ def write_results(rows: list[dict], sleigh_path: Path, inventory_path: Path,
             inventory_path.read_bytes()).hexdigest() + tick,
         "SLEIGH SHA-256: " + tick + hashlib.sha256(
             source.encode("utf-8")).hexdigest() + tick,
+        "Language specification SHA-256: " + tick + hashlib.sha256(
+            (ROOT / "data/languages/xenon_64_be.slaspec").read_bytes()
+        ).hexdigest() + tick,
         "Extra inventory SHA-256: " + tick + hashlib.sha256(
             extra_inventory_path.read_bytes()).hexdigest() + tick,
         "Generator SHA-256: " + tick + hashlib.sha256(
