@@ -53,6 +53,27 @@ class XenonIsaInventoryTests(unittest.TestCase):
             self.assertFalse(
                 lines, f"{path.name}: unsupported // comments at {lines}")
 
+    def test_sleigh_constant_varnodes_fit_eight_bytes(self):
+        # Ghidra SleighCompile rejects numeric constants declared :9+
+        # even when the destination varnode legitimately has 16 bytes.
+        # Inspect code only: '#' lines are SLEIGH comments and may quote
+        # unrelated ranges such as bit fields [6:10].
+        import re
+
+        numeric = re.compile(
+            r"(?<![A-Za-z0-9_])(?:0[xX][0-9a-fA-F]+|[0-9]+):([0-9]+)\b")
+        for path in (audit.SLEIGH, audit.ADDITIONAL_SLEIGH):
+            errors = [
+                (line_number, match.group(0))
+                for line_number, line in enumerate(
+                    path.read_text(encoding="utf-8").splitlines(), 1)
+                if not line.lstrip().startswith("#")
+                for match in numeric.finditer(line)
+                if int(match.group(1)) > 8
+            ]
+            self.assertFalse(
+                errors, f"{path.name}: oversized literal varnodes {errors}")
+
     def test_current_sleigh_source_statuses(self):
         source = audit.read_sleigh_source(audit.SLEIGH)
         constructors, custom_ops = audit.parse_sleigh(source)
