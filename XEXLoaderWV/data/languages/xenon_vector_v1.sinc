@@ -743,3 +743,108 @@ define pcodeop xenonVrlimi128;
     fourth:16 = zext(bSecond);
     xenonD = first | second | third | fourth;
 }
+
+# Xenia opcode-5 VX128 logical/select instructions. Each VA high-bit
+# combination needs its own nonoverlapping BITS_6_10/BITS_4_5 selector.
+# vsel128 uses the *prior* destination register as the selection mask.
+# These bitwise semantics are exact (not CALL_OTHER approximations).
+
+:vand128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=8 & BITS_4_5=1
+{
+    xenonD = xenonA & xenonB;
+}
+
+:vand128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=8 & BITS_4_5=3
+{
+    xenonD = xenonA & xenonB;
+}
+
+:vand128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=24 & BITS_4_5=1
+{
+    xenonD = xenonA & xenonB;
+}
+
+:vand128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=24 & BITS_4_5=3
+{
+    xenonD = xenonA & xenonB;
+}
+
+:vandc128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=9 & BITS_4_5=1
+{
+    xenonD = xenonA & ~xenonB;
+}
+
+:vandc128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=9 & BITS_4_5=3
+{
+    xenonD = xenonA & ~xenonB;
+}
+
+:vandc128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=25 & BITS_4_5=1
+{
+    xenonD = xenonA & ~xenonB;
+}
+
+:vandc128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=25 & BITS_4_5=3
+{
+    xenonD = xenonA & ~xenonB;
+}
+
+:vnor128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=10 & BITS_4_5=1
+{
+    xenonD = ~(xenonA | xenonB);
+}
+
+:vnor128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=10 & BITS_4_5=3
+{
+    xenonD = ~(xenonA | xenonB);
+}
+
+:vnor128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=26 & BITS_4_5=1
+{
+    xenonD = ~(xenonA | xenonB);
+}
+
+:vnor128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=26 & BITS_4_5=3
+{
+    xenonD = ~(xenonA | xenonB);
+}
+
+:vxor128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=12 & BITS_4_5=1
+{
+    xenonD = xenonA ^ xenonB;
+}
+
+:vxor128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=12 & BITS_4_5=3
+{
+    xenonD = xenonA ^ xenonB;
+}
+
+:vxor128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=28 & BITS_4_5=1
+{
+    xenonD = xenonA ^ xenonB;
+}
+
+:vxor128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=28 & BITS_4_5=3
+{
+    xenonD = xenonA ^ xenonB;
+}
+
+:vsel128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=13 & BITS_4_5=1
+{
+    xenonD = (xenonA & ~xenonD) | (xenonB & xenonD);
+}
+
+:vsel128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=13 & BITS_4_5=3
+{
+    xenonD = (xenonA & ~xenonD) | (xenonB & xenonD);
+}
+
+:vsel128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=29 & BITS_4_5=1
+{
+    xenonD = (xenonA & ~xenonD) | (xenonB & xenonD);
+}
+
+:vsel128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=29 & BITS_4_5=3
+{
+    xenonD = (xenonA & ~xenonD) | (xenonB & xenonD);
+}
