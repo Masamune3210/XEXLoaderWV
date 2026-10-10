@@ -1,3 +1,9 @@
+## Fixture generation is an automatic Gradle build prerequisite (2026-10-10)
+
+Gradle generateXenonIsaFixture is now an unconditional dependency of verifyXenonSleigh and thus of buildExtension, build and assemble. Builds from inner XEXLoaderWV/ refresh the 336-word big-endian fixture, manifest TSV, coverage TSV and Markdown report under build/xenon-isa-audit/ before SLEIGH compilation. It watches both vector SLEIGH includes, slaspec, both pinned Xenia inventories and generator. No manual Python generator invocation is needed.
+
+Source-only semantic updates need not change the binary opcode fixture, so the Markdown coverage report now includes five SHA-256 fingerprints: combined SLEIGH, slaspec, two inventories and generator source. The checker rejects stale or absent provenance and compares every manifest and coverage TSV row with pinned inventories; lvsl128 and lvsr128 are expected native, not opaque. The Python test suite now has 16 tests. Actual revised Gradle/SLEIGH and Ghidra runtime verification remain pending.
+
 ## Constrained-token SLEIGH compilation fix (2026-10-10)
 
 The bulk Xenon language first reached xenon_vector_remaining_v1.sinc:902 and failed because vpkd3d128 referenced BITS_6_10:4 after constraining BITS_6_10=24..27 separately in four constructors. Each now passes its known z shift (0..3) as a constant, and also supplies **prior VD** to the opaque pack userop, as Xenia's blending semantics require. New tests scan token references versus all 267 pattern lists and verify the four pack variants. Local static audit found no other constrained-pattern token reads. There are now 15 Python test methods, not yet run by the user, and the revised SLEIGH is still uncompiled. Coverage remains 47 native / 37 opaque / 0 missing.
