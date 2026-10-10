@@ -122,3 +122,19 @@ previous tests occurred against **incorrectly mapped instructions**.
 Their persistence on a correctly mapped kernel is **not yet tested**.
 The new memory-layout PE importer has been source-checked against Ghidra
 12.1.3 APIs, but has not been compiled or executed in the user's installation.
+
+
+### Retail kernel ordinal 126
+
+The post-analysis V2 audit on the correctly mapped 17559 kernel demonstrated
+all 3188 `.pdata` functions intact and 885/886 executable exports at function
+entries. The sole remaining outlier was `KeLeaveUserMode`, ordinal 126,
+`0x80073690`, a genuine code export without a `.pdata` unwind record.
+The analyzer now conservatively seeds this single verified privileged-mode
+routine, deriving its body only from reachable instructions within
+`0x80073690..0x80073733`, rather than guessing a C signature or applying
+new heuristics to all other no-`.pdata` exports.
+
+This targeted addition is not yet runtime-tested. Existing correct-import
+kernel databases otherwise pass the V2 boundary checks and can already
+be used for XAM import/linkage investigation.
