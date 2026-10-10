@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check Xenon fixture freshness and compare compiled/packaged/installed .sla.
+r"""Check Xenon fixture freshness and compare compiled/packaged/installed .sla.
 
 Run from the repository root:
   python tools/check_xenon_fixture_install_v1.py
