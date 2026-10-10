@@ -323,6 +323,28 @@ class XenonIsaInventoryTests(unittest.TestCase):
                 self.assertGreater(row["mask"].bit_count(),
                                    overlapping[0]["mask"].bit_count())
 
+    def test_signed_halfword_unpack_native_lane_mapping(self):
+        # Check source halves, signed widening, and destination bit order.
+        import re
+
+        source = audit.ADDITIONAL_SLEIGH.read_text(encoding="utf-8")
+        for name, first in (("vupkhsh128", 0), ("vupklsh128", 4)):
+            bodies = re.findall(
+                r"(?m)^:" + name + r" [^\n]+ is [^\n]+\n"
+                r"\{\n([\s\S]*?)\n\}", source)
+            self.assertEqual(len(bodies), 1)
+            body = bodies[0]
+            for i in range(4):
+                offset = 14 - 2 * (first + i)
+                shift = 96 - 32 * i
+                self.assertIn(f"sourceHalf{i}:2 = xenonB({offset});", body)
+                self.assertIn(f"signedWord{i}:4 = sext(sourceHalf{i});", body)
+                term = f"placedWord{i}:16 = zext(signedWord{i})"
+                self.assertIn(term + (f" << {shift}" if shift else "") + ";",
+                              body)
+            self.assertIn("xenonD = placedWord0 | placedWord1 | "
+                          "placedWord2 | placedWord3;", body)
+
     def test_corrected_fixture_keeps_pinned_prefix_and_appends_eight(self):
         import hashlib
 
