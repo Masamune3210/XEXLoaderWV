@@ -33,7 +33,7 @@ def main():
         raise ValueError("Not the exact verified retail 17559 kernel memory image: " + actual)
     data = bytearray(original)
     pe_offset = struct.unpack_from("<I", data, 0x3C)[0]
-    if data[pe_offset:pe_offset+4] != b"PE\\x00\\x00":
+    if data[pe_offset:pe_offset+4] != b"PE\x00\x00":
         raise ValueError("Invalid embedded PE signature")
     if struct.unpack_from("<H", data, pe_offset+4)[0] != 0x01F2:
         raise ValueError("Unexpected PE machine")
@@ -43,7 +43,7 @@ def main():
     changed = set()
     for index in range(section_count):
         entry = section_table + index*40
-        name = data[entry:entry+8].split(b"\\x00", 1)[0].decode("ascii")
+        name = data[entry:entry+8].split(b"\x00", 1)[0].decode("ascii")
         virtual_size, rva, raw_size, raw_pointer = struct.unpack_from("<IIII", data, entry+8)
         if name in PATCHES:
             expected_rva, expected_raw = PATCHES[name]
