@@ -53,8 +53,9 @@ class XenonIsaInventoryTests(unittest.TestCase):
             self.assertEqual(constructors.get(name), "native-pcode", name)
 
     def test_opcode4_memory_and_opcode31_xform_selectors(self):
-        """All generated words match unique new SLEIGH selectors.
+        """Implemented opcode-4/31 families match their SLEIGH selectors.
 
+        Missing families remain valid inventory entries but have no rule.
         For opcode 31 X-forms, Rc=1 is deliberately excluded (hardware
         validity unverified even though Xenia's decoder accepts it).
         """
