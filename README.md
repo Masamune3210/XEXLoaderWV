@@ -158,3 +158,19 @@ a Xenon VMX128-compatible language module. Check that `KeBugCheckEx` is marked
 No Return and that its call at `0x80073730` terminates control flow before
 removing the one obsolete padding bookmark. Do not clear legitimate
 unsupported-instruction bookmarks to manufacture a clean audit.
+
+
+### Existing kernel bookmark correction
+
+The analyzer now automatically models the verified `KeLeaveUserMode` fatal
+branch as a nonreturning call to `KeBugCheckEx`, validates its exact bytes,
+and removes **only** the matching stale padding error bookmark. To apply
+that same correction **without reimporting** an existing database, run
+`ghidra_scripts/RepairXboxKrnl17559ErrorBookmarksV2.java` in Ghidra.
+This script also comments the 16 Xenon instructions with independently
+verified mnemonics, but does **not** purport to decode them.
+
+The remaining 16 opcode bookmarks reflect missing stock PowerPC language
+constructors; fixing those requires a compatible SLEIGH processor language,
+not manipulating the PE loader or concealing errors. The current working
+language and successful .pdata state remain unchanged.
