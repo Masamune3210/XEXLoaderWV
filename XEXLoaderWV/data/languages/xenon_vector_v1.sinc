@@ -479,6 +479,7 @@ xenonA: "xv127" is vrAR=31 & MBH=1 & OE=1 { export xv127; }
     // Other D3D unpack formats retain the existing opaque userop.
     unpackType:4 = A_BITS:4 >> 2;
     if (unpackType == 0:4) goto <unpack_color>;
+    if (unpackType == 1:4) goto <unpack_short2_positive>;
     goto <unpack_opaque>;
 <unpack_color>
     packedColor:4 = xenonB(0);
@@ -496,6 +497,24 @@ xenonA: "xv127" is vrAR=31 & MBH=1 & OE=1 { export xv127; }
     laneA:16 = zext(encodedA);
     xenonD = laneR | laneG | laneB | laneA;
     goto <unpack_done>;
+<unpack_short2_positive>
+    // Xenia UNPACK_SHORT_2: observed for both nonnegative halfwords.
+    // Negative signed halfwords, including the 0x8000 NaN sentinel,
+    // retain the opaque path rather than inventing exceptional encoding.
+    packedShorts:4 = xenonB(0);
+    highHalf:4 = (packedShorts >> 16) & 0xffff:4;
+    lowHalf:4 = packedShorts & 0xffff:4;
+    highSign:1 = (highHalf & 0x8000:4) != 0:4;
+    lowSign:1 = (lowHalf & 0x8000:4) != 0:4;
+    if (highSign) goto <unpack_opaque>;
+    if (lowSign) goto <unpack_opaque>;
+    shortX:4 = 0x40400000:4 | highHalf;
+    shortY:4 = 0x40400000:4 | lowHalf;
+    placeX:16 = zext(shortX) << 96;
+    placeY:16 = zext(shortY) << 64;
+    shortOne:16 = zext(0x3f800000:4);
+    xenonD = placeX | placeY | shortOne;
+    goto <unpack_done>;
 <unpack_opaque>
     unpacked:16 = xenonVupkd3d128(xenonB, A_BITS:4);
     xenonD = unpacked;
@@ -508,6 +527,7 @@ xenonA: "xv127" is vrAR=31 & MBH=1 & OE=1 { export xv127; }
     // Other D3D unpack formats retain the existing opaque userop.
     unpackType:4 = A_BITS:4 >> 2;
     if (unpackType == 0:4) goto <unpack_color>;
+    if (unpackType == 1:4) goto <unpack_short2_positive>;
     goto <unpack_opaque>;
 <unpack_color>
     packedColor:4 = xenonB(0);
@@ -524,6 +544,24 @@ xenonA: "xv127" is vrAR=31 & MBH=1 & OE=1 { export xv127; }
     encodedA:4 = 0x3f800000:4 | alpha;
     laneA:16 = zext(encodedA);
     xenonD = laneR | laneG | laneB | laneA;
+    goto <unpack_done>;
+<unpack_short2_positive>
+    // Xenia UNPACK_SHORT_2: observed for both nonnegative halfwords.
+    // Negative signed halfwords, including the 0x8000 NaN sentinel,
+    // retain the opaque path rather than inventing exceptional encoding.
+    packedShorts:4 = xenonB(0);
+    highHalf:4 = (packedShorts >> 16) & 0xffff:4;
+    lowHalf:4 = packedShorts & 0xffff:4;
+    highSign:1 = (highHalf & 0x8000:4) != 0:4;
+    lowSign:1 = (lowHalf & 0x8000:4) != 0:4;
+    if (highSign) goto <unpack_opaque>;
+    if (lowSign) goto <unpack_opaque>;
+    shortX:4 = 0x40400000:4 | highHalf;
+    shortY:4 = 0x40400000:4 | lowHalf;
+    placeX:16 = zext(shortX) << 96;
+    placeY:16 = zext(shortY) << 64;
+    shortOne:16 = zext(0x3f800000:4);
+    xenonD = placeX | placeY | shortOne;
     goto <unpack_done>;
 <unpack_opaque>
     unpacked:16 = xenonVupkd3d128(xenonB, A_BITS:4);
