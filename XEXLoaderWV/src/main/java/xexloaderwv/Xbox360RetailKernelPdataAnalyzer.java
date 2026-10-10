@@ -65,6 +65,9 @@ public class Xbox360RetailKernelPdataAnalyzer extends AbstractAnalyzer {
     private static final String NORMALIZED_PE_SHA256 =
         "1c6113602af25b0762fb10dfb0d7ad5c7fef1c7268826982188979b9bb2e4d85";
     private static final String LANGUAGE = "PowerPC:BE:64:A2ALT-32addr";
+    // Optional, isolated Xenon decoder. The verified kernel .pdata/PE layout
+    // remains identical; a user must explicitly choose this new language.
+    private static final String XENON_LANGUAGE = "PowerPC:BE:64:XENON-32addr";
     private static final long PDATA_START = BASE + 0xFA00L;
     private static final int PDATA_COUNT = 3188;
     private static final long EXPORT_START = BASE + 0x15E00L;
@@ -100,7 +103,8 @@ public class Xbox360RetailKernelPdataAnalyzer extends AbstractAnalyzer {
     @Override
     public boolean canAnalyze(Program program) {
         if (program == null ||
-                !LANGUAGE.equals(program.getLanguageID().getIdAsString()) ||
+                !(LANGUAGE.equals(program.getLanguageID().getIdAsString()) ||
+                  XENON_LANGUAGE.equals(program.getLanguageID().getIdAsString())) ||
                 program.getImageBase().getOffset() != BASE) {
             return false;
         }
