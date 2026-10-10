@@ -700,6 +700,154 @@ class XenonIsaInventoryTests(unittest.TestCase):
                 if lo <= decoded <= hi:
                     self.assertEqual(clamped, decoded)
 
+    def test_vector_float_rounding_modes_have_no_integer_cast_shortcut(self):
+        import re
+
+        sleigh = audit.ADDITIONAL_SLEIGH.read_text(encoding="utf-8")
+        modes = (("vrfim128", "floor", 2),
+                 ("vrfin128", "round", 2),
+                 ("vrfip128", "ceil", 2),
+                 ("vrfiz128", "toward-zero", 2))
+        for name, mode, total in modes:
+            blocks = re.findall(
+                r"(?m)^:" + name + r" [^\n]+ is [^\n]+\n"
+                r"\{\n([\s\S]*?)\n\}", sleigh)
+            self.assertEqual(len(blocks), total)
+            for body in blocks:
+                self.assertNotIn("trunc(", body, name)
+                self.assertNotIn("int2float(", body, name)
+                for i in range(4):
+                    input_name = ("sourceFloat" if mode == "round"
+                                  else "roundInput")
+                    self.assertIn(
+                        f"{input_name}{i}:4 = xenonB({i*4});", body)
+                    if mode == "toward-zero":
+                        self.assertIn(
+                            f"roundOutput{i}:4 = floor(roundInput{i});",
+                            body)
+                        self.assertIn(
+                            f"roundOutput{i}:4 = ceil(roundInput{i});",
+                            body)
+                        self.assertIn(
+                            f"roundNegative{i}:1 = roundInput{i} f< 0:4;",
+                            body)
+                    elif mode == "round":
+                        self.assertIn(
+                            f"nearest{i}:4 = round(sourceFloat{i});",
+                            body)
+                    else:
+                        self.assertIn(
+                            f"roundOutput{i}:4 = {mode}(roundInput{i});",
+                            body)
+
+    def test_scaled_word_float_conversions_preserve_width_and_scale(self):
+        import re
+
+        sleigh = audit.ADDITIONAL_SLEIGH.read_text(encoding="utf-8")
+        for name, unsigned in (("vcsxwfp128", False),
+                               ("vcuxwfp128", True)):
+            bodies = re.findall(
+                r"(?m)^:" + name + r" [^\n]+ is [^\n]+\n"
+                r"\{\n([\s\S]*?)\n\}", sleigh)
+            self.assertEqual(len(bodies), 2)
+            for body in bodies:
+                self.assertIn(
+                    "exponent:4 = (127:4 - A_BITS:4) << 23;", body)
+                for i in range(4):
+                    self.assertIn(
+                        f"integerWord{i}:4 = xenonB({i*4});", body)
+                    integer = (f"extendedUnsigned{i}" if unsigned
+                               else f"integerWord{i}")
+                    if unsigned:
+                        self.assertIn(
+                            f"extendedUnsigned{i}:8 = "
+                            f"zext(integerWord{i});", body)
+                    self.assertIn(
+                        f"convertedWord{i}:4 = int2float({integer});",
+                        body)
+                    self.assertIn(
+                        f"scaledWord{i}:4 = convertedWord{i} f* "
+                        "exponent;", body)
+
+    def test_saturating_float_word_conversion_flags_and_nan_fallback(self):
+        import re
+
+        sleigh = audit.ADDITIONAL_SLEIGH.read_text(encoding="utf-8")
+        for name, unsigned, bottom, top in (
+                ("vcfpsxws128", False, "0xcf000000", "0x4f000000"),
+                ("vcfpuxws128", True, "0", "0x4f800000")):
+            blocks = re.findall(
+                r"(?m)^:" + name + r" [^\n]+ is [^\n]+\n"
+                r"\{\n([\s\S]*?)\n\}", sleigh)
+            self.assertEqual(len(blocks), 2)
+            for body in blocks:
+                self.assertIn(
+                    "scalingBits:4 = (127:4 + A_BITS:4) << 23;",
+                    body)
+                self.assertIn("upperBound:4 = " + top + ":4;", body)
+                self.assertIn("lowerBound:4 = " + bottom + ":4;", body)
+                self.assertIn(
+                    "xenonSetVscrSatIf(conversionSaturated);", body)
+                self.assertIn("if (anyNaN) goto <conversion_nan_opaque>;",
+                              body)
+                self.assertIn("xenonD = unresolvedNaN;", body)
+                for i in range(4):
+                    self.assertIn(
+                        f"sourceFloat{i}:4 = xenonB({i*4});", body)
+                    self.assertIn(
+                        f"conversionNaN{i}:1 = nan(scaledFloat{i});",
+                        body)
+                    self.assertIn(f"convertedInt{i}:4 =", body)
+                    self.assertIn(f"belowMin{i}:1 =", body)
+                    self.assertIn(f"aboveMax{i}:1 =", body)
+
+    def test_float_minmax_exceptional_case_is_not_guessed(self):
+        import re
+
+        sleigh = audit.ADDITIONAL_SLEIGH.read_text(encoding="utf-8")
+        for name, predicate in (("vmaxfp128", "f>"),
+                                ("vminfp128", "f<")):
+            bodies = re.findall(
+                r"(?m)^:" + name + r" [^\n]+ is [^\n]+\n"
+                r"\{\n([\s\S]*?)\n\}", sleigh)
+            self.assertEqual(len(bodies), 4)
+            for body in bodies:
+                for i in range(4):
+                    self.assertIn(
+                        f"ambiguous{i}:1 = nan(valueA{i}) | "
+                        f"nan(valueB{i}) | ((valueA{i} f== valueB{i})"
+                        f" & (valueA{i} != valueB{i}));", body)
+                    self.assertIn(
+                        f"chooseA{i}:1 = valueA{i} {predicate} valueB{i};",
+                        body)
+                self.assertIn(
+                    "if (anyAmbiguous) goto <xenon_opaque_fp>;", body)
+                self.assertIn("xenonD = ambiguousResult;", body)
+
+    def test_sleigh_constructor_label_targets_and_userops(self):
+        import re
+
+        sleigh = audit.read_sleigh_source(audit.SLEIGH)
+        ops = set(re.findall(
+            r"(?m)^define pcodeop\s+(\w+);", sleigh))
+        bodies = re.findall(
+            r"(?m)^:[A-Za-z]\w* [^\n]+ is [^\n]+\n"
+            r"\{\n([\s\S]*?)\n\}", sleigh)
+        self.assertGreaterEqual(len(bodies), 269)
+        called = set()
+        for body in bodies:
+            labels = re.findall(
+                r"(?m)^<([A-Za-z_]\w*)>$", body)
+            self.assertEqual(len(labels), len(set(labels)))
+            self.assertEqual(
+                set(re.findall(r"goto <([A-Za-z_]\w*)>", body)) -
+                set(labels), set())
+            for op in ops:
+                if op + "(" in body:
+                    called.add(op)
+        self.assertEqual(ops - called, set(),
+                         "Unused opaque userop declarations")
+
     def test_fixture_generation(self):
         with tempfile.TemporaryDirectory() as folder:
             out = Path(folder)
