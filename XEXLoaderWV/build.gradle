@@ -140,8 +140,68 @@ tasks.register("prepareXenonIsa") {
     }
 }
 
+// The stock ppc_common.sinc indirectly includes ppc_embedded.sinc, which
+// defines dcbzl on the SAME opcode as Xenon's dcbz128 (RT=1, XO=1014).
+// Copy only for this experimental variant; remove that colliding constructor
+// without touching the original PowerPC / embedded processor definitions.
+def xenonStockCommon = new File(ghidraInstallDir,
+    "Ghidra/Processors/PowerPC/data/languages/ppc_common.sinc")
+def xenonStockEmbedded = new File(ghidraInstallDir,
+    "Ghidra/Processors/PowerPC/data/languages/ppc_embedded.sinc")
+def xenonCommon = file("data/languages/xenon_ppc_common.sinc")
+def xenonEmbedded = file("data/languages/xenon_ppc_embedded.sinc")
+tasks.register("prepareXenonCommon") {
+    group = "verification"
+    description = "Remove inherited embedded dcbzl alias from Xenon-only PPC language"
+    inputs.files(xenonStockCommon, xenonStockEmbedded)
+    outputs.files(xenonCommon, xenonEmbedded)
+    doLast {
+        String common = xenonStockCommon.getText("UTF-8")
+        String instructionsInclude = '@include "ppc_instructions.sinc"'
+        String embeddedInclude = '@include "ppc_embedded.sinc"'
+        if (common.indexOf(instructionsInclude) < 0 ||
+                common.indexOf(instructionsInclude) != common.lastIndexOf(instructionsInclude) ||
+                common.indexOf(embeddedInclude) < 0 ||
+                common.indexOf(embeddedInclude) != common.lastIndexOf(embeddedInclude)) {
+            throw new GradleException(
+                "Installed ppc_common.sinc includes changed; cannot isolate Xenon dcbzl")
+        }
+        common = common.replace(instructionsInclude,
+            '@include "$(PowerPC)/data/languages/ppc_instructions.sinc"')
+        common = common.replace(embeddedInclude,
+            '@include "xenon_ppc_embedded.sinc"')
+
+        String embedded = xenonStockEmbedded.getText("UTF-8")
+        String target = ':dcbzl RA_OR_ZERO,B'
+        String dcbzlPattern = 'BITS_21_25=1 & B & XOP_1_10=1014 & BIT_0=0'
+        String next = 'define pcodeop memoryBarrier;'
+        int start = embedded.indexOf(target)
+        int end = embedded.indexOf(next, start)
+        int comment = embedded.lastIndexOf('#dcbzl ', start)
+        if (start < 0 || end <= start || comment < 0 ||
+                embedded.indexOf(target, start + 1) >= 0 ||
+                !embedded.substring(start, end).contains(dcbzlPattern) ||
+                !embedded.substring(start, end).contains(
+                    'dataCacheBlockClearToZero(ea);') ||
+                embedded.indexOf(next, end + next.length()) >= 0) {
+            throw new GradleException(
+                "Installed ppc_embedded.sinc dcbzl layout changed; refusing to filter")
+        }
+        embedded = embedded.substring(0, comment) + embedded.substring(end)
+        if (embedded.contains(target) || embedded.contains('#dcbzl ')) {
+            throw new GradleException("Xenon embedded dcbzl exclusion failed")
+        }
+        xenonCommon.setText(
+            "# Generated from installed Ghidra ppc_common.sinc; do not edit.\\n" +
+            common, "UTF-8")
+        xenonEmbedded.setText(
+            "# Generated from installed Ghidra ppc_embedded.sinc; do not edit.\\n" +
+            embedded, "UTF-8")
+    }
+}
+
 tasks.register("verifyXenonSleigh", Exec) {
-    dependsOn tasks.named("prepareXenonLegacyAltivec"), tasks.named("prepareXenonIsa")
+    dependsOn tasks.named("prepareXenonLegacyAltivec"), tasks.named("prepareXenonIsa"), tasks.named("prepareXenonCommon")
     group = "verification"
     description = "Compile Xenon SLEIGH with the installed Ghidra compiler before extension packaging"
     workingDir file("data")
