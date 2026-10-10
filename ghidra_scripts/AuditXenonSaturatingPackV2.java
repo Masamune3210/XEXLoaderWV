@@ -192,6 +192,20 @@ public class AuditXenonSaturatingPackV2 extends GhidraScript {
         return null;
     }
 
+    // Refuse to execute stale or mismatched fixture manifests. All four
+    // instruction bytes must match the word selected by the TSV.
+    private boolean fixtureWordMatches(Address address, Long word)
+            throws Exception {
+        if (address == null || word == null) return false;
+        byte[] actual = new byte[4];
+        if (currentProgram.getMemory().getBytes(address, actual) != 4)
+            return false;
+        long decoded = 0;
+        for (byte b : actual)
+            decoded = (decoded << 8) | (b & 0xffL);
+        return decoded == word.longValue();
+    }
+
     @Override
     protected void run() throws Exception {
         String actualLanguage =
@@ -209,6 +223,7 @@ public class AuditXenonSaturatingPackV2 extends GhidraScript {
         File manifest = askFile("Select xenon_isa_fixture_v1.tsv", "Open");
         Map<String, Address> addresses = new LinkedHashMap<>();
         Map<String, Address> patternAddresses = new LinkedHashMap<>();
+        Map<Address, Long> fixtureWords = new LinkedHashMap<>();
         Address base = currentProgram.getMinAddress();
         try (BufferedReader reader = Files.newBufferedReader(
                 manifest.toPath(), StandardCharsets.UTF_8)) {
@@ -225,9 +240,11 @@ public class AuditXenonSaturatingPackV2 extends GhidraScript {
                     continue;
                 long offset = Long.parseUnsignedLong(
                     columns[0].replaceFirst("^0x", ""), 16);
-                addresses.putIfAbsent(columns[2], base.add(offset));
+                Address site = base.add(offset);
+                fixtureWords.put(site, Long.parseUnsignedLong(columns[1], 16));
+                addresses.putIfAbsent(columns[2], site);
                 if ("55".equals(columns[4]))
-                    patternAddresses.putIfAbsent(columns[2], base.add(offset));
+                    patternAddresses.putIfAbsent(columns[2], site);
             }
         }
 
@@ -237,8 +254,8 @@ public class AuditXenonSaturatingPackV2 extends GhidraScript {
         for (Pack pack : CASES) {
             monitor.checkCancelled();
             Address address = addresses.get(pack.name);
-            if (address == null) {
-                problems.add(pack.name + ": no decode fixture entry");
+            if (address == null || !fixtureWordMatches(address, fixtureWords.get(address))) {
+                problems.add(pack.name + ": missing/byte-mismatched decode fixture entry");
                 failed += 5;
                 continue;
             }
@@ -285,7 +302,8 @@ public class AuditXenonSaturatingPackV2 extends GhidraScript {
                 disassemble(patternAddress);
                 patterned = getInstructionAt(patternAddress);
             }
-            if (patterned == null ||
+            if (!fixtureWordMatches(patternAddress, fixtureWords.get(patternAddress)) ||
+                patterned == null ||
                 !pack.name.equalsIgnoreCase(patterned.getMnemonicString())) {
                 problems.add(pack.name + ": missing patterned fixture at "
                     + patternAddress);
