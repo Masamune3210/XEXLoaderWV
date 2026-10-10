@@ -89,3 +89,16 @@ exported functions before importing XAM through the XEX loader.
 The earlier standalone export/.pdata scripts are for diagnostic purposes; do
 not run them on this clean-import test. The kernel analyzer has not yet been
 compiled or end-to-end tested with Ghidra 12.1.3.
+
+
+### Early kernel disassembly behavior
+
+The FORMAT-stage kernel pass can encounter valid .pdata entries before Ghidra
+has established instructions for them. The analyzer now reserves the exact
+verified function body even if its entry point is still undefined, so later
+generic function discovery cannot absorb that range. If the entry is already
+defined as data, it remains untouched and is reported as an explicit conflict.
+The analyzer separately reports pending instructions, true function creation
+failures, and pre-existing export entrypoints. A successful metadata boundary
+pass is not proof that every instruction has been decoded; check the normal
+auto-analysis results before declaring full coverage.
