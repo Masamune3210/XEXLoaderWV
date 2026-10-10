@@ -31,3 +31,34 @@ else {
 	throw new GradleException("GHIDRA_INSTALL_DIR is not defined!")
 }
 //----------------------END "DO NOT MODIFY" SECTION-------------------------------
+
+
+/*
+ * Compile the experimental Xenon SLEIGH language as part of extension builds.
+ * Without this, Ghidra's extension ZIP can be built and installed successfully
+ * even though its .slaspec has fatal grammar or p-code errors. Run the same
+ * Ghidra version's real Sleigh compiler and fail *before* packaging.
+ *
+ * This compiles into data/languages/xenon_64_be.sla, which the extension
+ * packager then includes. The working A2ALT processor remains untouched.
+ */
+tasks.register("verifyXenonSleigh", Exec) {
+    group = "verification"
+    description = "Compile Xenon SLEIGH with the installed Ghidra compiler before extension packaging"
+    workingDir file("data")
+    def windows = System.getProperty("os.name").toLowerCase(java.util.Locale.ROOT).contains("windows")
+    def compiler = new File(ghidraInstallDir, windows ? "support/sleigh.bat" : "support/sleigh")
+    if (!compiler.isFile()) {
+        throw new GradleException("Ghidra Sleigh compiler launch script not found: " + compiler)
+    }
+    commandLine compiler.absolutePath, "-i", "sleighArgs.txt",
+        "languages/xenon_64_be.slaspec", "languages/xenon_64_be.sla"
+    inputs.files(fileTree("data/languages") { include("*.sinc", "*.slaspec") })
+    inputs.file(file("data/sleighArgs.txt"))
+    outputs.file(file("data/languages/xenon_64_be.sla"))
+}
+// Attach to standard Ghidra extension build entrypoints if present, without
+// relying on one particular support/buildExtension.gradle task name.
+tasks.matching { it.name in ["build", "buildExtension", "assemble"] }.configureEach {
+    dependsOn tasks.named("verifyXenonSleigh")
+}
