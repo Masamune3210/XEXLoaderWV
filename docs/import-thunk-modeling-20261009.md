@@ -1,3 +1,9 @@
+## Verified 344-word VMX128 fixture in Ghidra (2026-10-10)
+
+- **USER-VERIFIED Ghidra runtime** `AuditXenonIsaFixtureV1.java` on installed `PowerPC:BE:64:XENON-32addr`: **344 fixture words: 328 correct mnemonics, 16 expected reserved Rc=1 rejections, zero byte mismatches, 0 missing or incorrect states. Every one of 86 families met 4/4 expectations, 0 partial.** This specifically validates correct mnemonic decoding for new `vupkhsh128` / `vupklsh128` aliases and byte/halfword disjointness within sampled words.
+- This is a *decode-only* result, not numerical p-code validation, and the Rc=1 expectations reflect documented Cell encodings rather than independent Xenon hardware tests. Latest accepted source state is 52 native and 34 opaque families **before** any additional semantics changes. Python 21-test run has not been supplied.
+- The 344-word/86-family decoder fixture milestone is complete; proceed with semantic p-code implementations without unnecessary another decoder audit unless decoding changes.
+
 ## VMX128 reference policy: corrected Biallas is our working baseline (2026-10-10)
 
 - **User decision:** Treat Sven Biallas's [VMX128 opcode reference](https://biallas.net/doc/vmx128/vmx128.txt), Revision 1.2, as **presumptively correct unless contradicted by concrete evidence**, applying its already identified errata and missing instructions. Do not require redundant, independent confirmation of every opcode bit, mnemonic, field name, or register layout before implementing or using it.
