@@ -20,6 +20,12 @@ define register offset=0x4400 size=16 [
     xv116 xv117 xv118 xv119 xv120 xv121 xv122 xv123 xv124 xv125 xv126 xv127 
 ];
 
+# Four-byte Vector Status and Control Register for the Xenon-only language.
+# The low bit is the architecturally sticky saturation indicator VSCR[31].
+# It is shared by saturating VMX128 instructions and mfvscr / mtvscr.
+# 0x5000 does not overlap the PPC vector bank or xv32..xv127 above.
+define register offset=0x5000 size=4 [ xenonVSCR ];
+
 # vupkd3d128 implements seven D3D packed types. A CALL_OTHER pcode
 # operation preserves the correct destination dependency until a verified
 # per-format unpack implementation is available; it is NOT a numeric model.
