@@ -31,11 +31,11 @@ define pcodeop xenonVrefp128;
 define pcodeop xenonVrsqrtefp128;
 define pcodeop xenonVexptefp128;
 define pcodeop xenonVlogefp128;
-define pcodeop xenonVcmpeqfp128;
-define pcodeop xenonVcmpgefp128;
-define pcodeop xenonVcmpgtfp128;
+
+
+
 define pcodeop xenonVcmpbfp128;
-define pcodeop xenonVcmpequw128;
+
 define pcodeop xenonVmaxfp128;
 define pcodeop xenonVminfp128;
 
@@ -1542,148 +1542,640 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 # vcmpeqfp128: opaque; Xenia mask/value fc000390/18000000
 :vcmpeqfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=0 & BITS_4_5=0
 {
-    result:16 = xenonVcmpeqfp128(xenonA, xenonB, 0:1);
-    xenonD = result;
+    compareA0:4 = xenonA(0);
+    compareB0:4 = xenonB(0);
+    predicate0:1 = compareA0 f== compareB0;
+    expandedResult0:4 = 0:4 - zext(predicate0);
+    vectorResult0:16 = zext(expandedResult0);
+    compareA1:4 = xenonA(4);
+    compareB1:4 = xenonB(4);
+    predicate1:1 = compareA1 f== compareB1;
+    expandedResult1:4 = 0:4 - zext(predicate1);
+    vectorResult1:16 = zext(expandedResult1) << 32;
+    compareA2:4 = xenonA(8);
+    compareB2:4 = xenonB(8);
+    predicate2:1 = compareA2 f== compareB2;
+    expandedResult2:4 = 0:4 - zext(predicate2);
+    vectorResult2:16 = zext(expandedResult2) << 64;
+    compareA3:4 = xenonA(12);
+    compareB3:4 = xenonB(12);
+    predicate3:1 = compareA3 f== compareB3;
+    expandedResult3:4 = 0:4 - zext(predicate3);
+    vectorResult3:16 = zext(expandedResult3) << 96;
+    xenonD = vectorResult0 | vectorResult1 | vectorResult2 | vectorResult3;
 }
 
 :vcmpeqfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=0 & BITS_4_5=2
 {
-    result:16 = xenonVcmpeqfp128(xenonA, xenonB, 0:1);
-    xenonD = result;
+    compareA0:4 = xenonA(0);
+    compareB0:4 = xenonB(0);
+    predicate0:1 = compareA0 f== compareB0;
+    expandedResult0:4 = 0:4 - zext(predicate0);
+    vectorResult0:16 = zext(expandedResult0);
+    compareA1:4 = xenonA(4);
+    compareB1:4 = xenonB(4);
+    predicate1:1 = compareA1 f== compareB1;
+    expandedResult1:4 = 0:4 - zext(predicate1);
+    vectorResult1:16 = zext(expandedResult1) << 32;
+    compareA2:4 = xenonA(8);
+    compareB2:4 = xenonB(8);
+    predicate2:1 = compareA2 f== compareB2;
+    expandedResult2:4 = 0:4 - zext(predicate2);
+    vectorResult2:16 = zext(expandedResult2) << 64;
+    compareA3:4 = xenonA(12);
+    compareB3:4 = xenonB(12);
+    predicate3:1 = compareA3 f== compareB3;
+    expandedResult3:4 = 0:4 - zext(predicate3);
+    vectorResult3:16 = zext(expandedResult3) << 96;
+    xenonD = vectorResult0 | vectorResult1 | vectorResult2 | vectorResult3;
 }
 
 :vcmpeqfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=1 & BITS_4_5=0
 {
-    result:16 = xenonVcmpeqfp128(xenonA, xenonB, 1:1);
-    xenonD = result;
+    compareA0:4 = xenonA(0);
+    compareB0:4 = xenonB(0);
+    predicate0:1 = compareA0 f== compareB0;
+    expandedResult0:4 = 0:4 - zext(predicate0);
+    vectorResult0:16 = zext(expandedResult0);
+    compareA1:4 = xenonA(4);
+    compareB1:4 = xenonB(4);
+    predicate1:1 = compareA1 f== compareB1;
+    expandedResult1:4 = 0:4 - zext(predicate1);
+    vectorResult1:16 = zext(expandedResult1) << 32;
+    compareA2:4 = xenonA(8);
+    compareB2:4 = xenonB(8);
+    predicate2:1 = compareA2 f== compareB2;
+    expandedResult2:4 = 0:4 - zext(predicate2);
+    vectorResult2:16 = zext(expandedResult2) << 64;
+    compareA3:4 = xenonA(12);
+    compareB3:4 = xenonB(12);
+    predicate3:1 = compareA3 f== compareB3;
+    expandedResult3:4 = 0:4 - zext(predicate3);
+    vectorResult3:16 = zext(expandedResult3) << 96;
+    xenonD = vectorResult0 | vectorResult1 | vectorResult2 | vectorResult3;
+    allTrue:1 = predicate0 & predicate1 & predicate2 & predicate3;
+    noneTrue:1 = !(predicate0 | predicate1 | predicate2 | predicate3);
+    cr6 = (allTrue << 3) | (noneTrue << 1);
 }
 
 :vcmpeqfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=1 & BITS_4_5=2
 {
-    result:16 = xenonVcmpeqfp128(xenonA, xenonB, 1:1);
-    xenonD = result;
+    compareA0:4 = xenonA(0);
+    compareB0:4 = xenonB(0);
+    predicate0:1 = compareA0 f== compareB0;
+    expandedResult0:4 = 0:4 - zext(predicate0);
+    vectorResult0:16 = zext(expandedResult0);
+    compareA1:4 = xenonA(4);
+    compareB1:4 = xenonB(4);
+    predicate1:1 = compareA1 f== compareB1;
+    expandedResult1:4 = 0:4 - zext(predicate1);
+    vectorResult1:16 = zext(expandedResult1) << 32;
+    compareA2:4 = xenonA(8);
+    compareB2:4 = xenonB(8);
+    predicate2:1 = compareA2 f== compareB2;
+    expandedResult2:4 = 0:4 - zext(predicate2);
+    vectorResult2:16 = zext(expandedResult2) << 64;
+    compareA3:4 = xenonA(12);
+    compareB3:4 = xenonB(12);
+    predicate3:1 = compareA3 f== compareB3;
+    expandedResult3:4 = 0:4 - zext(predicate3);
+    vectorResult3:16 = zext(expandedResult3) << 96;
+    xenonD = vectorResult0 | vectorResult1 | vectorResult2 | vectorResult3;
+    allTrue:1 = predicate0 & predicate1 & predicate2 & predicate3;
+    noneTrue:1 = !(predicate0 | predicate1 | predicate2 | predicate3);
+    cr6 = (allTrue << 3) | (noneTrue << 1);
 }
 
 :vcmpeqfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=16 & BITS_4_5=0
 {
-    result:16 = xenonVcmpeqfp128(xenonA, xenonB, 0:1);
-    xenonD = result;
+    compareA0:4 = xenonA(0);
+    compareB0:4 = xenonB(0);
+    predicate0:1 = compareA0 f== compareB0;
+    expandedResult0:4 = 0:4 - zext(predicate0);
+    vectorResult0:16 = zext(expandedResult0);
+    compareA1:4 = xenonA(4);
+    compareB1:4 = xenonB(4);
+    predicate1:1 = compareA1 f== compareB1;
+    expandedResult1:4 = 0:4 - zext(predicate1);
+    vectorResult1:16 = zext(expandedResult1) << 32;
+    compareA2:4 = xenonA(8);
+    compareB2:4 = xenonB(8);
+    predicate2:1 = compareA2 f== compareB2;
+    expandedResult2:4 = 0:4 - zext(predicate2);
+    vectorResult2:16 = zext(expandedResult2) << 64;
+    compareA3:4 = xenonA(12);
+    compareB3:4 = xenonB(12);
+    predicate3:1 = compareA3 f== compareB3;
+    expandedResult3:4 = 0:4 - zext(predicate3);
+    vectorResult3:16 = zext(expandedResult3) << 96;
+    xenonD = vectorResult0 | vectorResult1 | vectorResult2 | vectorResult3;
 }
 
 :vcmpeqfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=16 & BITS_4_5=2
 {
-    result:16 = xenonVcmpeqfp128(xenonA, xenonB, 0:1);
-    xenonD = result;
+    compareA0:4 = xenonA(0);
+    compareB0:4 = xenonB(0);
+    predicate0:1 = compareA0 f== compareB0;
+    expandedResult0:4 = 0:4 - zext(predicate0);
+    vectorResult0:16 = zext(expandedResult0);
+    compareA1:4 = xenonA(4);
+    compareB1:4 = xenonB(4);
+    predicate1:1 = compareA1 f== compareB1;
+    expandedResult1:4 = 0:4 - zext(predicate1);
+    vectorResult1:16 = zext(expandedResult1) << 32;
+    compareA2:4 = xenonA(8);
+    compareB2:4 = xenonB(8);
+    predicate2:1 = compareA2 f== compareB2;
+    expandedResult2:4 = 0:4 - zext(predicate2);
+    vectorResult2:16 = zext(expandedResult2) << 64;
+    compareA3:4 = xenonA(12);
+    compareB3:4 = xenonB(12);
+    predicate3:1 = compareA3 f== compareB3;
+    expandedResult3:4 = 0:4 - zext(predicate3);
+    vectorResult3:16 = zext(expandedResult3) << 96;
+    xenonD = vectorResult0 | vectorResult1 | vectorResult2 | vectorResult3;
 }
 
 :vcmpeqfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=17 & BITS_4_5=0
 {
-    result:16 = xenonVcmpeqfp128(xenonA, xenonB, 1:1);
-    xenonD = result;
+    compareA0:4 = xenonA(0);
+    compareB0:4 = xenonB(0);
+    predicate0:1 = compareA0 f== compareB0;
+    expandedResult0:4 = 0:4 - zext(predicate0);
+    vectorResult0:16 = zext(expandedResult0);
+    compareA1:4 = xenonA(4);
+    compareB1:4 = xenonB(4);
+    predicate1:1 = compareA1 f== compareB1;
+    expandedResult1:4 = 0:4 - zext(predicate1);
+    vectorResult1:16 = zext(expandedResult1) << 32;
+    compareA2:4 = xenonA(8);
+    compareB2:4 = xenonB(8);
+    predicate2:1 = compareA2 f== compareB2;
+    expandedResult2:4 = 0:4 - zext(predicate2);
+    vectorResult2:16 = zext(expandedResult2) << 64;
+    compareA3:4 = xenonA(12);
+    compareB3:4 = xenonB(12);
+    predicate3:1 = compareA3 f== compareB3;
+    expandedResult3:4 = 0:4 - zext(predicate3);
+    vectorResult3:16 = zext(expandedResult3) << 96;
+    xenonD = vectorResult0 | vectorResult1 | vectorResult2 | vectorResult3;
+    allTrue:1 = predicate0 & predicate1 & predicate2 & predicate3;
+    noneTrue:1 = !(predicate0 | predicate1 | predicate2 | predicate3);
+    cr6 = (allTrue << 3) | (noneTrue << 1);
 }
 
 :vcmpeqfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=17 & BITS_4_5=2
 {
-    result:16 = xenonVcmpeqfp128(xenonA, xenonB, 1:1);
-    xenonD = result;
+    compareA0:4 = xenonA(0);
+    compareB0:4 = xenonB(0);
+    predicate0:1 = compareA0 f== compareB0;
+    expandedResult0:4 = 0:4 - zext(predicate0);
+    vectorResult0:16 = zext(expandedResult0);
+    compareA1:4 = xenonA(4);
+    compareB1:4 = xenonB(4);
+    predicate1:1 = compareA1 f== compareB1;
+    expandedResult1:4 = 0:4 - zext(predicate1);
+    vectorResult1:16 = zext(expandedResult1) << 32;
+    compareA2:4 = xenonA(8);
+    compareB2:4 = xenonB(8);
+    predicate2:1 = compareA2 f== compareB2;
+    expandedResult2:4 = 0:4 - zext(predicate2);
+    vectorResult2:16 = zext(expandedResult2) << 64;
+    compareA3:4 = xenonA(12);
+    compareB3:4 = xenonB(12);
+    predicate3:1 = compareA3 f== compareB3;
+    expandedResult3:4 = 0:4 - zext(predicate3);
+    vectorResult3:16 = zext(expandedResult3) << 96;
+    xenonD = vectorResult0 | vectorResult1 | vectorResult2 | vectorResult3;
+    allTrue:1 = predicate0 & predicate1 & predicate2 & predicate3;
+    noneTrue:1 = !(predicate0 | predicate1 | predicate2 | predicate3);
+    cr6 = (allTrue << 3) | (noneTrue << 1);
 }
 
 # vcmpgefp128: opaque; Xenia mask/value fc000390/18000080
 :vcmpgefp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=2 & BITS_4_5=0
 {
-    result:16 = xenonVcmpgefp128(xenonA, xenonB, 0:1);
-    xenonD = result;
+    compareA0:4 = xenonA(0);
+    compareB0:4 = xenonB(0);
+    predicate0:1 = compareA0 f>= compareB0;
+    expandedResult0:4 = 0:4 - zext(predicate0);
+    vectorResult0:16 = zext(expandedResult0);
+    compareA1:4 = xenonA(4);
+    compareB1:4 = xenonB(4);
+    predicate1:1 = compareA1 f>= compareB1;
+    expandedResult1:4 = 0:4 - zext(predicate1);
+    vectorResult1:16 = zext(expandedResult1) << 32;
+    compareA2:4 = xenonA(8);
+    compareB2:4 = xenonB(8);
+    predicate2:1 = compareA2 f>= compareB2;
+    expandedResult2:4 = 0:4 - zext(predicate2);
+    vectorResult2:16 = zext(expandedResult2) << 64;
+    compareA3:4 = xenonA(12);
+    compareB3:4 = xenonB(12);
+    predicate3:1 = compareA3 f>= compareB3;
+    expandedResult3:4 = 0:4 - zext(predicate3);
+    vectorResult3:16 = zext(expandedResult3) << 96;
+    xenonD = vectorResult0 | vectorResult1 | vectorResult2 | vectorResult3;
 }
 
 :vcmpgefp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=2 & BITS_4_5=2
 {
-    result:16 = xenonVcmpgefp128(xenonA, xenonB, 0:1);
-    xenonD = result;
+    compareA0:4 = xenonA(0);
+    compareB0:4 = xenonB(0);
+    predicate0:1 = compareA0 f>= compareB0;
+    expandedResult0:4 = 0:4 - zext(predicate0);
+    vectorResult0:16 = zext(expandedResult0);
+    compareA1:4 = xenonA(4);
+    compareB1:4 = xenonB(4);
+    predicate1:1 = compareA1 f>= compareB1;
+    expandedResult1:4 = 0:4 - zext(predicate1);
+    vectorResult1:16 = zext(expandedResult1) << 32;
+    compareA2:4 = xenonA(8);
+    compareB2:4 = xenonB(8);
+    predicate2:1 = compareA2 f>= compareB2;
+    expandedResult2:4 = 0:4 - zext(predicate2);
+    vectorResult2:16 = zext(expandedResult2) << 64;
+    compareA3:4 = xenonA(12);
+    compareB3:4 = xenonB(12);
+    predicate3:1 = compareA3 f>= compareB3;
+    expandedResult3:4 = 0:4 - zext(predicate3);
+    vectorResult3:16 = zext(expandedResult3) << 96;
+    xenonD = vectorResult0 | vectorResult1 | vectorResult2 | vectorResult3;
 }
 
 :vcmpgefp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=3 & BITS_4_5=0
 {
-    result:16 = xenonVcmpgefp128(xenonA, xenonB, 1:1);
-    xenonD = result;
+    compareA0:4 = xenonA(0);
+    compareB0:4 = xenonB(0);
+    predicate0:1 = compareA0 f>= compareB0;
+    expandedResult0:4 = 0:4 - zext(predicate0);
+    vectorResult0:16 = zext(expandedResult0);
+    compareA1:4 = xenonA(4);
+    compareB1:4 = xenonB(4);
+    predicate1:1 = compareA1 f>= compareB1;
+    expandedResult1:4 = 0:4 - zext(predicate1);
+    vectorResult1:16 = zext(expandedResult1) << 32;
+    compareA2:4 = xenonA(8);
+    compareB2:4 = xenonB(8);
+    predicate2:1 = compareA2 f>= compareB2;
+    expandedResult2:4 = 0:4 - zext(predicate2);
+    vectorResult2:16 = zext(expandedResult2) << 64;
+    compareA3:4 = xenonA(12);
+    compareB3:4 = xenonB(12);
+    predicate3:1 = compareA3 f>= compareB3;
+    expandedResult3:4 = 0:4 - zext(predicate3);
+    vectorResult3:16 = zext(expandedResult3) << 96;
+    xenonD = vectorResult0 | vectorResult1 | vectorResult2 | vectorResult3;
+    allTrue:1 = predicate0 & predicate1 & predicate2 & predicate3;
+    noneTrue:1 = !(predicate0 | predicate1 | predicate2 | predicate3);
+    cr6 = (allTrue << 3) | (noneTrue << 1);
 }
 
 :vcmpgefp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=3 & BITS_4_5=2
 {
-    result:16 = xenonVcmpgefp128(xenonA, xenonB, 1:1);
-    xenonD = result;
+    compareA0:4 = xenonA(0);
+    compareB0:4 = xenonB(0);
+    predicate0:1 = compareA0 f>= compareB0;
+    expandedResult0:4 = 0:4 - zext(predicate0);
+    vectorResult0:16 = zext(expandedResult0);
+    compareA1:4 = xenonA(4);
+    compareB1:4 = xenonB(4);
+    predicate1:1 = compareA1 f>= compareB1;
+    expandedResult1:4 = 0:4 - zext(predicate1);
+    vectorResult1:16 = zext(expandedResult1) << 32;
+    compareA2:4 = xenonA(8);
+    compareB2:4 = xenonB(8);
+    predicate2:1 = compareA2 f>= compareB2;
+    expandedResult2:4 = 0:4 - zext(predicate2);
+    vectorResult2:16 = zext(expandedResult2) << 64;
+    compareA3:4 = xenonA(12);
+    compareB3:4 = xenonB(12);
+    predicate3:1 = compareA3 f>= compareB3;
+    expandedResult3:4 = 0:4 - zext(predicate3);
+    vectorResult3:16 = zext(expandedResult3) << 96;
+    xenonD = vectorResult0 | vectorResult1 | vectorResult2 | vectorResult3;
+    allTrue:1 = predicate0 & predicate1 & predicate2 & predicate3;
+    noneTrue:1 = !(predicate0 | predicate1 | predicate2 | predicate3);
+    cr6 = (allTrue << 3) | (noneTrue << 1);
 }
 
 :vcmpgefp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=18 & BITS_4_5=0
 {
-    result:16 = xenonVcmpgefp128(xenonA, xenonB, 0:1);
-    xenonD = result;
+    compareA0:4 = xenonA(0);
+    compareB0:4 = xenonB(0);
+    predicate0:1 = compareA0 f>= compareB0;
+    expandedResult0:4 = 0:4 - zext(predicate0);
+    vectorResult0:16 = zext(expandedResult0);
+    compareA1:4 = xenonA(4);
+    compareB1:4 = xenonB(4);
+    predicate1:1 = compareA1 f>= compareB1;
+    expandedResult1:4 = 0:4 - zext(predicate1);
+    vectorResult1:16 = zext(expandedResult1) << 32;
+    compareA2:4 = xenonA(8);
+    compareB2:4 = xenonB(8);
+    predicate2:1 = compareA2 f>= compareB2;
+    expandedResult2:4 = 0:4 - zext(predicate2);
+    vectorResult2:16 = zext(expandedResult2) << 64;
+    compareA3:4 = xenonA(12);
+    compareB3:4 = xenonB(12);
+    predicate3:1 = compareA3 f>= compareB3;
+    expandedResult3:4 = 0:4 - zext(predicate3);
+    vectorResult3:16 = zext(expandedResult3) << 96;
+    xenonD = vectorResult0 | vectorResult1 | vectorResult2 | vectorResult3;
 }
 
 :vcmpgefp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=18 & BITS_4_5=2
 {
-    result:16 = xenonVcmpgefp128(xenonA, xenonB, 0:1);
-    xenonD = result;
+    compareA0:4 = xenonA(0);
+    compareB0:4 = xenonB(0);
+    predicate0:1 = compareA0 f>= compareB0;
+    expandedResult0:4 = 0:4 - zext(predicate0);
+    vectorResult0:16 = zext(expandedResult0);
+    compareA1:4 = xenonA(4);
+    compareB1:4 = xenonB(4);
+    predicate1:1 = compareA1 f>= compareB1;
+    expandedResult1:4 = 0:4 - zext(predicate1);
+    vectorResult1:16 = zext(expandedResult1) << 32;
+    compareA2:4 = xenonA(8);
+    compareB2:4 = xenonB(8);
+    predicate2:1 = compareA2 f>= compareB2;
+    expandedResult2:4 = 0:4 - zext(predicate2);
+    vectorResult2:16 = zext(expandedResult2) << 64;
+    compareA3:4 = xenonA(12);
+    compareB3:4 = xenonB(12);
+    predicate3:1 = compareA3 f>= compareB3;
+    expandedResult3:4 = 0:4 - zext(predicate3);
+    vectorResult3:16 = zext(expandedResult3) << 96;
+    xenonD = vectorResult0 | vectorResult1 | vectorResult2 | vectorResult3;
 }
 
 :vcmpgefp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=19 & BITS_4_5=0
 {
-    result:16 = xenonVcmpgefp128(xenonA, xenonB, 1:1);
-    xenonD = result;
+    compareA0:4 = xenonA(0);
+    compareB0:4 = xenonB(0);
+    predicate0:1 = compareA0 f>= compareB0;
+    expandedResult0:4 = 0:4 - zext(predicate0);
+    vectorResult0:16 = zext(expandedResult0);
+    compareA1:4 = xenonA(4);
+    compareB1:4 = xenonB(4);
+    predicate1:1 = compareA1 f>= compareB1;
+    expandedResult1:4 = 0:4 - zext(predicate1);
+    vectorResult1:16 = zext(expandedResult1) << 32;
+    compareA2:4 = xenonA(8);
+    compareB2:4 = xenonB(8);
+    predicate2:1 = compareA2 f>= compareB2;
+    expandedResult2:4 = 0:4 - zext(predicate2);
+    vectorResult2:16 = zext(expandedResult2) << 64;
+    compareA3:4 = xenonA(12);
+    compareB3:4 = xenonB(12);
+    predicate3:1 = compareA3 f>= compareB3;
+    expandedResult3:4 = 0:4 - zext(predicate3);
+    vectorResult3:16 = zext(expandedResult3) << 96;
+    xenonD = vectorResult0 | vectorResult1 | vectorResult2 | vectorResult3;
+    allTrue:1 = predicate0 & predicate1 & predicate2 & predicate3;
+    noneTrue:1 = !(predicate0 | predicate1 | predicate2 | predicate3);
+    cr6 = (allTrue << 3) | (noneTrue << 1);
 }
 
 :vcmpgefp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=19 & BITS_4_5=2
 {
-    result:16 = xenonVcmpgefp128(xenonA, xenonB, 1:1);
-    xenonD = result;
+    compareA0:4 = xenonA(0);
+    compareB0:4 = xenonB(0);
+    predicate0:1 = compareA0 f>= compareB0;
+    expandedResult0:4 = 0:4 - zext(predicate0);
+    vectorResult0:16 = zext(expandedResult0);
+    compareA1:4 = xenonA(4);
+    compareB1:4 = xenonB(4);
+    predicate1:1 = compareA1 f>= compareB1;
+    expandedResult1:4 = 0:4 - zext(predicate1);
+    vectorResult1:16 = zext(expandedResult1) << 32;
+    compareA2:4 = xenonA(8);
+    compareB2:4 = xenonB(8);
+    predicate2:1 = compareA2 f>= compareB2;
+    expandedResult2:4 = 0:4 - zext(predicate2);
+    vectorResult2:16 = zext(expandedResult2) << 64;
+    compareA3:4 = xenonA(12);
+    compareB3:4 = xenonB(12);
+    predicate3:1 = compareA3 f>= compareB3;
+    expandedResult3:4 = 0:4 - zext(predicate3);
+    vectorResult3:16 = zext(expandedResult3) << 96;
+    xenonD = vectorResult0 | vectorResult1 | vectorResult2 | vectorResult3;
+    allTrue:1 = predicate0 & predicate1 & predicate2 & predicate3;
+    noneTrue:1 = !(predicate0 | predicate1 | predicate2 | predicate3);
+    cr6 = (allTrue << 3) | (noneTrue << 1);
 }
 
 # vcmpgtfp128: opaque; Xenia mask/value fc000390/18000100
 :vcmpgtfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=4 & BITS_4_5=0
 {
-    result:16 = xenonVcmpgtfp128(xenonA, xenonB, 0:1);
-    xenonD = result;
+    compareA0:4 = xenonA(0);
+    compareB0:4 = xenonB(0);
+    predicate0:1 = compareA0 f> compareB0;
+    expandedResult0:4 = 0:4 - zext(predicate0);
+    vectorResult0:16 = zext(expandedResult0);
+    compareA1:4 = xenonA(4);
+    compareB1:4 = xenonB(4);
+    predicate1:1 = compareA1 f> compareB1;
+    expandedResult1:4 = 0:4 - zext(predicate1);
+    vectorResult1:16 = zext(expandedResult1) << 32;
+    compareA2:4 = xenonA(8);
+    compareB2:4 = xenonB(8);
+    predicate2:1 = compareA2 f> compareB2;
+    expandedResult2:4 = 0:4 - zext(predicate2);
+    vectorResult2:16 = zext(expandedResult2) << 64;
+    compareA3:4 = xenonA(12);
+    compareB3:4 = xenonB(12);
+    predicate3:1 = compareA3 f> compareB3;
+    expandedResult3:4 = 0:4 - zext(predicate3);
+    vectorResult3:16 = zext(expandedResult3) << 96;
+    xenonD = vectorResult0 | vectorResult1 | vectorResult2 | vectorResult3;
 }
 
 :vcmpgtfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=4 & BITS_4_5=2
 {
-    result:16 = xenonVcmpgtfp128(xenonA, xenonB, 0:1);
-    xenonD = result;
+    compareA0:4 = xenonA(0);
+    compareB0:4 = xenonB(0);
+    predicate0:1 = compareA0 f> compareB0;
+    expandedResult0:4 = 0:4 - zext(predicate0);
+    vectorResult0:16 = zext(expandedResult0);
+    compareA1:4 = xenonA(4);
+    compareB1:4 = xenonB(4);
+    predicate1:1 = compareA1 f> compareB1;
+    expandedResult1:4 = 0:4 - zext(predicate1);
+    vectorResult1:16 = zext(expandedResult1) << 32;
+    compareA2:4 = xenonA(8);
+    compareB2:4 = xenonB(8);
+    predicate2:1 = compareA2 f> compareB2;
+    expandedResult2:4 = 0:4 - zext(predicate2);
+    vectorResult2:16 = zext(expandedResult2) << 64;
+    compareA3:4 = xenonA(12);
+    compareB3:4 = xenonB(12);
+    predicate3:1 = compareA3 f> compareB3;
+    expandedResult3:4 = 0:4 - zext(predicate3);
+    vectorResult3:16 = zext(expandedResult3) << 96;
+    xenonD = vectorResult0 | vectorResult1 | vectorResult2 | vectorResult3;
 }
 
 :vcmpgtfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=5 & BITS_4_5=0
 {
-    result:16 = xenonVcmpgtfp128(xenonA, xenonB, 1:1);
-    xenonD = result;
+    compareA0:4 = xenonA(0);
+    compareB0:4 = xenonB(0);
+    predicate0:1 = compareA0 f> compareB0;
+    expandedResult0:4 = 0:4 - zext(predicate0);
+    vectorResult0:16 = zext(expandedResult0);
+    compareA1:4 = xenonA(4);
+    compareB1:4 = xenonB(4);
+    predicate1:1 = compareA1 f> compareB1;
+    expandedResult1:4 = 0:4 - zext(predicate1);
+    vectorResult1:16 = zext(expandedResult1) << 32;
+    compareA2:4 = xenonA(8);
+    compareB2:4 = xenonB(8);
+    predicate2:1 = compareA2 f> compareB2;
+    expandedResult2:4 = 0:4 - zext(predicate2);
+    vectorResult2:16 = zext(expandedResult2) << 64;
+    compareA3:4 = xenonA(12);
+    compareB3:4 = xenonB(12);
+    predicate3:1 = compareA3 f> compareB3;
+    expandedResult3:4 = 0:4 - zext(predicate3);
+    vectorResult3:16 = zext(expandedResult3) << 96;
+    xenonD = vectorResult0 | vectorResult1 | vectorResult2 | vectorResult3;
+    allTrue:1 = predicate0 & predicate1 & predicate2 & predicate3;
+    noneTrue:1 = !(predicate0 | predicate1 | predicate2 | predicate3);
+    cr6 = (allTrue << 3) | (noneTrue << 1);
 }
 
 :vcmpgtfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=5 & BITS_4_5=2
 {
-    result:16 = xenonVcmpgtfp128(xenonA, xenonB, 1:1);
-    xenonD = result;
+    compareA0:4 = xenonA(0);
+    compareB0:4 = xenonB(0);
+    predicate0:1 = compareA0 f> compareB0;
+    expandedResult0:4 = 0:4 - zext(predicate0);
+    vectorResult0:16 = zext(expandedResult0);
+    compareA1:4 = xenonA(4);
+    compareB1:4 = xenonB(4);
+    predicate1:1 = compareA1 f> compareB1;
+    expandedResult1:4 = 0:4 - zext(predicate1);
+    vectorResult1:16 = zext(expandedResult1) << 32;
+    compareA2:4 = xenonA(8);
+    compareB2:4 = xenonB(8);
+    predicate2:1 = compareA2 f> compareB2;
+    expandedResult2:4 = 0:4 - zext(predicate2);
+    vectorResult2:16 = zext(expandedResult2) << 64;
+    compareA3:4 = xenonA(12);
+    compareB3:4 = xenonB(12);
+    predicate3:1 = compareA3 f> compareB3;
+    expandedResult3:4 = 0:4 - zext(predicate3);
+    vectorResult3:16 = zext(expandedResult3) << 96;
+    xenonD = vectorResult0 | vectorResult1 | vectorResult2 | vectorResult3;
+    allTrue:1 = predicate0 & predicate1 & predicate2 & predicate3;
+    noneTrue:1 = !(predicate0 | predicate1 | predicate2 | predicate3);
+    cr6 = (allTrue << 3) | (noneTrue << 1);
 }
 
 :vcmpgtfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=20 & BITS_4_5=0
 {
-    result:16 = xenonVcmpgtfp128(xenonA, xenonB, 0:1);
-    xenonD = result;
+    compareA0:4 = xenonA(0);
+    compareB0:4 = xenonB(0);
+    predicate0:1 = compareA0 f> compareB0;
+    expandedResult0:4 = 0:4 - zext(predicate0);
+    vectorResult0:16 = zext(expandedResult0);
+    compareA1:4 = xenonA(4);
+    compareB1:4 = xenonB(4);
+    predicate1:1 = compareA1 f> compareB1;
+    expandedResult1:4 = 0:4 - zext(predicate1);
+    vectorResult1:16 = zext(expandedResult1) << 32;
+    compareA2:4 = xenonA(8);
+    compareB2:4 = xenonB(8);
+    predicate2:1 = compareA2 f> compareB2;
+    expandedResult2:4 = 0:4 - zext(predicate2);
+    vectorResult2:16 = zext(expandedResult2) << 64;
+    compareA3:4 = xenonA(12);
+    compareB3:4 = xenonB(12);
+    predicate3:1 = compareA3 f> compareB3;
+    expandedResult3:4 = 0:4 - zext(predicate3);
+    vectorResult3:16 = zext(expandedResult3) << 96;
+    xenonD = vectorResult0 | vectorResult1 | vectorResult2 | vectorResult3;
 }
 
 :vcmpgtfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=20 & BITS_4_5=2
 {
-    result:16 = xenonVcmpgtfp128(xenonA, xenonB, 0:1);
-    xenonD = result;
+    compareA0:4 = xenonA(0);
+    compareB0:4 = xenonB(0);
+    predicate0:1 = compareA0 f> compareB0;
+    expandedResult0:4 = 0:4 - zext(predicate0);
+    vectorResult0:16 = zext(expandedResult0);
+    compareA1:4 = xenonA(4);
+    compareB1:4 = xenonB(4);
+    predicate1:1 = compareA1 f> compareB1;
+    expandedResult1:4 = 0:4 - zext(predicate1);
+    vectorResult1:16 = zext(expandedResult1) << 32;
+    compareA2:4 = xenonA(8);
+    compareB2:4 = xenonB(8);
+    predicate2:1 = compareA2 f> compareB2;
+    expandedResult2:4 = 0:4 - zext(predicate2);
+    vectorResult2:16 = zext(expandedResult2) << 64;
+    compareA3:4 = xenonA(12);
+    compareB3:4 = xenonB(12);
+    predicate3:1 = compareA3 f> compareB3;
+    expandedResult3:4 = 0:4 - zext(predicate3);
+    vectorResult3:16 = zext(expandedResult3) << 96;
+    xenonD = vectorResult0 | vectorResult1 | vectorResult2 | vectorResult3;
 }
 
 :vcmpgtfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=21 & BITS_4_5=0
 {
-    result:16 = xenonVcmpgtfp128(xenonA, xenonB, 1:1);
-    xenonD = result;
+    compareA0:4 = xenonA(0);
+    compareB0:4 = xenonB(0);
+    predicate0:1 = compareA0 f> compareB0;
+    expandedResult0:4 = 0:4 - zext(predicate0);
+    vectorResult0:16 = zext(expandedResult0);
+    compareA1:4 = xenonA(4);
+    compareB1:4 = xenonB(4);
+    predicate1:1 = compareA1 f> compareB1;
+    expandedResult1:4 = 0:4 - zext(predicate1);
+    vectorResult1:16 = zext(expandedResult1) << 32;
+    compareA2:4 = xenonA(8);
+    compareB2:4 = xenonB(8);
+    predicate2:1 = compareA2 f> compareB2;
+    expandedResult2:4 = 0:4 - zext(predicate2);
+    vectorResult2:16 = zext(expandedResult2) << 64;
+    compareA3:4 = xenonA(12);
+    compareB3:4 = xenonB(12);
+    predicate3:1 = compareA3 f> compareB3;
+    expandedResult3:4 = 0:4 - zext(predicate3);
+    vectorResult3:16 = zext(expandedResult3) << 96;
+    xenonD = vectorResult0 | vectorResult1 | vectorResult2 | vectorResult3;
+    allTrue:1 = predicate0 & predicate1 & predicate2 & predicate3;
+    noneTrue:1 = !(predicate0 | predicate1 | predicate2 | predicate3);
+    cr6 = (allTrue << 3) | (noneTrue << 1);
 }
 
 :vcmpgtfp128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=21 & BITS_4_5=2
 {
-    result:16 = xenonVcmpgtfp128(xenonA, xenonB, 1:1);
-    xenonD = result;
+    compareA0:4 = xenonA(0);
+    compareB0:4 = xenonB(0);
+    predicate0:1 = compareA0 f> compareB0;
+    expandedResult0:4 = 0:4 - zext(predicate0);
+    vectorResult0:16 = zext(expandedResult0);
+    compareA1:4 = xenonA(4);
+    compareB1:4 = xenonB(4);
+    predicate1:1 = compareA1 f> compareB1;
+    expandedResult1:4 = 0:4 - zext(predicate1);
+    vectorResult1:16 = zext(expandedResult1) << 32;
+    compareA2:4 = xenonA(8);
+    compareB2:4 = xenonB(8);
+    predicate2:1 = compareA2 f> compareB2;
+    expandedResult2:4 = 0:4 - zext(predicate2);
+    vectorResult2:16 = zext(expandedResult2) << 64;
+    compareA3:4 = xenonA(12);
+    compareB3:4 = xenonB(12);
+    predicate3:1 = compareA3 f> compareB3;
+    expandedResult3:4 = 0:4 - zext(predicate3);
+    vectorResult3:16 = zext(expandedResult3) << 96;
+    xenonD = vectorResult0 | vectorResult1 | vectorResult2 | vectorResult3;
+    allTrue:1 = predicate0 & predicate1 & predicate2 & predicate3;
+    noneTrue:1 = !(predicate0 | predicate1 | predicate2 | predicate3);
+    cr6 = (allTrue << 3) | (noneTrue << 1);
 }
 
 # vcmpbfp128: opaque; Xenia mask/value fc000390/18000180
@@ -1738,50 +2230,214 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 # vcmpequw128: opaque; Xenia mask/value fc000390/18000200
 :vcmpequw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=8 & BITS_4_5=0
 {
-    result:16 = xenonVcmpequw128(xenonA, xenonB, 0:1);
-    xenonD = result;
+    compareA0:4 = xenonA(0);
+    compareB0:4 = xenonB(0);
+    predicate0:1 = compareA0 == compareB0;
+    expandedResult0:4 = 0:4 - zext(predicate0);
+    vectorResult0:16 = zext(expandedResult0);
+    compareA1:4 = xenonA(4);
+    compareB1:4 = xenonB(4);
+    predicate1:1 = compareA1 == compareB1;
+    expandedResult1:4 = 0:4 - zext(predicate1);
+    vectorResult1:16 = zext(expandedResult1) << 32;
+    compareA2:4 = xenonA(8);
+    compareB2:4 = xenonB(8);
+    predicate2:1 = compareA2 == compareB2;
+    expandedResult2:4 = 0:4 - zext(predicate2);
+    vectorResult2:16 = zext(expandedResult2) << 64;
+    compareA3:4 = xenonA(12);
+    compareB3:4 = xenonB(12);
+    predicate3:1 = compareA3 == compareB3;
+    expandedResult3:4 = 0:4 - zext(predicate3);
+    vectorResult3:16 = zext(expandedResult3) << 96;
+    xenonD = vectorResult0 | vectorResult1 | vectorResult2 | vectorResult3;
 }
 
 :vcmpequw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=8 & BITS_4_5=2
 {
-    result:16 = xenonVcmpequw128(xenonA, xenonB, 0:1);
-    xenonD = result;
+    compareA0:4 = xenonA(0);
+    compareB0:4 = xenonB(0);
+    predicate0:1 = compareA0 == compareB0;
+    expandedResult0:4 = 0:4 - zext(predicate0);
+    vectorResult0:16 = zext(expandedResult0);
+    compareA1:4 = xenonA(4);
+    compareB1:4 = xenonB(4);
+    predicate1:1 = compareA1 == compareB1;
+    expandedResult1:4 = 0:4 - zext(predicate1);
+    vectorResult1:16 = zext(expandedResult1) << 32;
+    compareA2:4 = xenonA(8);
+    compareB2:4 = xenonB(8);
+    predicate2:1 = compareA2 == compareB2;
+    expandedResult2:4 = 0:4 - zext(predicate2);
+    vectorResult2:16 = zext(expandedResult2) << 64;
+    compareA3:4 = xenonA(12);
+    compareB3:4 = xenonB(12);
+    predicate3:1 = compareA3 == compareB3;
+    expandedResult3:4 = 0:4 - zext(predicate3);
+    vectorResult3:16 = zext(expandedResult3) << 96;
+    xenonD = vectorResult0 | vectorResult1 | vectorResult2 | vectorResult3;
 }
 
 :vcmpequw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=9 & BITS_4_5=0
 {
-    result:16 = xenonVcmpequw128(xenonA, xenonB, 1:1);
-    xenonD = result;
+    compareA0:4 = xenonA(0);
+    compareB0:4 = xenonB(0);
+    predicate0:1 = compareA0 == compareB0;
+    expandedResult0:4 = 0:4 - zext(predicate0);
+    vectorResult0:16 = zext(expandedResult0);
+    compareA1:4 = xenonA(4);
+    compareB1:4 = xenonB(4);
+    predicate1:1 = compareA1 == compareB1;
+    expandedResult1:4 = 0:4 - zext(predicate1);
+    vectorResult1:16 = zext(expandedResult1) << 32;
+    compareA2:4 = xenonA(8);
+    compareB2:4 = xenonB(8);
+    predicate2:1 = compareA2 == compareB2;
+    expandedResult2:4 = 0:4 - zext(predicate2);
+    vectorResult2:16 = zext(expandedResult2) << 64;
+    compareA3:4 = xenonA(12);
+    compareB3:4 = xenonB(12);
+    predicate3:1 = compareA3 == compareB3;
+    expandedResult3:4 = 0:4 - zext(predicate3);
+    vectorResult3:16 = zext(expandedResult3) << 96;
+    xenonD = vectorResult0 | vectorResult1 | vectorResult2 | vectorResult3;
+    allTrue:1 = predicate0 & predicate1 & predicate2 & predicate3;
+    noneTrue:1 = !(predicate0 | predicate1 | predicate2 | predicate3);
+    cr6 = (allTrue << 3) | (noneTrue << 1);
 }
 
 :vcmpequw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=9 & BITS_4_5=2
 {
-    result:16 = xenonVcmpequw128(xenonA, xenonB, 1:1);
-    xenonD = result;
+    compareA0:4 = xenonA(0);
+    compareB0:4 = xenonB(0);
+    predicate0:1 = compareA0 == compareB0;
+    expandedResult0:4 = 0:4 - zext(predicate0);
+    vectorResult0:16 = zext(expandedResult0);
+    compareA1:4 = xenonA(4);
+    compareB1:4 = xenonB(4);
+    predicate1:1 = compareA1 == compareB1;
+    expandedResult1:4 = 0:4 - zext(predicate1);
+    vectorResult1:16 = zext(expandedResult1) << 32;
+    compareA2:4 = xenonA(8);
+    compareB2:4 = xenonB(8);
+    predicate2:1 = compareA2 == compareB2;
+    expandedResult2:4 = 0:4 - zext(predicate2);
+    vectorResult2:16 = zext(expandedResult2) << 64;
+    compareA3:4 = xenonA(12);
+    compareB3:4 = xenonB(12);
+    predicate3:1 = compareA3 == compareB3;
+    expandedResult3:4 = 0:4 - zext(predicate3);
+    vectorResult3:16 = zext(expandedResult3) << 96;
+    xenonD = vectorResult0 | vectorResult1 | vectorResult2 | vectorResult3;
+    allTrue:1 = predicate0 & predicate1 & predicate2 & predicate3;
+    noneTrue:1 = !(predicate0 | predicate1 | predicate2 | predicate3);
+    cr6 = (allTrue << 3) | (noneTrue << 1);
 }
 
 :vcmpequw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=24 & BITS_4_5=0
 {
-    result:16 = xenonVcmpequw128(xenonA, xenonB, 0:1);
-    xenonD = result;
+    compareA0:4 = xenonA(0);
+    compareB0:4 = xenonB(0);
+    predicate0:1 = compareA0 == compareB0;
+    expandedResult0:4 = 0:4 - zext(predicate0);
+    vectorResult0:16 = zext(expandedResult0);
+    compareA1:4 = xenonA(4);
+    compareB1:4 = xenonB(4);
+    predicate1:1 = compareA1 == compareB1;
+    expandedResult1:4 = 0:4 - zext(predicate1);
+    vectorResult1:16 = zext(expandedResult1) << 32;
+    compareA2:4 = xenonA(8);
+    compareB2:4 = xenonB(8);
+    predicate2:1 = compareA2 == compareB2;
+    expandedResult2:4 = 0:4 - zext(predicate2);
+    vectorResult2:16 = zext(expandedResult2) << 64;
+    compareA3:4 = xenonA(12);
+    compareB3:4 = xenonB(12);
+    predicate3:1 = compareA3 == compareB3;
+    expandedResult3:4 = 0:4 - zext(predicate3);
+    vectorResult3:16 = zext(expandedResult3) << 96;
+    xenonD = vectorResult0 | vectorResult1 | vectorResult2 | vectorResult3;
 }
 
 :vcmpequw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=24 & BITS_4_5=2
 {
-    result:16 = xenonVcmpequw128(xenonA, xenonB, 0:1);
-    xenonD = result;
+    compareA0:4 = xenonA(0);
+    compareB0:4 = xenonB(0);
+    predicate0:1 = compareA0 == compareB0;
+    expandedResult0:4 = 0:4 - zext(predicate0);
+    vectorResult0:16 = zext(expandedResult0);
+    compareA1:4 = xenonA(4);
+    compareB1:4 = xenonB(4);
+    predicate1:1 = compareA1 == compareB1;
+    expandedResult1:4 = 0:4 - zext(predicate1);
+    vectorResult1:16 = zext(expandedResult1) << 32;
+    compareA2:4 = xenonA(8);
+    compareB2:4 = xenonB(8);
+    predicate2:1 = compareA2 == compareB2;
+    expandedResult2:4 = 0:4 - zext(predicate2);
+    vectorResult2:16 = zext(expandedResult2) << 64;
+    compareA3:4 = xenonA(12);
+    compareB3:4 = xenonB(12);
+    predicate3:1 = compareA3 == compareB3;
+    expandedResult3:4 = 0:4 - zext(predicate3);
+    vectorResult3:16 = zext(expandedResult3) << 96;
+    xenonD = vectorResult0 | vectorResult1 | vectorResult2 | vectorResult3;
 }
 
 :vcmpequw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=25 & BITS_4_5=0
 {
-    result:16 = xenonVcmpequw128(xenonA, xenonB, 1:1);
-    xenonD = result;
+    compareA0:4 = xenonA(0);
+    compareB0:4 = xenonB(0);
+    predicate0:1 = compareA0 == compareB0;
+    expandedResult0:4 = 0:4 - zext(predicate0);
+    vectorResult0:16 = zext(expandedResult0);
+    compareA1:4 = xenonA(4);
+    compareB1:4 = xenonB(4);
+    predicate1:1 = compareA1 == compareB1;
+    expandedResult1:4 = 0:4 - zext(predicate1);
+    vectorResult1:16 = zext(expandedResult1) << 32;
+    compareA2:4 = xenonA(8);
+    compareB2:4 = xenonB(8);
+    predicate2:1 = compareA2 == compareB2;
+    expandedResult2:4 = 0:4 - zext(predicate2);
+    vectorResult2:16 = zext(expandedResult2) << 64;
+    compareA3:4 = xenonA(12);
+    compareB3:4 = xenonB(12);
+    predicate3:1 = compareA3 == compareB3;
+    expandedResult3:4 = 0:4 - zext(predicate3);
+    vectorResult3:16 = zext(expandedResult3) << 96;
+    xenonD = vectorResult0 | vectorResult1 | vectorResult2 | vectorResult3;
+    allTrue:1 = predicate0 & predicate1 & predicate2 & predicate3;
+    noneTrue:1 = !(predicate0 | predicate1 | predicate2 | predicate3);
+    cr6 = (allTrue << 3) | (noneTrue << 1);
 }
 
 :vcmpequw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=25 & BITS_4_5=2
 {
-    result:16 = xenonVcmpequw128(xenonA, xenonB, 1:1);
-    xenonD = result;
+    compareA0:4 = xenonA(0);
+    compareB0:4 = xenonB(0);
+    predicate0:1 = compareA0 == compareB0;
+    expandedResult0:4 = 0:4 - zext(predicate0);
+    vectorResult0:16 = zext(expandedResult0);
+    compareA1:4 = xenonA(4);
+    compareB1:4 = xenonB(4);
+    predicate1:1 = compareA1 == compareB1;
+    expandedResult1:4 = 0:4 - zext(predicate1);
+    vectorResult1:16 = zext(expandedResult1) << 32;
+    compareA2:4 = xenonA(8);
+    compareB2:4 = xenonB(8);
+    predicate2:1 = compareA2 == compareB2;
+    expandedResult2:4 = 0:4 - zext(predicate2);
+    vectorResult2:16 = zext(expandedResult2) << 64;
+    compareA3:4 = xenonA(12);
+    compareB3:4 = xenonB(12);
+    predicate3:1 = compareA3 == compareB3;
+    expandedResult3:4 = 0:4 - zext(predicate3);
+    vectorResult3:16 = zext(expandedResult3) << 96;
+    xenonD = vectorResult0 | vectorResult1 | vectorResult2 | vectorResult3;
+    allTrue:1 = predicate0 & predicate1 & predicate2 & predicate3;
+    noneTrue:1 = !(predicate0 | predicate1 | predicate2 | predicate3);
+    cr6 = (allTrue << 3) | (noneTrue << 1);
 }
 
 # vrlw128: native; Xenia mask/value fc0003d0/18000050
