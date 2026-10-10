@@ -23,10 +23,10 @@ define pcodeop xenonVcfpsxws128;
 define pcodeop xenonVcfpuxws128;
 
 
-define pcodeop xenonVrfim128;
 
-define pcodeop xenonVrfip128;
-define pcodeop xenonVrfiz128;
+
+
+
 define pcodeop xenonVrefp128;
 define pcodeop xenonVrsqrtefp128;
 define pcodeop xenonVexptefp128;
@@ -2880,138 +2880,36 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 # vrfim128: opaque; Xenia mask/value fc0007f0/18000330
 :vrfim128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=102 & BITS_0_1
 {
-    fpInput0:4 = xenonB(0);
-    fpRaw0:4 = fpInput0;
-    fpExponent0:4 = (fpRaw0 >> 23) & 255;
-    requiresFallback0:1 = fpExponent0 >= 150;
-    fpInput1:4 = xenonB(4);
-    fpRaw1:4 = fpInput1;
-    fpExponent1:4 = (fpRaw1 >> 23) & 255;
-    requiresFallback1:1 = fpExponent1 >= 150;
-    fpInput2:4 = xenonB(8);
-    fpRaw2:4 = fpInput2;
-    fpExponent2:4 = (fpRaw2 >> 23) & 255;
-    requiresFallback2:1 = fpExponent2 >= 150;
-    fpInput3:4 = xenonB(12);
-    fpRaw3:4 = fpInput3;
-    fpExponent3:4 = (fpRaw3 >> 23) & 255;
-    requiresFallback3:1 = fpExponent3 >= 150;
-    anyWideOrSpecial:1 = requiresFallback0 | requiresFallback1 | requiresFallback2 | requiresFallback3;
-    if (anyWideOrSpecial) goto <rounding_unknown>;
-    truncatedInteger0:4 = trunc(fpInput0);
-    truncatedFloat0:4 = int2float(truncatedInteger0);
-    extraUnit0:1 = fpInput0 f< truncatedFloat0;
-    adjustedInteger0:4 = truncatedInteger0 - zext(extraUnit0);
-    integralFloat0:4 = int2float(adjustedInteger0);
-    zeroResult0:1 = integralFloat0 f== 0:4;
-    signBits0:4 = fpRaw0 & 0x80000000:4;
-    zeroSignMask0:4 = 0:4 - zext(zeroResult0);
-    finalFloat0:4 = integralFloat0 | (signBits0 & zeroSignMask0);
-    combinedFloat0:16 = zext(finalFloat0);
-    truncatedInteger1:4 = trunc(fpInput1);
-    truncatedFloat1:4 = int2float(truncatedInteger1);
-    extraUnit1:1 = fpInput1 f< truncatedFloat1;
-    adjustedInteger1:4 = truncatedInteger1 - zext(extraUnit1);
-    integralFloat1:4 = int2float(adjustedInteger1);
-    zeroResult1:1 = integralFloat1 f== 0:4;
-    signBits1:4 = fpRaw1 & 0x80000000:4;
-    zeroSignMask1:4 = 0:4 - zext(zeroResult1);
-    finalFloat1:4 = integralFloat1 | (signBits1 & zeroSignMask1);
-    combinedFloat1:16 = zext(finalFloat1) << 32;
-    truncatedInteger2:4 = trunc(fpInput2);
-    truncatedFloat2:4 = int2float(truncatedInteger2);
-    extraUnit2:1 = fpInput2 f< truncatedFloat2;
-    adjustedInteger2:4 = truncatedInteger2 - zext(extraUnit2);
-    integralFloat2:4 = int2float(adjustedInteger2);
-    zeroResult2:1 = integralFloat2 f== 0:4;
-    signBits2:4 = fpRaw2 & 0x80000000:4;
-    zeroSignMask2:4 = 0:4 - zext(zeroResult2);
-    finalFloat2:4 = integralFloat2 | (signBits2 & zeroSignMask2);
-    combinedFloat2:16 = zext(finalFloat2) << 64;
-    truncatedInteger3:4 = trunc(fpInput3);
-    truncatedFloat3:4 = int2float(truncatedInteger3);
-    extraUnit3:1 = fpInput3 f< truncatedFloat3;
-    adjustedInteger3:4 = truncatedInteger3 - zext(extraUnit3);
-    integralFloat3:4 = int2float(adjustedInteger3);
-    zeroResult3:1 = integralFloat3 f== 0:4;
-    signBits3:4 = fpRaw3 & 0x80000000:4;
-    zeroSignMask3:4 = 0:4 - zext(zeroResult3);
-    finalFloat3:4 = integralFloat3 | (signBits3 & zeroSignMask3);
-    combinedFloat3:16 = zext(finalFloat3) << 96;
-    xenonD = combinedFloat0 | combinedFloat1 | combinedFloat2 | combinedFloat3;
-    goto <rounding_done>;
-<rounding_unknown>
-    fallbackResult:16 = xenonVrfim128(xenonB, A_BITS:4);
-    xenonD = fallbackResult;
-<rounding_done>
+    roundInput0:4 = xenonB(0);
+    roundOutput0:4 = floor(roundInput0);
+    roundWide0:16 = zext(roundOutput0);
+    roundInput1:4 = xenonB(4);
+    roundOutput1:4 = floor(roundInput1);
+    roundWide1:16 = zext(roundOutput1) << 32;
+    roundInput2:4 = xenonB(8);
+    roundOutput2:4 = floor(roundInput2);
+    roundWide2:16 = zext(roundOutput2) << 64;
+    roundInput3:4 = xenonB(12);
+    roundOutput3:4 = floor(roundInput3);
+    roundWide3:16 = zext(roundOutput3) << 96;
+    xenonD = roundWide0 | roundWide1 | roundWide2 | roundWide3;
 }
 
 :vrfim128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=103 & BITS_0_1
 {
-    fpInput0:4 = xenonB(0);
-    fpRaw0:4 = fpInput0;
-    fpExponent0:4 = (fpRaw0 >> 23) & 255;
-    requiresFallback0:1 = fpExponent0 >= 150;
-    fpInput1:4 = xenonB(4);
-    fpRaw1:4 = fpInput1;
-    fpExponent1:4 = (fpRaw1 >> 23) & 255;
-    requiresFallback1:1 = fpExponent1 >= 150;
-    fpInput2:4 = xenonB(8);
-    fpRaw2:4 = fpInput2;
-    fpExponent2:4 = (fpRaw2 >> 23) & 255;
-    requiresFallback2:1 = fpExponent2 >= 150;
-    fpInput3:4 = xenonB(12);
-    fpRaw3:4 = fpInput3;
-    fpExponent3:4 = (fpRaw3 >> 23) & 255;
-    requiresFallback3:1 = fpExponent3 >= 150;
-    anyWideOrSpecial:1 = requiresFallback0 | requiresFallback1 | requiresFallback2 | requiresFallback3;
-    if (anyWideOrSpecial) goto <rounding_unknown>;
-    truncatedInteger0:4 = trunc(fpInput0);
-    truncatedFloat0:4 = int2float(truncatedInteger0);
-    extraUnit0:1 = fpInput0 f< truncatedFloat0;
-    adjustedInteger0:4 = truncatedInteger0 - zext(extraUnit0);
-    integralFloat0:4 = int2float(adjustedInteger0);
-    zeroResult0:1 = integralFloat0 f== 0:4;
-    signBits0:4 = fpRaw0 & 0x80000000:4;
-    zeroSignMask0:4 = 0:4 - zext(zeroResult0);
-    finalFloat0:4 = integralFloat0 | (signBits0 & zeroSignMask0);
-    combinedFloat0:16 = zext(finalFloat0);
-    truncatedInteger1:4 = trunc(fpInput1);
-    truncatedFloat1:4 = int2float(truncatedInteger1);
-    extraUnit1:1 = fpInput1 f< truncatedFloat1;
-    adjustedInteger1:4 = truncatedInteger1 - zext(extraUnit1);
-    integralFloat1:4 = int2float(adjustedInteger1);
-    zeroResult1:1 = integralFloat1 f== 0:4;
-    signBits1:4 = fpRaw1 & 0x80000000:4;
-    zeroSignMask1:4 = 0:4 - zext(zeroResult1);
-    finalFloat1:4 = integralFloat1 | (signBits1 & zeroSignMask1);
-    combinedFloat1:16 = zext(finalFloat1) << 32;
-    truncatedInteger2:4 = trunc(fpInput2);
-    truncatedFloat2:4 = int2float(truncatedInteger2);
-    extraUnit2:1 = fpInput2 f< truncatedFloat2;
-    adjustedInteger2:4 = truncatedInteger2 - zext(extraUnit2);
-    integralFloat2:4 = int2float(adjustedInteger2);
-    zeroResult2:1 = integralFloat2 f== 0:4;
-    signBits2:4 = fpRaw2 & 0x80000000:4;
-    zeroSignMask2:4 = 0:4 - zext(zeroResult2);
-    finalFloat2:4 = integralFloat2 | (signBits2 & zeroSignMask2);
-    combinedFloat2:16 = zext(finalFloat2) << 64;
-    truncatedInteger3:4 = trunc(fpInput3);
-    truncatedFloat3:4 = int2float(truncatedInteger3);
-    extraUnit3:1 = fpInput3 f< truncatedFloat3;
-    adjustedInteger3:4 = truncatedInteger3 - zext(extraUnit3);
-    integralFloat3:4 = int2float(adjustedInteger3);
-    zeroResult3:1 = integralFloat3 f== 0:4;
-    signBits3:4 = fpRaw3 & 0x80000000:4;
-    zeroSignMask3:4 = 0:4 - zext(zeroResult3);
-    finalFloat3:4 = integralFloat3 | (signBits3 & zeroSignMask3);
-    combinedFloat3:16 = zext(finalFloat3) << 96;
-    xenonD = combinedFloat0 | combinedFloat1 | combinedFloat2 | combinedFloat3;
-    goto <rounding_done>;
-<rounding_unknown>
-    fallbackResult:16 = xenonVrfim128(xenonB, A_BITS:4);
-    xenonD = fallbackResult;
-<rounding_done>
+    roundInput0:4 = xenonB(0);
+    roundOutput0:4 = floor(roundInput0);
+    roundWide0:16 = zext(roundOutput0);
+    roundInput1:4 = xenonB(4);
+    roundOutput1:4 = floor(roundInput1);
+    roundWide1:16 = zext(roundOutput1) << 32;
+    roundInput2:4 = xenonB(8);
+    roundOutput2:4 = floor(roundInput2);
+    roundWide2:16 = zext(roundOutput2) << 64;
+    roundInput3:4 = xenonB(12);
+    roundOutput3:4 = floor(roundInput3);
+    roundWide3:16 = zext(roundOutput3) << 96;
+    xenonD = roundWide0 | roundWide1 | roundWide2 | roundWide3;
 }
 
 # vrfin128: opaque; Xenia mask/value fc0007f0/18000370
@@ -3052,259 +2950,119 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 # vrfip128: opaque; Xenia mask/value fc0007f0/180003b0
 :vrfip128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=118 & BITS_0_1
 {
-    fpInput0:4 = xenonB(0);
-    fpRaw0:4 = fpInput0;
-    fpExponent0:4 = (fpRaw0 >> 23) & 255;
-    requiresFallback0:1 = fpExponent0 >= 150;
-    fpInput1:4 = xenonB(4);
-    fpRaw1:4 = fpInput1;
-    fpExponent1:4 = (fpRaw1 >> 23) & 255;
-    requiresFallback1:1 = fpExponent1 >= 150;
-    fpInput2:4 = xenonB(8);
-    fpRaw2:4 = fpInput2;
-    fpExponent2:4 = (fpRaw2 >> 23) & 255;
-    requiresFallback2:1 = fpExponent2 >= 150;
-    fpInput3:4 = xenonB(12);
-    fpRaw3:4 = fpInput3;
-    fpExponent3:4 = (fpRaw3 >> 23) & 255;
-    requiresFallback3:1 = fpExponent3 >= 150;
-    anyWideOrSpecial:1 = requiresFallback0 | requiresFallback1 | requiresFallback2 | requiresFallback3;
-    if (anyWideOrSpecial) goto <rounding_unknown>;
-    truncatedInteger0:4 = trunc(fpInput0);
-    truncatedFloat0:4 = int2float(truncatedInteger0);
-    extraUnit0:1 = fpInput0 f> truncatedFloat0;
-    adjustedInteger0:4 = truncatedInteger0 + zext(extraUnit0);
-    integralFloat0:4 = int2float(adjustedInteger0);
-    zeroResult0:1 = integralFloat0 f== 0:4;
-    signBits0:4 = fpRaw0 & 0x80000000:4;
-    zeroSignMask0:4 = 0:4 - zext(zeroResult0);
-    finalFloat0:4 = integralFloat0 | (signBits0 & zeroSignMask0);
-    combinedFloat0:16 = zext(finalFloat0);
-    truncatedInteger1:4 = trunc(fpInput1);
-    truncatedFloat1:4 = int2float(truncatedInteger1);
-    extraUnit1:1 = fpInput1 f> truncatedFloat1;
-    adjustedInteger1:4 = truncatedInteger1 + zext(extraUnit1);
-    integralFloat1:4 = int2float(adjustedInteger1);
-    zeroResult1:1 = integralFloat1 f== 0:4;
-    signBits1:4 = fpRaw1 & 0x80000000:4;
-    zeroSignMask1:4 = 0:4 - zext(zeroResult1);
-    finalFloat1:4 = integralFloat1 | (signBits1 & zeroSignMask1);
-    combinedFloat1:16 = zext(finalFloat1) << 32;
-    truncatedInteger2:4 = trunc(fpInput2);
-    truncatedFloat2:4 = int2float(truncatedInteger2);
-    extraUnit2:1 = fpInput2 f> truncatedFloat2;
-    adjustedInteger2:4 = truncatedInteger2 + zext(extraUnit2);
-    integralFloat2:4 = int2float(adjustedInteger2);
-    zeroResult2:1 = integralFloat2 f== 0:4;
-    signBits2:4 = fpRaw2 & 0x80000000:4;
-    zeroSignMask2:4 = 0:4 - zext(zeroResult2);
-    finalFloat2:4 = integralFloat2 | (signBits2 & zeroSignMask2);
-    combinedFloat2:16 = zext(finalFloat2) << 64;
-    truncatedInteger3:4 = trunc(fpInput3);
-    truncatedFloat3:4 = int2float(truncatedInteger3);
-    extraUnit3:1 = fpInput3 f> truncatedFloat3;
-    adjustedInteger3:4 = truncatedInteger3 + zext(extraUnit3);
-    integralFloat3:4 = int2float(adjustedInteger3);
-    zeroResult3:1 = integralFloat3 f== 0:4;
-    signBits3:4 = fpRaw3 & 0x80000000:4;
-    zeroSignMask3:4 = 0:4 - zext(zeroResult3);
-    finalFloat3:4 = integralFloat3 | (signBits3 & zeroSignMask3);
-    combinedFloat3:16 = zext(finalFloat3) << 96;
-    xenonD = combinedFloat0 | combinedFloat1 | combinedFloat2 | combinedFloat3;
-    goto <rounding_done>;
-<rounding_unknown>
-    fallbackResult:16 = xenonVrfip128(xenonB, A_BITS:4);
-    xenonD = fallbackResult;
-<rounding_done>
+    roundInput0:4 = xenonB(0);
+    roundOutput0:4 = ceil(roundInput0);
+    roundWide0:16 = zext(roundOutput0);
+    roundInput1:4 = xenonB(4);
+    roundOutput1:4 = ceil(roundInput1);
+    roundWide1:16 = zext(roundOutput1) << 32;
+    roundInput2:4 = xenonB(8);
+    roundOutput2:4 = ceil(roundInput2);
+    roundWide2:16 = zext(roundOutput2) << 64;
+    roundInput3:4 = xenonB(12);
+    roundOutput3:4 = ceil(roundInput3);
+    roundWide3:16 = zext(roundOutput3) << 96;
+    xenonD = roundWide0 | roundWide1 | roundWide2 | roundWide3;
 }
 
 :vrfip128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=119 & BITS_0_1
 {
-    fpInput0:4 = xenonB(0);
-    fpRaw0:4 = fpInput0;
-    fpExponent0:4 = (fpRaw0 >> 23) & 255;
-    requiresFallback0:1 = fpExponent0 >= 150;
-    fpInput1:4 = xenonB(4);
-    fpRaw1:4 = fpInput1;
-    fpExponent1:4 = (fpRaw1 >> 23) & 255;
-    requiresFallback1:1 = fpExponent1 >= 150;
-    fpInput2:4 = xenonB(8);
-    fpRaw2:4 = fpInput2;
-    fpExponent2:4 = (fpRaw2 >> 23) & 255;
-    requiresFallback2:1 = fpExponent2 >= 150;
-    fpInput3:4 = xenonB(12);
-    fpRaw3:4 = fpInput3;
-    fpExponent3:4 = (fpRaw3 >> 23) & 255;
-    requiresFallback3:1 = fpExponent3 >= 150;
-    anyWideOrSpecial:1 = requiresFallback0 | requiresFallback1 | requiresFallback2 | requiresFallback3;
-    if (anyWideOrSpecial) goto <rounding_unknown>;
-    truncatedInteger0:4 = trunc(fpInput0);
-    truncatedFloat0:4 = int2float(truncatedInteger0);
-    extraUnit0:1 = fpInput0 f> truncatedFloat0;
-    adjustedInteger0:4 = truncatedInteger0 + zext(extraUnit0);
-    integralFloat0:4 = int2float(adjustedInteger0);
-    zeroResult0:1 = integralFloat0 f== 0:4;
-    signBits0:4 = fpRaw0 & 0x80000000:4;
-    zeroSignMask0:4 = 0:4 - zext(zeroResult0);
-    finalFloat0:4 = integralFloat0 | (signBits0 & zeroSignMask0);
-    combinedFloat0:16 = zext(finalFloat0);
-    truncatedInteger1:4 = trunc(fpInput1);
-    truncatedFloat1:4 = int2float(truncatedInteger1);
-    extraUnit1:1 = fpInput1 f> truncatedFloat1;
-    adjustedInteger1:4 = truncatedInteger1 + zext(extraUnit1);
-    integralFloat1:4 = int2float(adjustedInteger1);
-    zeroResult1:1 = integralFloat1 f== 0:4;
-    signBits1:4 = fpRaw1 & 0x80000000:4;
-    zeroSignMask1:4 = 0:4 - zext(zeroResult1);
-    finalFloat1:4 = integralFloat1 | (signBits1 & zeroSignMask1);
-    combinedFloat1:16 = zext(finalFloat1) << 32;
-    truncatedInteger2:4 = trunc(fpInput2);
-    truncatedFloat2:4 = int2float(truncatedInteger2);
-    extraUnit2:1 = fpInput2 f> truncatedFloat2;
-    adjustedInteger2:4 = truncatedInteger2 + zext(extraUnit2);
-    integralFloat2:4 = int2float(adjustedInteger2);
-    zeroResult2:1 = integralFloat2 f== 0:4;
-    signBits2:4 = fpRaw2 & 0x80000000:4;
-    zeroSignMask2:4 = 0:4 - zext(zeroResult2);
-    finalFloat2:4 = integralFloat2 | (signBits2 & zeroSignMask2);
-    combinedFloat2:16 = zext(finalFloat2) << 64;
-    truncatedInteger3:4 = trunc(fpInput3);
-    truncatedFloat3:4 = int2float(truncatedInteger3);
-    extraUnit3:1 = fpInput3 f> truncatedFloat3;
-    adjustedInteger3:4 = truncatedInteger3 + zext(extraUnit3);
-    integralFloat3:4 = int2float(adjustedInteger3);
-    zeroResult3:1 = integralFloat3 f== 0:4;
-    signBits3:4 = fpRaw3 & 0x80000000:4;
-    zeroSignMask3:4 = 0:4 - zext(zeroResult3);
-    finalFloat3:4 = integralFloat3 | (signBits3 & zeroSignMask3);
-    combinedFloat3:16 = zext(finalFloat3) << 96;
-    xenonD = combinedFloat0 | combinedFloat1 | combinedFloat2 | combinedFloat3;
-    goto <rounding_done>;
-<rounding_unknown>
-    fallbackResult:16 = xenonVrfip128(xenonB, A_BITS:4);
-    xenonD = fallbackResult;
-<rounding_done>
+    roundInput0:4 = xenonB(0);
+    roundOutput0:4 = ceil(roundInput0);
+    roundWide0:16 = zext(roundOutput0);
+    roundInput1:4 = xenonB(4);
+    roundOutput1:4 = ceil(roundInput1);
+    roundWide1:16 = zext(roundOutput1) << 32;
+    roundInput2:4 = xenonB(8);
+    roundOutput2:4 = ceil(roundInput2);
+    roundWide2:16 = zext(roundOutput2) << 64;
+    roundInput3:4 = xenonB(12);
+    roundOutput3:4 = ceil(roundInput3);
+    roundWide3:16 = zext(roundOutput3) << 96;
+    xenonD = roundWide0 | roundWide1 | roundWide2 | roundWide3;
 }
 
 # vrfiz128: opaque; Xenia mask/value fc0007f0/180003f0
 :vrfiz128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=126 & BITS_0_1
 {
-    fpInput0:4 = xenonB(0);
-    fpRaw0:4 = fpInput0;
-    fpExponent0:4 = (fpRaw0 >> 23) & 255;
-    requiresFallback0:1 = fpExponent0 >= 150;
-    fpInput1:4 = xenonB(4);
-    fpRaw1:4 = fpInput1;
-    fpExponent1:4 = (fpRaw1 >> 23) & 255;
-    requiresFallback1:1 = fpExponent1 >= 150;
-    fpInput2:4 = xenonB(8);
-    fpRaw2:4 = fpInput2;
-    fpExponent2:4 = (fpRaw2 >> 23) & 255;
-    requiresFallback2:1 = fpExponent2 >= 150;
-    fpInput3:4 = xenonB(12);
-    fpRaw3:4 = fpInput3;
-    fpExponent3:4 = (fpRaw3 >> 23) & 255;
-    requiresFallback3:1 = fpExponent3 >= 150;
-    anyWideOrSpecial:1 = requiresFallback0 | requiresFallback1 | requiresFallback2 | requiresFallback3;
-    if (anyWideOrSpecial) goto <rounding_unknown>;
-    truncatedInteger0:4 = trunc(fpInput0);
-    truncatedFloat0:4 = int2float(truncatedInteger0);
-    integralFloat0:4 = truncatedFloat0;
-    zeroResult0:1 = integralFloat0 f== 0:4;
-    signBits0:4 = fpRaw0 & 0x80000000:4;
-    zeroSignMask0:4 = 0:4 - zext(zeroResult0);
-    finalFloat0:4 = integralFloat0 | (signBits0 & zeroSignMask0);
-    combinedFloat0:16 = zext(finalFloat0);
-    truncatedInteger1:4 = trunc(fpInput1);
-    truncatedFloat1:4 = int2float(truncatedInteger1);
-    integralFloat1:4 = truncatedFloat1;
-    zeroResult1:1 = integralFloat1 f== 0:4;
-    signBits1:4 = fpRaw1 & 0x80000000:4;
-    zeroSignMask1:4 = 0:4 - zext(zeroResult1);
-    finalFloat1:4 = integralFloat1 | (signBits1 & zeroSignMask1);
-    combinedFloat1:16 = zext(finalFloat1) << 32;
-    truncatedInteger2:4 = trunc(fpInput2);
-    truncatedFloat2:4 = int2float(truncatedInteger2);
-    integralFloat2:4 = truncatedFloat2;
-    zeroResult2:1 = integralFloat2 f== 0:4;
-    signBits2:4 = fpRaw2 & 0x80000000:4;
-    zeroSignMask2:4 = 0:4 - zext(zeroResult2);
-    finalFloat2:4 = integralFloat2 | (signBits2 & zeroSignMask2);
-    combinedFloat2:16 = zext(finalFloat2) << 64;
-    truncatedInteger3:4 = trunc(fpInput3);
-    truncatedFloat3:4 = int2float(truncatedInteger3);
-    integralFloat3:4 = truncatedFloat3;
-    zeroResult3:1 = integralFloat3 f== 0:4;
-    signBits3:4 = fpRaw3 & 0x80000000:4;
-    zeroSignMask3:4 = 0:4 - zext(zeroResult3);
-    finalFloat3:4 = integralFloat3 | (signBits3 & zeroSignMask3);
-    combinedFloat3:16 = zext(finalFloat3) << 96;
-    xenonD = combinedFloat0 | combinedFloat1 | combinedFloat2 | combinedFloat3;
-    goto <rounding_done>;
-<rounding_unknown>
-    fallbackResult:16 = xenonVrfiz128(xenonB, A_BITS:4);
-    xenonD = fallbackResult;
-<rounding_done>
+    roundInput0:4 = xenonB(0);
+    roundNegative0:1 = roundInput0 f< 0:4;
+    if (roundNegative0) goto <round_toward_zero_negative_0>;
+    roundOutput0:4 = floor(roundInput0);
+    goto <round_toward_zero_join_0>;
+<round_toward_zero_negative_0>
+    roundOutput0:4 = ceil(roundInput0);
+<round_toward_zero_join_0>
+    roundWide0:16 = zext(roundOutput0);
+    roundInput1:4 = xenonB(4);
+    roundNegative1:1 = roundInput1 f< 0:4;
+    if (roundNegative1) goto <round_toward_zero_negative_1>;
+    roundOutput1:4 = floor(roundInput1);
+    goto <round_toward_zero_join_1>;
+<round_toward_zero_negative_1>
+    roundOutput1:4 = ceil(roundInput1);
+<round_toward_zero_join_1>
+    roundWide1:16 = zext(roundOutput1) << 32;
+    roundInput2:4 = xenonB(8);
+    roundNegative2:1 = roundInput2 f< 0:4;
+    if (roundNegative2) goto <round_toward_zero_negative_2>;
+    roundOutput2:4 = floor(roundInput2);
+    goto <round_toward_zero_join_2>;
+<round_toward_zero_negative_2>
+    roundOutput2:4 = ceil(roundInput2);
+<round_toward_zero_join_2>
+    roundWide2:16 = zext(roundOutput2) << 64;
+    roundInput3:4 = xenonB(12);
+    roundNegative3:1 = roundInput3 f< 0:4;
+    if (roundNegative3) goto <round_toward_zero_negative_3>;
+    roundOutput3:4 = floor(roundInput3);
+    goto <round_toward_zero_join_3>;
+<round_toward_zero_negative_3>
+    roundOutput3:4 = ceil(roundInput3);
+<round_toward_zero_join_3>
+    roundWide3:16 = zext(roundOutput3) << 96;
+    xenonD = roundWide0 | roundWide1 | roundWide2 | roundWide3;
 }
 
 :vrfiz128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=127 & BITS_0_1
 {
-    fpInput0:4 = xenonB(0);
-    fpRaw0:4 = fpInput0;
-    fpExponent0:4 = (fpRaw0 >> 23) & 255;
-    requiresFallback0:1 = fpExponent0 >= 150;
-    fpInput1:4 = xenonB(4);
-    fpRaw1:4 = fpInput1;
-    fpExponent1:4 = (fpRaw1 >> 23) & 255;
-    requiresFallback1:1 = fpExponent1 >= 150;
-    fpInput2:4 = xenonB(8);
-    fpRaw2:4 = fpInput2;
-    fpExponent2:4 = (fpRaw2 >> 23) & 255;
-    requiresFallback2:1 = fpExponent2 >= 150;
-    fpInput3:4 = xenonB(12);
-    fpRaw3:4 = fpInput3;
-    fpExponent3:4 = (fpRaw3 >> 23) & 255;
-    requiresFallback3:1 = fpExponent3 >= 150;
-    anyWideOrSpecial:1 = requiresFallback0 | requiresFallback1 | requiresFallback2 | requiresFallback3;
-    if (anyWideOrSpecial) goto <rounding_unknown>;
-    truncatedInteger0:4 = trunc(fpInput0);
-    truncatedFloat0:4 = int2float(truncatedInteger0);
-    integralFloat0:4 = truncatedFloat0;
-    zeroResult0:1 = integralFloat0 f== 0:4;
-    signBits0:4 = fpRaw0 & 0x80000000:4;
-    zeroSignMask0:4 = 0:4 - zext(zeroResult0);
-    finalFloat0:4 = integralFloat0 | (signBits0 & zeroSignMask0);
-    combinedFloat0:16 = zext(finalFloat0);
-    truncatedInteger1:4 = trunc(fpInput1);
-    truncatedFloat1:4 = int2float(truncatedInteger1);
-    integralFloat1:4 = truncatedFloat1;
-    zeroResult1:1 = integralFloat1 f== 0:4;
-    signBits1:4 = fpRaw1 & 0x80000000:4;
-    zeroSignMask1:4 = 0:4 - zext(zeroResult1);
-    finalFloat1:4 = integralFloat1 | (signBits1 & zeroSignMask1);
-    combinedFloat1:16 = zext(finalFloat1) << 32;
-    truncatedInteger2:4 = trunc(fpInput2);
-    truncatedFloat2:4 = int2float(truncatedInteger2);
-    integralFloat2:4 = truncatedFloat2;
-    zeroResult2:1 = integralFloat2 f== 0:4;
-    signBits2:4 = fpRaw2 & 0x80000000:4;
-    zeroSignMask2:4 = 0:4 - zext(zeroResult2);
-    finalFloat2:4 = integralFloat2 | (signBits2 & zeroSignMask2);
-    combinedFloat2:16 = zext(finalFloat2) << 64;
-    truncatedInteger3:4 = trunc(fpInput3);
-    truncatedFloat3:4 = int2float(truncatedInteger3);
-    integralFloat3:4 = truncatedFloat3;
-    zeroResult3:1 = integralFloat3 f== 0:4;
-    signBits3:4 = fpRaw3 & 0x80000000:4;
-    zeroSignMask3:4 = 0:4 - zext(zeroResult3);
-    finalFloat3:4 = integralFloat3 | (signBits3 & zeroSignMask3);
-    combinedFloat3:16 = zext(finalFloat3) << 96;
-    xenonD = combinedFloat0 | combinedFloat1 | combinedFloat2 | combinedFloat3;
-    goto <rounding_done>;
-<rounding_unknown>
-    fallbackResult:16 = xenonVrfiz128(xenonB, A_BITS:4);
-    xenonD = fallbackResult;
-<rounding_done>
+    roundInput0:4 = xenonB(0);
+    roundNegative0:1 = roundInput0 f< 0:4;
+    if (roundNegative0) goto <round_toward_zero_negative_0>;
+    roundOutput0:4 = floor(roundInput0);
+    goto <round_toward_zero_join_0>;
+<round_toward_zero_negative_0>
+    roundOutput0:4 = ceil(roundInput0);
+<round_toward_zero_join_0>
+    roundWide0:16 = zext(roundOutput0);
+    roundInput1:4 = xenonB(4);
+    roundNegative1:1 = roundInput1 f< 0:4;
+    if (roundNegative1) goto <round_toward_zero_negative_1>;
+    roundOutput1:4 = floor(roundInput1);
+    goto <round_toward_zero_join_1>;
+<round_toward_zero_negative_1>
+    roundOutput1:4 = ceil(roundInput1);
+<round_toward_zero_join_1>
+    roundWide1:16 = zext(roundOutput1) << 32;
+    roundInput2:4 = xenonB(8);
+    roundNegative2:1 = roundInput2 f< 0:4;
+    if (roundNegative2) goto <round_toward_zero_negative_2>;
+    roundOutput2:4 = floor(roundInput2);
+    goto <round_toward_zero_join_2>;
+<round_toward_zero_negative_2>
+    roundOutput2:4 = ceil(roundInput2);
+<round_toward_zero_join_2>
+    roundWide2:16 = zext(roundOutput2) << 64;
+    roundInput3:4 = xenonB(12);
+    roundNegative3:1 = roundInput3 f< 0:4;
+    if (roundNegative3) goto <round_toward_zero_negative_3>;
+    roundOutput3:4 = floor(roundInput3);
+    goto <round_toward_zero_join_3>;
+<round_toward_zero_negative_3>
+    roundOutput3:4 = ceil(roundInput3);
+<round_toward_zero_join_3>
+    roundWide3:16 = zext(roundOutput3) << 96;
+    xenonD = roundWide0 | roundWide1 | roundWide2 | roundWide3;
 }
 
 # vrefp128: opaque; Xenia mask/value fc0007f0/18000630
