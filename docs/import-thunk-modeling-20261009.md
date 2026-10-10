@@ -1,3 +1,11 @@
+## Gradle/SLEIGH preprocessing blocker: copied VSX include fixed (2026-10-10)
+
+- User ran `gradle buildExtension` from inner `XEXLoaderWV/`. `:verifyXenonSleigh` failed during preprocessing with missing `vsx.sinc` referenced from generated `data/languages/xenon_ppc_isa.sinc:1316`, exit code 5. The copied stock ISA's relative include was resolved in the wrong directory. No newly built SLA or Ghidra audit verification yet.
+- Inspected Ghidra's stock `ppc_isa.sinc`, `altivec.sinc` and `vsx.sinc`: only `ppc_isa.sinc` has the relative `@include "vsx.sinc"`; `vsx.sinc` has no nested includes. Updated `prepareXenonIsa` to verify exactly one occurrence and rewrite it in the *generated Xenon-only copy* as `@include "$(PowerPC)/data/languages/vsx.sinc"` using Groovy single-quoted literals. `data/sleighArgs.txt` already supplies `-dPowerPC`; installed stock ISA remains unchanged. Commit `8bdc8ff`.
+- Independently found 25 uses of `0:16` in recently introduced SLEIGH p-code. Previous branch research established Ghidra SleighCompile integer constant size limit of 8 bytes. Replaced direct zeroes with `zext(0:8)` and explicit `zeroVec:16` temporaries for 128-bit masks and cache-line writes, preserving proposed behavior. Commit `1d41d92`. Compilation still pending.
+- Added an eighth regression test checking Gradle VSX rewriting and absence of `0:16` syntax, commit `81dfcc3`. Inventory remains 84 total (31 native, 7 opaque, 46 missing).
+- Next from *inner* `XEXLoaderWV/` only: `git pull`; `python -m unittest discover -s tools -p "test_xenon_isa_coverage_v1.py"` (expect 8); `gradle buildExtension`. Capture any new compiler diagnostics. Once compilation passes, generate/check fresh fixtures and installed `.sla` and repeat Ghidra runtime audit. The last observed 64/336 decode is from an older decoder/manifest.
+
 ## Single-working-directory Xenon audit tools (2026-10-10)
 
 - User explicitly required all active Python tooling to run **from the Gradle project directory**, not a repository-root workflow interspersed with `cd` / `Push-Location` and Gradle.
