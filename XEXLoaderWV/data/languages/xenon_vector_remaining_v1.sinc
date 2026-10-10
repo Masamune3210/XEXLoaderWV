@@ -3980,48 +3980,52 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
     aboveMax3:1 = scaledFloat3 f>= upperBound;
     anyNaN:1 = conversionNaN0 | conversionNaN1 | conversionNaN2 | conversionNaN3;
     if (anyNaN) goto <conversion_nan_opaque>;
+    convertedInt0:4 = 0:4;
     if (belowMin0) goto <saturate_low_0>;
     if (aboveMax0) goto <saturate_high_0>;
-    convertedInt0:4 = trunc(scaledFloat0);
+    convertedInt0 = trunc(scaledFloat0);
     goto <conversion_lane_join_0>;
 <saturate_low_0>
-    convertedInt0:4 = 0x80000000:4;
+    convertedInt0 = 0x80000000:4;
     goto <conversion_lane_join_0>;
 <saturate_high_0>
-    convertedInt0:4 = 0x7fffffff:4;
+    convertedInt0 = 0x7fffffff:4;
 <conversion_lane_join_0>
     assembledInt0:16 = zext(convertedInt0);
+    convertedInt1:4 = 0:4;
     if (belowMin1) goto <saturate_low_1>;
     if (aboveMax1) goto <saturate_high_1>;
-    convertedInt1:4 = trunc(scaledFloat1);
+    convertedInt1 = trunc(scaledFloat1);
     goto <conversion_lane_join_1>;
 <saturate_low_1>
-    convertedInt1:4 = 0x80000000:4;
+    convertedInt1 = 0x80000000:4;
     goto <conversion_lane_join_1>;
 <saturate_high_1>
-    convertedInt1:4 = 0x7fffffff:4;
+    convertedInt1 = 0x7fffffff:4;
 <conversion_lane_join_1>
     assembledInt1:16 = zext(convertedInt1) << 32;
+    convertedInt2:4 = 0:4;
     if (belowMin2) goto <saturate_low_2>;
     if (aboveMax2) goto <saturate_high_2>;
-    convertedInt2:4 = trunc(scaledFloat2);
+    convertedInt2 = trunc(scaledFloat2);
     goto <conversion_lane_join_2>;
 <saturate_low_2>
-    convertedInt2:4 = 0x80000000:4;
+    convertedInt2 = 0x80000000:4;
     goto <conversion_lane_join_2>;
 <saturate_high_2>
-    convertedInt2:4 = 0x7fffffff:4;
+    convertedInt2 = 0x7fffffff:4;
 <conversion_lane_join_2>
     assembledInt2:16 = zext(convertedInt2) << 64;
+    convertedInt3:4 = 0:4;
     if (belowMin3) goto <saturate_low_3>;
     if (aboveMax3) goto <saturate_high_3>;
-    convertedInt3:4 = trunc(scaledFloat3);
+    convertedInt3 = trunc(scaledFloat3);
     goto <conversion_lane_join_3>;
 <saturate_low_3>
-    convertedInt3:4 = 0x80000000:4;
+    convertedInt3 = 0x80000000:4;
     goto <conversion_lane_join_3>;
 <saturate_high_3>
-    convertedInt3:4 = 0x7fffffff:4;
+    convertedInt3 = 0x7fffffff:4;
 <conversion_lane_join_3>
     assembledInt3:16 = zext(convertedInt3) << 96;
     xenonD = assembledInt0 | assembledInt1 | assembledInt2 | assembledInt3;
@@ -4061,48 +4065,52 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
     aboveMax3:1 = scaledFloat3 f>= upperBound;
     anyNaN:1 = conversionNaN0 | conversionNaN1 | conversionNaN2 | conversionNaN3;
     if (anyNaN) goto <conversion_nan_opaque>;
+    convertedInt0:4 = 0:4;
     if (belowMin0) goto <saturate_low_0>;
     if (aboveMax0) goto <saturate_high_0>;
-    convertedInt0:4 = trunc(scaledFloat0);
+    convertedInt0 = trunc(scaledFloat0);
     goto <conversion_lane_join_0>;
 <saturate_low_0>
-    convertedInt0:4 = 0x80000000:4;
+    convertedInt0 = 0x80000000:4;
     goto <conversion_lane_join_0>;
 <saturate_high_0>
-    convertedInt0:4 = 0x7fffffff:4;
+    convertedInt0 = 0x7fffffff:4;
 <conversion_lane_join_0>
     assembledInt0:16 = zext(convertedInt0);
+    convertedInt1:4 = 0:4;
     if (belowMin1) goto <saturate_low_1>;
     if (aboveMax1) goto <saturate_high_1>;
-    convertedInt1:4 = trunc(scaledFloat1);
+    convertedInt1 = trunc(scaledFloat1);
     goto <conversion_lane_join_1>;
 <saturate_low_1>
-    convertedInt1:4 = 0x80000000:4;
+    convertedInt1 = 0x80000000:4;
     goto <conversion_lane_join_1>;
 <saturate_high_1>
-    convertedInt1:4 = 0x7fffffff:4;
+    convertedInt1 = 0x7fffffff:4;
 <conversion_lane_join_1>
     assembledInt1:16 = zext(convertedInt1) << 32;
+    convertedInt2:4 = 0:4;
     if (belowMin2) goto <saturate_low_2>;
     if (aboveMax2) goto <saturate_high_2>;
-    convertedInt2:4 = trunc(scaledFloat2);
+    convertedInt2 = trunc(scaledFloat2);
     goto <conversion_lane_join_2>;
 <saturate_low_2>
-    convertedInt2:4 = 0x80000000:4;
+    convertedInt2 = 0x80000000:4;
     goto <conversion_lane_join_2>;
 <saturate_high_2>
-    convertedInt2:4 = 0x7fffffff:4;
+    convertedInt2 = 0x7fffffff:4;
 <conversion_lane_join_2>
     assembledInt2:16 = zext(convertedInt2) << 64;
+    convertedInt3:4 = 0:4;
     if (belowMin3) goto <saturate_low_3>;
     if (aboveMax3) goto <saturate_high_3>;
-    convertedInt3:4 = trunc(scaledFloat3);
+    convertedInt3 = trunc(scaledFloat3);
     goto <conversion_lane_join_3>;
 <saturate_low_3>
-    convertedInt3:4 = 0x80000000:4;
+    convertedInt3 = 0x80000000:4;
     goto <conversion_lane_join_3>;
 <saturate_high_3>
-    convertedInt3:4 = 0x7fffffff:4;
+    convertedInt3 = 0x7fffffff:4;
 <conversion_lane_join_3>
     assembledInt3:16 = zext(convertedInt3) << 96;
     xenonD = assembledInt0 | assembledInt1 | assembledInt2 | assembledInt3;
@@ -4143,52 +4151,56 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
     aboveMax3:1 = scaledFloat3 f>= upperBound;
     anyNaN:1 = conversionNaN0 | conversionNaN1 | conversionNaN2 | conversionNaN3;
     if (anyNaN) goto <conversion_nan_opaque>;
+    convertedInt0:4 = 0:4;
     if (belowMin0) goto <saturate_low_0>;
     if (aboveMax0) goto <saturate_high_0>;
     castWide0:8 = trunc(scaledFloat0);
-    convertedInt0:4 = castWide0(0);
+    convertedInt0 = castWide0(0);
     goto <conversion_lane_join_0>;
 <saturate_low_0>
-    convertedInt0:4 = 0:4;
+    convertedInt0 = 0:4;
     goto <conversion_lane_join_0>;
 <saturate_high_0>
-    convertedInt0:4 = 0xffffffff:4;
+    convertedInt0 = 0xffffffff:4;
 <conversion_lane_join_0>
     assembledInt0:16 = zext(convertedInt0);
+    convertedInt1:4 = 0:4;
     if (belowMin1) goto <saturate_low_1>;
     if (aboveMax1) goto <saturate_high_1>;
     castWide1:8 = trunc(scaledFloat1);
-    convertedInt1:4 = castWide1(0);
+    convertedInt1 = castWide1(0);
     goto <conversion_lane_join_1>;
 <saturate_low_1>
-    convertedInt1:4 = 0:4;
+    convertedInt1 = 0:4;
     goto <conversion_lane_join_1>;
 <saturate_high_1>
-    convertedInt1:4 = 0xffffffff:4;
+    convertedInt1 = 0xffffffff:4;
 <conversion_lane_join_1>
     assembledInt1:16 = zext(convertedInt1) << 32;
+    convertedInt2:4 = 0:4;
     if (belowMin2) goto <saturate_low_2>;
     if (aboveMax2) goto <saturate_high_2>;
     castWide2:8 = trunc(scaledFloat2);
-    convertedInt2:4 = castWide2(0);
+    convertedInt2 = castWide2(0);
     goto <conversion_lane_join_2>;
 <saturate_low_2>
-    convertedInt2:4 = 0:4;
+    convertedInt2 = 0:4;
     goto <conversion_lane_join_2>;
 <saturate_high_2>
-    convertedInt2:4 = 0xffffffff:4;
+    convertedInt2 = 0xffffffff:4;
 <conversion_lane_join_2>
     assembledInt2:16 = zext(convertedInt2) << 64;
+    convertedInt3:4 = 0:4;
     if (belowMin3) goto <saturate_low_3>;
     if (aboveMax3) goto <saturate_high_3>;
     castWide3:8 = trunc(scaledFloat3);
-    convertedInt3:4 = castWide3(0);
+    convertedInt3 = castWide3(0);
     goto <conversion_lane_join_3>;
 <saturate_low_3>
-    convertedInt3:4 = 0:4;
+    convertedInt3 = 0:4;
     goto <conversion_lane_join_3>;
 <saturate_high_3>
-    convertedInt3:4 = 0xffffffff:4;
+    convertedInt3 = 0xffffffff:4;
 <conversion_lane_join_3>
     assembledInt3:16 = zext(convertedInt3) << 96;
     xenonD = assembledInt0 | assembledInt1 | assembledInt2 | assembledInt3;
@@ -4228,52 +4240,56 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
     aboveMax3:1 = scaledFloat3 f>= upperBound;
     anyNaN:1 = conversionNaN0 | conversionNaN1 | conversionNaN2 | conversionNaN3;
     if (anyNaN) goto <conversion_nan_opaque>;
+    convertedInt0:4 = 0:4;
     if (belowMin0) goto <saturate_low_0>;
     if (aboveMax0) goto <saturate_high_0>;
     castWide0:8 = trunc(scaledFloat0);
-    convertedInt0:4 = castWide0(0);
+    convertedInt0 = castWide0(0);
     goto <conversion_lane_join_0>;
 <saturate_low_0>
-    convertedInt0:4 = 0:4;
+    convertedInt0 = 0:4;
     goto <conversion_lane_join_0>;
 <saturate_high_0>
-    convertedInt0:4 = 0xffffffff:4;
+    convertedInt0 = 0xffffffff:4;
 <conversion_lane_join_0>
     assembledInt0:16 = zext(convertedInt0);
+    convertedInt1:4 = 0:4;
     if (belowMin1) goto <saturate_low_1>;
     if (aboveMax1) goto <saturate_high_1>;
     castWide1:8 = trunc(scaledFloat1);
-    convertedInt1:4 = castWide1(0);
+    convertedInt1 = castWide1(0);
     goto <conversion_lane_join_1>;
 <saturate_low_1>
-    convertedInt1:4 = 0:4;
+    convertedInt1 = 0:4;
     goto <conversion_lane_join_1>;
 <saturate_high_1>
-    convertedInt1:4 = 0xffffffff:4;
+    convertedInt1 = 0xffffffff:4;
 <conversion_lane_join_1>
     assembledInt1:16 = zext(convertedInt1) << 32;
+    convertedInt2:4 = 0:4;
     if (belowMin2) goto <saturate_low_2>;
     if (aboveMax2) goto <saturate_high_2>;
     castWide2:8 = trunc(scaledFloat2);
-    convertedInt2:4 = castWide2(0);
+    convertedInt2 = castWide2(0);
     goto <conversion_lane_join_2>;
 <saturate_low_2>
-    convertedInt2:4 = 0:4;
+    convertedInt2 = 0:4;
     goto <conversion_lane_join_2>;
 <saturate_high_2>
-    convertedInt2:4 = 0xffffffff:4;
+    convertedInt2 = 0xffffffff:4;
 <conversion_lane_join_2>
     assembledInt2:16 = zext(convertedInt2) << 64;
+    convertedInt3:4 = 0:4;
     if (belowMin3) goto <saturate_low_3>;
     if (aboveMax3) goto <saturate_high_3>;
     castWide3:8 = trunc(scaledFloat3);
-    convertedInt3:4 = castWide3(0);
+    convertedInt3 = castWide3(0);
     goto <conversion_lane_join_3>;
 <saturate_low_3>
-    convertedInt3:4 = 0:4;
+    convertedInt3 = 0:4;
     goto <conversion_lane_join_3>;
 <saturate_high_3>
-    convertedInt3:4 = 0xffffffff:4;
+    convertedInt3 = 0xffffffff:4;
 <conversion_lane_join_3>
     assembledInt3:16 = zext(convertedInt3) << 96;
     xenonD = assembledInt0 | assembledInt1 | assembledInt2 | assembledInt3;
@@ -4493,39 +4509,43 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 :vrfiz128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=126 & BITS_0_1
 {
     roundInput0:4 = xenonB(0);
+    roundOutput0:4 = 0:4;
     roundNegative0:1 = roundInput0 f< 0:4;
     if (roundNegative0) goto <round_toward_zero_negative_0>;
-    roundOutput0:4 = floor(roundInput0);
+    roundOutput0 = floor(roundInput0);
     goto <round_toward_zero_join_0>;
 <round_toward_zero_negative_0>
-    roundOutput0:4 = ceil(roundInput0);
+    roundOutput0 = ceil(roundInput0);
 <round_toward_zero_join_0>
     roundWide0:16 = zext(roundOutput0);
     roundInput1:4 = xenonB(4);
+    roundOutput1:4 = 0:4;
     roundNegative1:1 = roundInput1 f< 0:4;
     if (roundNegative1) goto <round_toward_zero_negative_1>;
-    roundOutput1:4 = floor(roundInput1);
+    roundOutput1 = floor(roundInput1);
     goto <round_toward_zero_join_1>;
 <round_toward_zero_negative_1>
-    roundOutput1:4 = ceil(roundInput1);
+    roundOutput1 = ceil(roundInput1);
 <round_toward_zero_join_1>
     roundWide1:16 = zext(roundOutput1) << 32;
     roundInput2:4 = xenonB(8);
+    roundOutput2:4 = 0:4;
     roundNegative2:1 = roundInput2 f< 0:4;
     if (roundNegative2) goto <round_toward_zero_negative_2>;
-    roundOutput2:4 = floor(roundInput2);
+    roundOutput2 = floor(roundInput2);
     goto <round_toward_zero_join_2>;
 <round_toward_zero_negative_2>
-    roundOutput2:4 = ceil(roundInput2);
+    roundOutput2 = ceil(roundInput2);
 <round_toward_zero_join_2>
     roundWide2:16 = zext(roundOutput2) << 64;
     roundInput3:4 = xenonB(12);
+    roundOutput3:4 = 0:4;
     roundNegative3:1 = roundInput3 f< 0:4;
     if (roundNegative3) goto <round_toward_zero_negative_3>;
-    roundOutput3:4 = floor(roundInput3);
+    roundOutput3 = floor(roundInput3);
     goto <round_toward_zero_join_3>;
 <round_toward_zero_negative_3>
-    roundOutput3:4 = ceil(roundInput3);
+    roundOutput3 = ceil(roundInput3);
 <round_toward_zero_join_3>
     roundWide3:16 = zext(roundOutput3) << 96;
     xenonD = roundWide0 | roundWide1 | roundWide2 | roundWide3;
@@ -4534,39 +4554,43 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 :vrfiz128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=127 & BITS_0_1
 {
     roundInput0:4 = xenonB(0);
+    roundOutput0:4 = 0:4;
     roundNegative0:1 = roundInput0 f< 0:4;
     if (roundNegative0) goto <round_toward_zero_negative_0>;
-    roundOutput0:4 = floor(roundInput0);
+    roundOutput0 = floor(roundInput0);
     goto <round_toward_zero_join_0>;
 <round_toward_zero_negative_0>
-    roundOutput0:4 = ceil(roundInput0);
+    roundOutput0 = ceil(roundInput0);
 <round_toward_zero_join_0>
     roundWide0:16 = zext(roundOutput0);
     roundInput1:4 = xenonB(4);
+    roundOutput1:4 = 0:4;
     roundNegative1:1 = roundInput1 f< 0:4;
     if (roundNegative1) goto <round_toward_zero_negative_1>;
-    roundOutput1:4 = floor(roundInput1);
+    roundOutput1 = floor(roundInput1);
     goto <round_toward_zero_join_1>;
 <round_toward_zero_negative_1>
-    roundOutput1:4 = ceil(roundInput1);
+    roundOutput1 = ceil(roundInput1);
 <round_toward_zero_join_1>
     roundWide1:16 = zext(roundOutput1) << 32;
     roundInput2:4 = xenonB(8);
+    roundOutput2:4 = 0:4;
     roundNegative2:1 = roundInput2 f< 0:4;
     if (roundNegative2) goto <round_toward_zero_negative_2>;
-    roundOutput2:4 = floor(roundInput2);
+    roundOutput2 = floor(roundInput2);
     goto <round_toward_zero_join_2>;
 <round_toward_zero_negative_2>
-    roundOutput2:4 = ceil(roundInput2);
+    roundOutput2 = ceil(roundInput2);
 <round_toward_zero_join_2>
     roundWide2:16 = zext(roundOutput2) << 64;
     roundInput3:4 = xenonB(12);
+    roundOutput3:4 = 0:4;
     roundNegative3:1 = roundInput3 f< 0:4;
     if (roundNegative3) goto <round_toward_zero_negative_3>;
-    roundOutput3:4 = floor(roundInput3);
+    roundOutput3 = floor(roundInput3);
     goto <round_toward_zero_join_3>;
 <round_toward_zero_negative_3>
-    roundOutput3:4 = ceil(roundInput3);
+    roundOutput3 = ceil(roundInput3);
 <round_toward_zero_join_3>
     roundWide3:16 = zext(roundOutput3) << 96;
     xenonD = roundWide0 | roundWide1 | roundWide2 | roundWide3;
