@@ -899,25 +899,25 @@ xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 # vpkd3d128: opaque; Xenia mask/value fc000730/18000610
 :vpkd3d128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & BITS_6_10=24 & BITS_4_5=1
 {
-    result:16 = xenonVpkd3d128(xenonB, A_BITS:4, BITS_6_10:4);
+    result:16 = xenonVpkd3d128(xenonB, xenonD, A_BITS:4, 0:4);
     xenonD = result;
 }
 
 :vpkd3d128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & BITS_6_10=25 & BITS_4_5=1
 {
-    result:16 = xenonVpkd3d128(xenonB, A_BITS:4, BITS_6_10:4);
+    result:16 = xenonVpkd3d128(xenonB, xenonD, A_BITS:4, 1:4);
     xenonD = result;
 }
 
 :vpkd3d128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & BITS_6_10=26 & BITS_4_5=1
 {
-    result:16 = xenonVpkd3d128(xenonB, A_BITS:4, BITS_6_10:4);
+    result:16 = xenonVpkd3d128(xenonB, xenonD, A_BITS:4, 2:4);
     xenonD = result;
 }
 
 :vpkd3d128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & BITS_6_10=27 & BITS_4_5=1
 {
-    result:16 = xenonVpkd3d128(xenonB, A_BITS:4, BITS_6_10:4);
+    result:16 = xenonVpkd3d128(xenonB, xenonD, A_BITS:4, 3:4);
     xenonD = result;
 }
 
