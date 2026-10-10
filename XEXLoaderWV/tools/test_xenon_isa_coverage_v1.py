@@ -332,6 +332,25 @@ class XenonIsaInventoryTests(unittest.TestCase):
         # manifest and report, even when status categories stay identical.
         self.assertNotIn("outputs.", body)
 
+    def test_java_fixture_manifest_header(self):
+        java_path = (audit.ROOT.parent / "ghidra_scripts" /
+                     "AuditXenonIsaFixtureV1.java")
+        source = java_path.read_text(encoding="utf-8")
+        self.assertIn('FIXTURE_TSV = "xenon_isa_fixture_v1.tsv"', source)
+        self.assertIn('COVERAGE_TSV = "xenon_isa_coverage_v1.tsv"', source)
+        self.assertIn("COVERAGE_TSV.equals(manifest.getName())", source)
+        self.assertIn("FIXTURE_HEADER.equals(line)", source)
+        expected = ("offset", "word_be", "expected_mnemonic",
+                    "sleigh_status", "variant")
+        self.assertIn('"' + r"\t".join(expected) + '"', source)
+        with tempfile.TemporaryDirectory() as folder:
+            out = Path(folder)
+            audit.write_results(self.rows, audit.SLEIGH, audit.INVENTORY, out)
+            with (out / "xenon_isa_fixture_v1.tsv").open(
+                    encoding="utf-8", newline="") as handle:
+                self.assertEqual(tuple(handle.readline().strip().split("\t")),
+                                 expected)
+
     def test_fixture_generation(self):
         with tempfile.TemporaryDirectory() as folder:
             out = Path(folder)
