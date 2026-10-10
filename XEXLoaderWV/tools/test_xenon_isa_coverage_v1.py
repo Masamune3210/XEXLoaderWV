@@ -226,15 +226,16 @@ class XenonIsaInventoryTests(unittest.TestCase):
                 body)
 
     def test_remaining_family_complete_selectors(self):
-        # All 46 previously missing families have a decoder. Check every
+        # All 46 originally missing families plus two documented aliases
+        # have constructors. Check each pinned Xenia selector below.
         # pinned sample word against exactly one corresponding new rule.
         import re
 
         rest = audit.ADDITIONAL_SLEIGH.read_text(encoding="utf-8")
         former_missing, ops = audit.parse_sleigh(rest)
-        self.assertEqual(len(former_missing), 46)
+        self.assertEqual(len(former_missing), 48)
         self.assertEqual(Counter(former_missing.values()), Counter(
-            {"native-pcode": 15, "opaque-userop": 31}))
+            {"native-pcode": 15, "opaque-userop": 33}))
         original, _ = audit.parse_sleigh(
             audit.SLEIGH.read_text(encoding="utf-8"))
         self.assertEqual(set(former_missing) & set(original), set())
@@ -269,6 +270,97 @@ class XenonIsaInventoryTests(unittest.TestCase):
                         matches.append(rule)
                 self.assertEqual(len(matches), 1,
                                  (row["mnemonic"], hex(word), matches))
+
+    def test_signed_halfword_unpack_aliases_have_disjoint_patterns(self):
+        # VA128=0x60 means A_BITS=0 and the two extended VA bits set.
+        # These are signed halfword unpacks, not byte unpacks.
+        import re
+
+        source = audit.ADDITIONAL_SLEIGH.read_text(encoding="utf-8")
+        for byte_name, half_name, code in (
+                ("vupkhsb128", "vupkhsh128", 0x180007A0),
+                ("vupklsb128", "vupklsh128", 0x180007E0)):
+            byte_rules = re.findall(
+                r"(?m)^:" + byte_name + r" [^\n]+ is ([^\n]+)",
+                source)
+            half_rules = re.findall(
+                r"(?m)^:" + half_name + r" [^\n]+ is ([^\n]+)",
+                source)
+            self.assertEqual(len(byte_rules), 4)
+            self.assertEqual(len(half_rules), 1)
+            self.assertIn("A_BITS=0", half_rules[0])
+            self.assertIn("xenonB", half_rules[0])
+            self.assertNotIn("xenonA", half_rules[0])
+            self.assertIn("A_BITS!=0",
+                          [p for p in byte_rules
+                           if f"BITS_6_10={(code >> 6) & 31}" in p and
+                           f"BITS_4_5={(code >> 4) & 3}" in p][0])
+            self.assertIn(f":{half_name} xenonD,xenonB", source)
+            self.assertIn(
+                f"define pcodeop xenon{half_name[0].upper()}{half_name[1:]};",
+                source)
+
+        corrections = audit.read_inventory(audit.CORRECTION_INVENTORY)
+        self.assertEqual(
+            [(row["mnemonic"], row["mask"], row["value"])
+             for row in corrections],
+            [("vupkhsh128", 0xFC1F07F0, 0x180007A0),
+             ("vupklsh128", 0xFC1F07F0, 0x180007E0)])
+        for row in corrections:
+            self.assertNotIn(row["mnemonic"],
+                             {item["mnemonic"] for item in self.rows})
+            for _, fill in audit.FILLS:
+                word = row["value"] | (fill & (~row["mask"] & 0xFFFFFFFF))
+                self.assertEqual(word & row["mask"], row["value"])
+                self.assertEqual((word >> 16) & 31, 0)
+                self.assertEqual(audit.decode_expectation(row["mnemonic"], word),
+                                 "decode")
+                # The broad Xenia byte masks overlap intentionally.
+                overlapping = [
+                    item for item in self.rows
+                    if (word & item["mask"]) == item["value"]]
+                self.assertEqual(len(overlapping), 1)
+                self.assertGreater(row["mask"].bit_count(),
+                                   overlapping[0]["mask"].bit_count())
+
+    def test_corrected_fixture_keeps_pinned_prefix_and_appends_eight(self):
+        import hashlib
+
+        corrections = audit.read_inventory(audit.CORRECTION_INVENTORY)
+        with tempfile.TemporaryDirectory() as folder:
+            folder = Path(folder)
+            old = folder / "pinned"
+            full = folder / "with-corrections"
+            audit.write_results(self.rows, audit.SLEIGH,
+                                audit.INVENTORY, old)
+            audit.write_results(self.rows + corrections, audit.SLEIGH,
+                                audit.INVENTORY, full)
+            old_bytes = (old / "xenon_isa_fixture_v1.bin").read_bytes()
+            new_bytes = (full / "xenon_isa_fixture_v1.bin").read_bytes()
+            self.assertEqual(len(old_bytes), 1344)
+            self.assertEqual(len(new_bytes), 1376)
+            self.assertEqual(new_bytes[:1344], old_bytes)
+            with (full / "xenon_isa_fixture_v1.tsv").open(
+                    encoding="utf-8", newline="") as handle:
+                entries = list(csv.DictReader(handle, delimiter="\t"))
+            self.assertEqual(len(entries), 344)
+            self.assertEqual(
+                [row["expected_mnemonic"] for row in entries[336:]],
+                ["vupkhsh128"] * 4 + ["vupklsh128"] * 4)
+            self.assertEqual(
+                [row["word_be"] for row in entries[336::4]],
+                ["180007A0", "180007E0"])
+            self.assertEqual(
+                Counter(row["decode_expectation"] for row in entries),
+                Counter({"decode": 328, "reserved-rc1": 16}))
+            report = (full / "xenon_isa_coverage_v1.md").read_text(
+                encoding="utf-8")
+            self.assertIn(
+                "Unpack correction inventory SHA-256: " + chr(96) +
+                hashlib.sha256(
+                    audit.CORRECTION_INVENTORY.read_bytes()).hexdigest(),
+                report)
+            self.assertIn("Families: **86**", report)
 
     def test_native_byte_shift_and_unsigned_pack_semantics(self):
         # Xenia uses the last vector byte's 0x78 bits for whole-vector
@@ -324,6 +416,7 @@ class XenonIsaInventoryTests(unittest.TestCase):
             "xenon_64_be.slaspec",
             "xenia_vmx128_opcode_inventory_20261009.tsv",
             "xenia_xform_vector_opcode_inventory_20261009.tsv",
+            "xenon_vmx128_unpack_corrections_20261010.tsv",
         ):
             self.assertIn(filename, body)
         self.assertIn('dependsOn tasks.named("generateXenonIsaFixture")',
