@@ -1363,6 +1363,203 @@ public class AuditXenonNumericalPcode extends GhidraScript {
         recordSuite("DOT", passed, failed, problems);
     }
 
+
+    // Native vslo128/vsro128 interpret bits [3..6] of the least
+    // significant byte of VB as a whole-vector shift in bits.
+    // The top bit and low three bits must not change the result.
+    private static final class WholeVectorShift {
+        final String name;
+        final long selector;
+        final boolean left;
+
+        WholeVectorShift(String name, long selector, boolean left) {
+            this.name = name;
+            this.selector = selector;
+            this.left = left;
+        }
+    }
+
+    private static final WholeVectorShift[] WHOLE_VECTOR_SHIFTS = {
+        new WholeVectorShift("vslo128", 0x14000390L, true),
+        new WholeVectorShift("vsro128", 0x140003d0L, false),
+    };
+
+    private static long wholeShiftWord(WholeVectorShift operation,
+                                       int variant) {
+        if ((variant & ~3) != 0)
+            throw new IllegalArgumentException("Invalid VA variant");
+        long word = operation.selector |
+            (1L << 21) | (2L << 16) | (3L << 11) |
+            (((long) (variant & 1)) << 5) |
+            (((long) (variant & 2)) << 9);
+        if ((word & FP_SELECTOR_MASK) != operation.selector ||
+                ((word >>> 21) & 31) != 1 ||
+                ((word >>> 16) & 31) != 2 ||
+                ((word >>> 11) & 31) != 3 ||
+                ((word >>> 5) & 1) != (variant & 1) ||
+                ((word >>> 10) & 1) != ((variant >>> 1) & 1))
+            throw new IllegalArgumentException(
+                "Wrong whole-vector shift encoding");
+        return word;
+    }
+
+    private String executeWholeShift(WholeVectorShift operation,
+                                     Address address, int variant,
+                                     int pattern, int count)
+            throws Exception {
+        long word = wholeShiftWord(operation, variant);
+        String label = operation.name + " variant=" + variant +
+            " VA=" + guardedFpSourceAName(variant) +
+            " pattern=" + pattern + " count=" + count +
+            " word=" + String.format("%08X", word);
+        Register dest = vectorRegister("vs33");
+        Register aReg = vectorRegister(guardedFpSourceAName(variant));
+        Register bReg = vectorRegister("vs35");
+        byte[] bytesA = shuffleInput(0, pattern);
+        byte[] bytesB = shuffleInput(1, pattern);
+        // 0x05 has ignored low bits; 0x87 adds an ignored top bit.
+        bytesB[15] = (byte) ((count << 3) |
+            (pattern == 0 ? 0x05 : 0x87));
+        int encoded = bytesB[15] & 0xff;
+        if ((encoded & 0x78) != (count * 8))
+            throw new IllegalArgumentException(
+                "VB selector test setup did not encode requested shift");
+        BigInteger aValue = vectorFromBytes(bytesA);
+        BigInteger bValue = vectorFromBytes(bytesB);
+        BigInteger expected = operation.left ?
+            aValue.shiftLeft(count * 8).and(MASK128) :
+            aValue.shiftRight(count * 8);
+
+        EmulatorHelper emulator = new EmulatorHelper(currentProgram);
+        try {
+            byte[] opcode = wordBytes(word);
+            emulator.writeMemory(address, opcode);
+            if (!Arrays.equals(opcode, emulator.readMemory(address, 4)))
+                return label + ": private opcode mismatch";
+            emulator.writeRegister(aReg, aValue);
+            emulator.writeRegister(bReg, bValue);
+            emulator.writeRegister(dest, MASK128);
+            emulator.writeRegister(
+                currentProgram.getLanguage().getProgramCounter(),
+                address.getOffset());
+            if (!emulator.step(monitor))
+                return label + ": emulator step failed: " +
+                    emulator.getLastError();
+            BigInteger got = emulator.readRegister(dest).and(MASK128);
+            BigInteger afterA = emulator.readRegister(aReg).and(MASK128);
+            BigInteger afterB = emulator.readRegister(bReg).and(MASK128);
+            if (!expected.equals(got) ||
+                    !aValue.equals(afterA) ||
+                    !bValue.equals(afterB))
+                return label + ": encodedControlByte=" +
+                    String.format("%02X", encoded) +
+                    " expectedD=" + hex128(expected) +
+                    " actualD=" + hex128(got) +
+                    " expectedA=" + hex128(aValue) +
+                    " actualA=" + hex128(afterA) +
+                    " expectedB=" + hex128(bValue) +
+                    " actualB=" + hex128(afterB);
+        }
+        finally {
+            emulator.dispose();
+        }
+        return null;
+    }
+
+    private void runWholeVectorShifts(File manifest, Address base)
+            throws Exception {
+        Map<String, Address> sites = new LinkedHashMap<>();
+        Map<String, Long> originalWords = new LinkedHashMap<>();
+        try (BufferedReader reader = Files.newBufferedReader(
+                manifest.toPath(), StandardCharsets.UTF_8)) {
+            String header = reader.readLine();
+            if (header == null ||
+                    !header.startsWith("offset\tword_be\texpected_mnemonic\t"))
+                throw new IllegalArgumentException(
+                    "Incorrect Xenon whole-shift fixture manifest");
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] columns = line.split("\t", -1);
+                if (columns.length != 6 ||
+                        !"decode".equals(columns[5]))
+                    continue;
+                for (WholeVectorShift operation : WHOLE_VECTOR_SHIFTS) {
+                    if (operation.name.equals(columns[2]) &&
+                            !sites.containsKey(operation.name)) {
+                        Address addr = base.add(Long.parseUnsignedLong(
+                            columns[0].replaceFirst("^0x", ""), 16));
+                        sites.put(operation.name, addr);
+                        originalWords.put(operation.name,
+                            Long.parseUnsignedLong(columns[1], 16));
+                    }
+                }
+            }
+        }
+
+        int passed = 0, failed = 0;
+        List<String> problems = new ArrayList<>();
+        for (WholeVectorShift operation : WHOLE_VECTOR_SHIFTS) {
+            Address address = sites.get(operation.name);
+            Long originalWord = originalWords.get(operation.name);
+            if (address == null || originalWord == null ||
+                    (originalWord & FP_SELECTOR_MASK) != operation.selector ||
+                    !fixtureMatches(address, originalWord)) {
+                failed++;
+                problems.add(operation.name +
+                    ": missing/mismatched original fixture bytes");
+                continue;
+            }
+            Instruction instruction = getInstructionAt(address);
+            if (instruction == null) {
+                disassemble(address);
+                instruction = getInstructionAt(address);
+            }
+            if (instruction == null ||
+                    !operation.name.equalsIgnoreCase(
+                        instruction.getMnemonicString())) {
+                failed++;
+                problems.add(operation.name +
+                    ": unexpected fixture mnemonic at " + address);
+                continue;
+            }
+            for (int variant = 0; variant < 4; variant++) {
+                for (int pattern = 0; pattern < 2; pattern++) {
+                    for (int count = 0; count < 16; count++) {
+                        monitor.checkCancelled();
+                        try {
+                            String problem = executeWholeShift(operation,
+                                address, variant, pattern, count);
+                            if (problem == null) passed++;
+                            else {
+                                failed++;
+                                problems.add(problem);
+                            }
+                        }
+                        catch (Exception ex) {
+                            failed++;
+                            problems.add(operation.name +
+                                " variant=" + variant +
+                                " pattern=" + pattern + " count=" + count +
+                                ": " + ex);
+                        }
+                    }
+                }
+            }
+        }
+        println("");
+        println("============================================================");
+        println("XENON WHOLE-VECTOR SHIFT NATIVE NUMERICAL P-CODE AUDIT");
+        println("============================================================");
+        println("Language: " + LANGUAGE);
+        println("Cases: " + (passed + failed) + "; passed: " +
+            passed + "; failed: " + failed);
+        println("vslo128 / vsro128: four VA banks, all 16 byte shift " +
+            "counts, two patterns with ignored top/low control bits.");
+        println("Source registers and original fixture bytes unchanged.");
+        println("Unresolved details follow in combined result below.");
+        recordSuite("WHOLE-SHIFT", passed, failed, problems);
+    }
+
     @Override
     protected void run() throws Exception {
         String id = currentProgram.getLanguage().getLanguageID()
@@ -1476,6 +1673,7 @@ public class AuditXenonNumericalPcode extends GhidraScript {
         runGuardedFp(manifest, base);
         runShuffles(manifest, base);
         runDotProducts(manifest, base);
+        runWholeVectorShifts(manifest, base);
 
         println("");
         println("============================================================");
