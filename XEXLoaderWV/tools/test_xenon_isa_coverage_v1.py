@@ -39,12 +39,12 @@ class XenonIsaInventoryTests(unittest.TestCase):
                     f"{left['mnemonic']} overlaps {right['mnemonic']}")
 
     def test_current_sleigh_source_statuses(self):
-        source = audit.SLEIGH.read_text(encoding="utf-8")
+        source = audit.read_sleigh_source(audit.SLEIGH)
         constructors, custom_ops = audit.parse_sleigh(source)
         statuses = Counter(
             constructors.get(row["mnemonic"], "missing") for row in self.rows)
         self.assertEqual(statuses, Counter(
-            {"missing": 46, "native-pcode": 31, "opaque-userop": 7}))
+            {"native-pcode": 40, "opaque-userop": 44}))
         self.assertIn("xenonVupkd3d128", custom_ops)
         self.assertIn("xenonLvsl128", custom_ops)
         self.assertIn("xenonLvsr128", custom_ops)
@@ -61,7 +61,7 @@ class XenonIsaInventoryTests(unittest.TestCase):
         """
         import re
 
-        source = audit.SLEIGH.read_text(encoding="utf-8")
+        source = audit.read_sleigh_source(audit.SLEIGH)
         constructors, _ = audit.parse_sleigh(source)
         for row in self.rows:
             if row["primary"] not in (4, 31):
@@ -77,7 +77,14 @@ class XenonIsaInventoryTests(unittest.TestCase):
             self.assertTrue(rules, row["mnemonic"])
             for fill in (0, 0xFFFFFFFF, 0x55555555, 0xAAAAAAAA):
                 word = row["value"] | (fill & (~row["mask"] & 0xFFFFFFFF))
-                if row["primary"] == 4:
+                if row["mnemonic"] == "vsldoi128":
+                    # Opcode 4 VX128_5 has a different selector from the
+                    # indexed memory instructions tested below.
+                    matches = [p for p in rules
+                               if f"BITS_4_5={(word >> 4) & 3}" in p]
+                    self.assertEqual(len(matches), 1,
+                                     (row["mnemonic"], hex(word)))
+                elif row["primary"] == 4:
                     selector = (word >> 3) & 255
                     matches = [p for p in rules
                                if f"XOP_3_10={selector}" in p and
@@ -148,6 +155,51 @@ class XenonIsaInventoryTests(unittest.TestCase):
             'tasks.named("prepareXenonCommon")',
         ):
             self.assertIn(fragment, gradle)
+
+    def test_remaining_family_complete_selectors(self):
+        # All 46 previously missing families have a decoder. Check every
+        # pinned sample word against exactly one corresponding new rule.
+        import re
+
+        rest = audit.ADDITIONAL_SLEIGH.read_text(encoding="utf-8")
+        former_missing, ops = audit.parse_sleigh(rest)
+        self.assertEqual(len(former_missing), 46)
+        self.assertEqual(Counter(former_missing.values()), Counter(
+            {"native-pcode": 9, "opaque-userop": 37}))
+        original, _ = audit.parse_sleigh(
+            audit.SLEIGH.read_text(encoding="utf-8"))
+        self.assertEqual(set(former_missing) & set(original), set())
+        slaspec = (audit.ROOT / "data/languages/xenon_64_be.slaspec").read_text(
+            encoding="utf-8")
+        self.assertIn('@include "xenon_vector_remaining_v1.sinc"', slaspec)
+
+        for row in self.rows:
+            if row["mnemonic"] not in former_missing:
+                continue
+            rules = re.findall(
+                r"(?m)^:" + re.escape(row["mnemonic"]) +
+                r" [^\\n]+ is ([^\\n]+)", rest)
+            self.assertTrue(rules, row["mnemonic"])
+            for fill in (0, 0xFFFFFFFF, 0x55555555, 0xAAAAAAAA):
+                word = row["value"] | (fill & (~row["mask"] & 0xFFFFFFFF))
+                checks = {
+                    "BITS_6_10": (word >> 6) & 31,
+                    "BITS_4_5": (word >> 4) & 3,
+                    "XOP_3_10": (word >> 3) & 255,
+                    "BIT_9": (word >> 9) & 1,
+                }
+                matches = []
+                for rule in rules:
+                    if all(
+                        (m is None or int(m.group(1)) == value)
+                        for field, value in checks.items()
+                        for m in [re.search(
+                            r"(?:^| & )" + field + r"=(\\d+)(?: & |$)",
+                            rule)]
+                    ):
+                        matches.append(rule)
+                self.assertEqual(len(matches), 1,
+                                 (row["mnemonic"], hex(word), matches))
 
     def test_fixture_generation(self):
         with tempfile.TemporaryDirectory() as folder:
