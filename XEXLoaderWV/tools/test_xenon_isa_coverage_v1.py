@@ -341,7 +341,7 @@ class XenonIsaInventoryTests(unittest.TestCase):
         self.assertIn("COVERAGE_TSV.equals(manifest.getName())", source)
         self.assertIn("FIXTURE_HEADER.equals(line)", source)
         expected = ("offset", "word_be", "expected_mnemonic",
-                    "sleigh_status", "variant")
+                    "sleigh_status", "variant", "decode_expectation")
         self.assertIn('"' + r"\t".join(expected) + '"', source)
         with tempfile.TemporaryDirectory() as folder:
             out = Path(folder)
@@ -350,6 +350,25 @@ class XenonIsaInventoryTests(unittest.TestCase):
                     encoding="utf-8", newline="") as handle:
                 self.assertEqual(tuple(handle.readline().strip().split("\t")),
                                  expected)
+
+    def test_opcode31_rc1_reserved_fixtures_are_preserved(self):
+        # Cell Vector/SIMD PEM v2.07c X-form encodings fix bit 31 to 0,
+        # whereas Xenia's broad dispatch masks bit 31 out. Keep all four
+        # raw fixture variants, including the 16 intentionally rejected
+        # Rc=1 samples, to detect accidental decoder overacceptance.
+        for row in self.xform:
+            self.assertEqual(row["primary"], 31)
+            self.assertEqual(row["mask"] & 1, 0)
+            for label, fill in audit.FILLS:
+                word = row["value"] | (fill & (~row["mask"] & 0xFFFFFFFF))
+                result = audit.decode_expectation(row["mnemonic"], word)
+                self.assertEqual(result,
+                                 "reserved-rc1" if (word & 1) else "decode")
+        for row in self.vmx:
+            for _, fill in audit.FILLS:
+                word = row["value"] | (fill & (~row["mask"] & 0xFFFFFFFF))
+                self.assertEqual(
+                    audit.decode_expectation(row["mnemonic"], word), "decode")
 
     def test_fixture_generation(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -361,6 +380,17 @@ class XenonIsaInventoryTests(unittest.TestCase):
                     encoding="utf-8", newline="") as f:
                 entries = list(csv.DictReader(f, delimiter="\t"))
             self.assertEqual(len(entries), 336)
+            self.assertEqual(
+                Counter(row["decode_expectation"] for row in entries),
+                Counter({"decode": 320, "reserved-rc1": 16}))
+            for row in entries:
+                word = int(row["word_be"], 16)
+                expected_behavior = audit.decode_expectation(
+                    row["expected_mnemonic"], word)
+                self.assertEqual(row["decode_expectation"], expected_behavior)
+                if row["decode_expectation"] == "reserved-rc1":
+                    self.assertIn(row["expected_mnemonic"], audit.EXTRA_NAMES)
+                    self.assertEqual(word & 1, 1)
             for row in entries:
                 offset = int(row["offset"], 16)
                 word = int(row["word_be"], 16)
