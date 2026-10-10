@@ -479,7 +479,7 @@ xenonA: "xv127" is vrAR=31 & MBH=1 & OE=1 { export xv127; }
     // Other D3D unpack formats retain the existing opaque userop.
     unpackType:4 = A_BITS:4 >> 2;
     if (unpackType == 0:4) goto <unpack_color>;
-    if (unpackType == 1:4) goto <unpack_short2_positive>;
+    if (unpackType == 1:4) goto <unpack_short2_signed>;
     goto <unpack_opaque>;
 <unpack_color>
     packedColor:4 = xenonB(0);
@@ -497,19 +497,29 @@ xenonA: "xv127" is vrAR=31 & MBH=1 & OE=1 { export xv127; }
     laneA:16 = zext(encodedA);
     xenonD = laneR | laneG | laneB | laneA;
     goto <unpack_done>;
-<unpack_short2_positive>
-    // Xenia UNPACK_SHORT_2: observed for both nonnegative halfwords.
-    // Negative signed halfwords, including the 0x8000 NaN sentinel,
-    // retain the opaque path rather than inventing exceptional encoding.
+<unpack_short2_signed>
+    // Xenia x64 EmitSHORT_2: sign-extend each packed halfword, then
+    // integer-add the 3.0f IEEE-754 word. Signed -32768 triggers
+    // its overflow sentinel, returning the canonical quiet NaN.
     packedShorts:4 = xenonB(0);
-    highHalf:4 = (packedShorts >> 16) & 0xffff:4;
-    lowHalf:4 = packedShorts & 0xffff:4;
-    highSign:1 = (highHalf & 0x8000:4) != 0:4;
-    lowSign:1 = (lowHalf & 0x8000:4) != 0:4;
-    if (highSign) goto <unpack_opaque>;
-    if (lowSign) goto <unpack_opaque>;
-    shortX:4 = 0x40400000:4 | highHalf;
-    shortY:4 = 0x40400000:4 | lowHalf;
+    rawHigh:2 = packedShorts(2);
+    rawLow:2 = packedShorts(0);
+    signedHigh:4 = sext(rawHigh);
+    signedLow:4 = sext(rawLow);
+    shortX:4 = 0x40400000:4 + signedHigh;
+    shortY:4 = 0x40400000:4 + signedLow;
+    highOverflow:1 = rawHigh == 0x8000:2;
+    lowOverflow:1 = rawLow == 0x8000:2;
+    if (highOverflow) goto <short_high_nan>;
+    goto <short_high_done>;
+<short_high_nan>
+    shortX = 0x7fc00000:4;
+<short_high_done>
+    if (lowOverflow) goto <short_low_nan>;
+    goto <short_low_done>;
+<short_low_nan>
+    shortY = 0x7fc00000:4;
+<short_low_done>
     placeX:16 = zext(shortX) << 96;
     placeY:16 = zext(shortY) << 64;
     shortOne:16 = 0x3f800000:16;
@@ -527,7 +537,7 @@ xenonA: "xv127" is vrAR=31 & MBH=1 & OE=1 { export xv127; }
     // Other D3D unpack formats retain the existing opaque userop.
     unpackType:4 = A_BITS:4 >> 2;
     if (unpackType == 0:4) goto <unpack_color>;
-    if (unpackType == 1:4) goto <unpack_short2_positive>;
+    if (unpackType == 1:4) goto <unpack_short2_signed>;
     goto <unpack_opaque>;
 <unpack_color>
     packedColor:4 = xenonB(0);
@@ -545,19 +555,29 @@ xenonA: "xv127" is vrAR=31 & MBH=1 & OE=1 { export xv127; }
     laneA:16 = zext(encodedA);
     xenonD = laneR | laneG | laneB | laneA;
     goto <unpack_done>;
-<unpack_short2_positive>
-    // Xenia UNPACK_SHORT_2: observed for both nonnegative halfwords.
-    // Negative signed halfwords, including the 0x8000 NaN sentinel,
-    // retain the opaque path rather than inventing exceptional encoding.
+<unpack_short2_signed>
+    // Xenia x64 EmitSHORT_2: sign-extend each packed halfword, then
+    // integer-add the 3.0f IEEE-754 word. Signed -32768 triggers
+    // its overflow sentinel, returning the canonical quiet NaN.
     packedShorts:4 = xenonB(0);
-    highHalf:4 = (packedShorts >> 16) & 0xffff:4;
-    lowHalf:4 = packedShorts & 0xffff:4;
-    highSign:1 = (highHalf & 0x8000:4) != 0:4;
-    lowSign:1 = (lowHalf & 0x8000:4) != 0:4;
-    if (highSign) goto <unpack_opaque>;
-    if (lowSign) goto <unpack_opaque>;
-    shortX:4 = 0x40400000:4 | highHalf;
-    shortY:4 = 0x40400000:4 | lowHalf;
+    rawHigh:2 = packedShorts(2);
+    rawLow:2 = packedShorts(0);
+    signedHigh:4 = sext(rawHigh);
+    signedLow:4 = sext(rawLow);
+    shortX:4 = 0x40400000:4 + signedHigh;
+    shortY:4 = 0x40400000:4 + signedLow;
+    highOverflow:1 = rawHigh == 0x8000:2;
+    lowOverflow:1 = rawLow == 0x8000:2;
+    if (highOverflow) goto <short_high_nan>;
+    goto <short_high_done>;
+<short_high_nan>
+    shortX = 0x7fc00000:4;
+<short_high_done>
+    if (lowOverflow) goto <short_low_nan>;
+    goto <short_low_done>;
+<short_low_nan>
+    shortY = 0x7fc00000:4;
+<short_low_done>
     placeX:16 = zext(shortX) << 96;
     placeY:16 = zext(shortY) << 64;
     shortOne:16 = 0x3f800000:16;
