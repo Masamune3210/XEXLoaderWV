@@ -83,11 +83,14 @@ public class AuditXenonSaturatingPackV3 extends GhidraScript {
     private Register operand(Instruction instruction, int index) {
         if (index < 0 || index >= instruction.getNumOperands())
             return null;
-        for (Object object : instruction.getOpObjects(index)) {
-            if (object instanceof Register) {
-                Register register = (Register) object;
-                if (register.getBitLength() == 128)
-                    return register;
+        Object[] objects = instruction.getOpObjects(index);
+        if (objects != null) {
+            for (Object object : objects) {
+                if (object instanceof Register) {
+                    Register register = (Register) object;
+                    if (register.getBitLength() == 128)
+                        return register;
+                }
             }
         }
         String rendered = instruction.getDefaultOperandRepresentation(index);
@@ -236,6 +239,12 @@ public class AuditXenonSaturatingPackV3 extends GhidraScript {
                     + Long.toHexString(syntheticWord) + "): "
                     + emulator.getLastError();
             BigInteger actual = emulator.readRegister(destination).and(MASK128);
+            if (actual.equals(MASK128))
+                return pack.name + " at " + address +
+                    ": patched instruction did not change destination vs33; " +
+                    "check whether this Ghidra emulator decodes its private " +
+                    "memory rather than the Program listing; emulated word=" +
+                    Long.toHexString(syntheticWord);
             long vscr = emulator.readRegister("xenonVSCR").longValue()
                 & 0xffffffffL;
             if (!expected.equals(actual) || vscr != expectedVSCR)
