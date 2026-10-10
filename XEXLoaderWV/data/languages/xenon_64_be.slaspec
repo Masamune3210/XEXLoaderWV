@@ -23,3 +23,5 @@
 # Gradle derives this variant-local copy from the installed Ghidra source.
 @include "xenon_altivec_pre207.sinc"
 @include "xenon_vector_v1.sinc"
+# Supplementary VX128 instructions (native where verified; otherwise opaque).
+@include "xenon_vector_remaining_v1.sinc"
