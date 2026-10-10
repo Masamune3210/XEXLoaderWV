@@ -32,12 +32,13 @@ public class AuditXenonIsaFixtureV1 extends GhidraScript {
     private static final String FIXTURE_TSV = "xenon_isa_fixture_v1.tsv";
     private static final String COVERAGE_TSV = "xenon_isa_coverage_v1.tsv";
     private static final String FIXTURE_HEADER =
-        "offset\tword_be\texpected_mnemonic\tsleigh_status\tvariant";
+        "offset\tword_be\texpected_mnemonic\tsleigh_status\tvariant\tdecode_expectation";
 
 
     private static class Family {
         String status;
         int pass;
+        int reservedPass;
         int badBytes;
         int missing;
         int mismatch;
@@ -80,6 +81,7 @@ public class AuditXenonIsaFixtureV1 extends GhidraScript {
         int checks = 0;
         int invalid = 0;
         int passes = 0;
+        int reservedPasses = 0;
 
         try (BufferedReader reader = Files.newBufferedReader(
                 manifest.toPath(), StandardCharsets.UTF_8)) {
@@ -104,7 +106,7 @@ public class AuditXenonIsaFixtureV1 extends GhidraScript {
                 monitor.checkCancelled();
                 if (line.isBlank()) continue;
                 String[] p = line.split("\t", -1);
-                if (p.length != 5)
+                if (p.length != 6)
                     throw new IllegalArgumentException("Invalid manifest row: " + line);
 
                 long offset = Long.parseUnsignedLong(p[0].replaceFirst("^0x", ""), 16);
@@ -112,6 +114,16 @@ public class AuditXenonIsaFixtureV1 extends GhidraScript {
                 String name = p[2];
                 String status = p[3];
                 String variant = p[4];
+                String expectation = p[5];
+                if (!"decode".equals(expectation) &&
+                    !"reserved-rc1".equals(expectation)) {
+                    throw new IllegalArgumentException(
+                        "Unexpected decode expectation: " + expectation);
+                }
+                if ("reserved-rc1".equals(expectation) && (word & 1L) == 0) {
+                    throw new IllegalArgumentException(
+                        "Reserved-rc1 sample has Rc=0: " + line);
+                }
                 Family family = families.computeIfAbsent(name, key -> new Family(status));
                 if (!family.status.equals(status))
                     throw new IllegalArgumentException("Inconsistent family status: " + name);
@@ -150,7 +162,19 @@ public class AuditXenonIsaFixtureV1 extends GhidraScript {
                     disassemble(address);
                     instruction = getInstructionAt(address);
                 }
-                if (instruction == null) {
+                if ("reserved-rc1".equals(expectation)) {
+                    if (instruction == null) {
+                        family.reservedPass++;
+                        reservedPasses++;
+                    }
+                    else {
+                        family.mismatch++;
+                        family.problems.add(address + " " + variant +
+                                            " reserved Rc=1 decoded as " +
+                                            instruction.getMnemonicString());
+                    }
+                }
+                else if (instruction == null) {
                     family.missing++;
                     family.problems.add(address + " " + variant +
                                         " no instruction; expected " + name);
@@ -174,6 +198,7 @@ public class AuditXenonIsaFixtureV1 extends GhidraScript {
         println("==============================================================");
         println("Language: " + language);
         println("Samples: " + checks + "; correct mnemonic: " + passes +
+                "; correctly rejected reserved Rc=1: " + reservedPasses +
                 "; unreadable / byte mismatch: " + invalid);
         int full = 0;
         int partial = 0;
@@ -181,20 +206,22 @@ public class AuditXenonIsaFixtureV1 extends GhidraScript {
         int mismatched = 0;
         for (Map.Entry<String, Family> entry : families.entrySet()) {
             Family f = entry.getValue();
-            if (f.pass == 4) full++;
-            else if (f.pass != 0) partial++;
+            int success = f.pass + f.reservedPass;
+            if (success == 4) full++;
+            else if (success != 0) partial++;
             else if (f.mismatch != 0) mismatched++;
             else absent++;
         }
-        println("Families: " + families.size() + "; 4/4 decoded: " + full +
-                "; partially decoded: " + partial +
-                "; no expected mnemonic: " + absent +
+        println("Families: " + families.size() + "; 4/4 expectations met: " + full +
+                "; partially met: " + partial +
+                "; no expectation met: " + absent +
                 "; wrong-mnemonic-only: " + mismatched);
         println("");
         println("==============================================================");
-        println("UNRESOLVED / INCORRECT STATES (" + (checks - passes) + " samples)");
+        int unresolved = checks - passes - reservedPasses;
+        println("UNRESOLVED / INCORRECT STATES (" + unresolved + " samples)");
         println("==============================================================");
-        if (checks == passes) {
+        if (unresolved == 0) {
             println("None (mnemonics only; numerical p-code semantics not audited)");
         }
         else {
@@ -202,12 +229,15 @@ public class AuditXenonIsaFixtureV1 extends GhidraScript {
                 Family f = entry.getValue();
                 if (f.problems.isEmpty()) continue;
                 println(entry.getKey() + " [" + f.status + "]" +
-                        " pass=" + f.pass + "/4");
+                        " correct-decode=" + f.pass + "/4" +
+                        " correct-reserved-reject=" + f.reservedPass + "/4");
                 for (String problem : f.problems)
                     println("  " + problem);
             }
         }
-        println("This is a mnemonic decode test, NOT a test of numerical p-code.");
+        println("Reserved Rc=1 expectations follow the Cell X-form encoding;");
+        println("Xenon hardware validity remains independently unverified.");
+        println("This tests decoding, NOT numerical p-code semantics.");
         println("==============================================================");
     }
 }
