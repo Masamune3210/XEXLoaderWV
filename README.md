@@ -241,3 +241,26 @@ raw-encoding check against the two supported SHA-256-verified kernel images.
 **Status:** source committed but second-round SLEIGH compilation and
 runtime 29/29 decode verification pending. Do not call the VMX128
 implementation numerically complete based on absent bookmarks alone.
+
+
+### Xenon VMX128 word merges (kernel `xboxkrnl.exe(8).gzf`)
+
+After the second-stage 29/29 opcode audit passed, the Xenon-language
+17559 archive revealed only two new bad-instruction bookmarks:
+`0x800BD280` and `0x800BD35C`, both `vmrglw128`. The same
+function region also contains `vmrghw128` instructions. Both merge
+families are now defined in `data/languages/xenon_vector_v1.sinc`
+with concrete 128-bit four-word interleave p-code, accounting for
+eight exact matches (four per instruction family) in verified kernel
+`.text`.
+
+Use `ghidra_scripts/RepairAuditXboxKrnl17559XenonVmxV3.java` to check
+all 37 confirmed Xenon opcode sites and selectively clear *only*
+stale matching constructor bookmarks after successful disassembly.
+`tools/validate_xenon_sleigh_patterns_v3.py` independently checks
+the exact opcode words against the verified 17559 image.
+
+**Implementation status:** source changes and raw encoding validation
+completed; Ghidra's new SLEIGH compiler/runtime 37/37 decoding
+still require verification. Avoid claiming full VMX128 p-code fidelity,
+since earlier FP and permutation families still use opaque userops.
