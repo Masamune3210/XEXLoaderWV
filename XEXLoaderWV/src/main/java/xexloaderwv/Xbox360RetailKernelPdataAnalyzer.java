@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Set;
 
 import ghidra.app.cmd.disassemble.DisassembleCommand;
+import ghidra.app.cmd.function.CreateFunctionCmd;
 import ghidra.app.services.AbstractAnalyzer;
 import ghidra.app.services.AnalysisPriority;
 import ghidra.app.services.AnalyzerType;
@@ -32,8 +33,10 @@ import ghidra.util.task.TaskMonitor;
  * Early metadata pass for the SHA256-verified retail 17559 Xbox 360 kernel PE.
  *
  * The standard Ghidra PE loader still maps the executable. This analyzer runs
- * before normal disassembly/function discovery, using verified big-endian
- * PowerPC .pdata entries to reserve exact, non-overlapping function bodies.
+ * before normal function discovery, using verified big-endian
+ * PowerPC .pdata entries to seed function entry points and bound disassembly.
+ * Ghidra function bodies represent reachable instructions, not contiguous
+ * .pdata byte spans; each verified span is separately recorded as a comment.
  * It also adds ordinal-export names and leaf-entry seeds. It never rewrites
  * code/data bytes or fabricates function signatures.
  *
@@ -214,72 +217,141 @@ public class Xbox360RetailKernelPdataAnalyzer extends AbstractAnalyzer {
         SymbolTable symbols = program.getSymbolTable();
         int created = 0, alreadyPresent = 0, skipped = 0;
         int deferredDisassembly = 0, blockedByDefinedData = 0;
+        int flowBodiesSet = 0, flowBodyFailures = 0, flowBodyOutOfRange = 0;
         int newLabels = 0, leafEntrypoints = 0, previouslyMarkedEntrypoints = 0;
         List<String> failures = new ArrayList<>();
 
+        // Pass 1: decode each verified entry within its own .pdata extent.
+        // Do this before creating function bodies, so the disassembler sees
+        // only instructions and existing PE data declarations.
         for (Range record : metadata.pdata) {
             monitor.checkCancelled();
             Address entry = at(program, record.start);
-            AddressSet exactBody = new AddressSet(entry, at(program, record.end - 1));
-            Function current = functions.getFunctionAt(entry);
-            if (current != null) {
+            if (listing.getInstructionAt(entry) != null ||
+                    listing.getDefinedDataAt(entry) != null) {
+                continue;
+            }
+            AddressSet extent = new AddressSet(entry, at(program, record.end - 1));
+            DisassembleCommand cmd = new DisassembleCommand(entry, extent, true);
+            cmd.enableCodeAnalysis(false);
+            try {
+                cmd.applyTo(program, monitor);
+                if (listing.getInstructionAt(entry) == null) {
+                    deferredDisassembly++;
+                    if (failures.size() < 20)
+                        failures.add("Entry not yet decoded at " + entry +
+                            " (disassembler: " + cmd.getStatusMsg() + ")");
+                }
+            }
+            catch (Exception ex) {
+                deferredDisassembly++;
+                if (failures.size() < 20)
+                    failures.add("Disassembly " + entry + ": " + ex.getMessage());
+            }
+        }
+
+        // Pass 2: register EVERY validated entry before following ANY function
+        // flow. This prevents one function's discovered body from absorbing a
+        // neighboring .pdata function that has not been registered yet.
+        //
+        // The old code erroneously installed the entire contiguous .pdata
+        // extent as a Ghidra function body. Ghidra's ClearFlowAndRepairCmd
+        // removes such bodies when their interior code-block entry points are
+        // not the function entry. Use minimal placeholders until all entries
+        // exist, then expand each to the graph of reachable instructions.
+        for (Range record : metadata.pdata) {
+            monitor.checkCancelled();
+            Address entry = at(program, record.start);
+            Function function = functions.getFunctionAt(entry);
+            if (function != null) {
                 alreadyPresent++;
                 continue;
             }
-            Iterator<Function> collisions = functions.getFunctionsOverlapping(exactBody);
-            if (collisions.hasNext()) {
+            if (listing.getDefinedDataAt(entry) != null) {
+                blockedByDefinedData++;
                 skipped++;
                 if (failures.size() < 20)
-                    failures.add("Overlapping existing function near " + entry);
+                    failures.add("Entry occupied by defined data at " + entry);
+                continue;
+            }
+            if (functions.getFunctionContaining(entry) != null) {
+                skipped++;
+                if (failures.size() < 20)
+                    failures.add("Existing function occupies .pdata entry " + entry);
                 continue;
             }
 
             try {
-                // Restrict flow to the proven .pdata range; it is not safe to
-                // disassemble through a neighboring function boundary.
-                // The early FORMAT pass can encounter an undefined entry point:
-                // disassembly may not yet have a context. A verified .pdata
-                // range is authoritative even when instructions aren't ready.
-                // Ghidra's FunctionManager allows a function on undefined
-                // bytes but correctly forbids one whose entry is defined DATA.
-                boolean decoded = listing.getInstructionAt(entry) != null;
-                String disassemblyStatus = null;
-                if (!decoded && listing.getDefinedDataAt(entry) == null) {
-                    DisassembleCommand disassemble = new DisassembleCommand(entry, exactBody, true);
-                    disassemble.enableCodeAnalysis(false);
-                    disassemble.applyTo(program, monitor);
-                    decoded = listing.getInstructionAt(entry) != null;
-                    if (!decoded) disassemblyStatus = disassemble.getStatusMsg();
-                }
-                if (!decoded && listing.getDefinedDataAt(entry) != null) {
-                    blockedByDefinedData++;
-                    skipped++;
-                    if (failures.size() < 20)
-                        failures.add("Entry occupied by defined data at " + entry +
-                            " type=" + listing.getDefinedDataAt(entry).getDataType().getName());
-                    continue;
-                }
-                // Reserving the validated exact body now prevents the generic
-                // function analyzer from swallowing neighboring entry points.
-                Function function = functions.createFunction(firstName(metadata, record.start),
-                    entry, exactBody, SourceType.ANALYSIS);
-                if (function != null && !decoded) {
-                    deferredDisassembly++;
-                    if (failures.size() < 20)
-                        failures.add("Pending instruction at " + entry +
-                            " (metadata range reserved; disassembler: " + disassemblyStatus + ")");
-                }
+                // Seed only the entry instruction, not the whole extent.
+                // For entries awaiting disassembly, reserve one undefined
+                // byte, which is valid for Ghidra's FunctionManager.
+                Address lastByte = listing.getInstructionAt(entry) == null
+                    ? entry : at(program, record.start + 3);
+                AddressSet seed = new AddressSet(entry, lastByte);
+                function = functions.createFunction(firstName(metadata, record.start),
+                    entry, seed, SourceType.ANALYSIS);
                 if (function == null) {
                     skipped++;
                     if (failures.size() < 20)
-                        failures.add("Could not create .pdata function at " + entry);
+                        failures.add("Could not create .pdata seed at " + entry);
+                    continue;
                 }
-                else created++;
+                created++;
+                // Retain original binary unwind metadata even though the
+                // Ghidra body is a control-flow set rather than a byte extent.
+                function.setRepeatableComment(String.format(
+                    "Verified retail 17559 .pdata extent: 0x%08X-0x%08X (end exclusive); " +
+                    "Ghidra body is reachable code, not the contiguous unwind span.",
+                    record.start, record.end));
             }
             catch (Exception ex) {
                 skipped++;
                 if (failures.size() < 20)
-                    failures.add("Function " + entry + ": " + ex.getMessage());
+                    failures.add("Function seed " + entry + ": " + ex.getMessage());
+            }
+        }
+
+        // Pass 3: now that all known entries exist, compute a control-flow
+        // body for each function. Do not follow into other registered
+        // functions. Enforce the .pdata upper bound and strip collisions.
+        // Importantly, Ghidra is free to repair these flow-consistent bodies
+        // later without destroying a fictitious contiguous code ownership.
+        for (Range record : metadata.pdata) {
+            monitor.checkCancelled();
+            Address entry = at(program, record.start);
+            Function function = functions.getFunctionAt(entry);
+            if (function == null || listing.getInstructionAt(entry) == null) {
+                continue;
+            }
+            try {
+                AddressSet extent = new AddressSet(entry, at(program, record.end - 1));
+                AddressSetView discovered =
+                    CreateFunctionCmd.getFunctionBody(program, entry, false, monitor);
+                AddressSet bounded = new AddressSet(discovered.intersect(extent));
+                if (discovered.getNumAddresses() > bounded.getNumAddresses())
+                    flowBodyOutOfRange++;
+
+                // Avoid changing other function bodies, even in a reanalysis
+                // of a partially analyzed Program.
+                Iterator<Function> conflicts = functions.getFunctionsOverlapping(bounded);
+                while (conflicts.hasNext()) {
+                    Function other = conflicts.next();
+                    if (!other.getEntryPoint().equals(entry))
+                        bounded = bounded.subtract(other.getBody());
+                }
+                if (!bounded.contains(entry))
+                    bounded.add(entry);
+
+                if (!function.getBody().equals(bounded)) {
+                    function.setBody(bounded);
+                    flowBodiesSet++;
+                }
+            }
+            catch (CancelledException ex) { throw ex; }
+            catch (Exception ex) {
+                flowBodyFailures++;
+                if (failures.size() < 20)
+                    failures.add("Flow body " + entry + ": " + ex.getMessage());
             }
         }
 
@@ -322,12 +394,14 @@ public class Xbox360RetailKernelPdataAnalyzer extends AbstractAnalyzer {
         log.appendMsg(String.format(
             "Xbox 360 kernel 17559: .pdata functions created=%d, existing=%d, " +
             "skipped=%d, pending disassembly=%d, entry data conflicts=%d, " +
+            "flow bodies updated=%d, flow failures=%d, truncated flows=%d, " +
             "export labels=%d, leaf entrypoints added=%d, already marked=%d",
             created, alreadyPresent, skipped, deferredDisassembly, blockedByDefinedData,
+            flowBodiesSet, flowBodyFailures, flowBodyOutOfRange,
             newLabels, leafEntrypoints, previouslyMarkedEntrypoints));
         for (String failure : failures) log.appendMsg("  " + failure);
         if (failures.size() >= 20)
             log.appendMsg("  (Additional failures or pending entries suppressed; see counts above)");
-        return skipped == 0;
+        return skipped == 0 && flowBodyFailures == 0;
     }
 }
