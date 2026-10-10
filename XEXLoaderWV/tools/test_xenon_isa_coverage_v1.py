@@ -1018,8 +1018,8 @@ class XenonIsaInventoryTests(unittest.TestCase):
         }
         for family, (product, result) in families.items():
             bodies = re.findall(
-                r"(?m)^:" + family + r" [^\\n]+ is [^\\n]+\\n"
-                r"\\{\\n([\\s\\S]*?)\\n\\}", source)
+                r"(?m)^:" + family + r" [^\n]+ is [^\n]+\n"
+                r"\{\n([\s\S]*?)\n\}", source)
             self.assertEqual(len(bodies), 4, family)
             for body in bodies:
                 self.assertIn("lowerSafe:4 = 0xc3800000:4;", body)
