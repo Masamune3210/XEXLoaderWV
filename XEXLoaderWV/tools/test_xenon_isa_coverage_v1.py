@@ -38,6 +38,39 @@ class XenonIsaInventoryTests(unittest.TestCase):
                     (left["mask"] & right["mask"]), 0,
                     f"{left['mnemonic']} overlaps {right['mnemonic']}")
 
+    def test_numerical_pack_v3_has_independent_source_register_probes(self):
+        # Decoder fixture deliberately uses homogeneous fills. Numerical
+        # tests must not treat those samples as independent VA / VB sources.
+        source = (audit.ROOT.parent /
+                  "ghidra_scripts/AuditXenonSaturatingPackV3.java").read_text(
+                      encoding="utf-8")
+        self.assertIn("getDefaultOperandRepresentation(index)", source)
+        self.assertIn("currentProgram.getRegister(rendered)", source)
+        self.assertIn('rendered.matches("(?:vs|xv)[0-9]{1,3}")', source)
+        self.assertIn('requireVectorRegister("vs33")', source)
+        self.assertIn('requireVectorRegister("vs34")', source)
+        self.assertIn('requireVectorRegister("vs35")', source)
+        self.assertIn('emulator.writeMemory(address, syntheticBytes);', source)
+        self.assertIn('emulator.readMemory(address, 4)', source)
+        self.assertNotIn('currentProgram.getMemory().setBytes(', source)
+
+        rows = {row["mnemonic"]: row for row in self.vmx}
+        names = ("vpkshss128", "vpkshus128", "vpkswss128",
+                 "vpkswus128", "vpkuhus128", "vpkuwus128")
+        for name in names:
+            data = rows[name]
+            self.assertEqual(data["mask"], 0xfc0003d0)
+            original = data["value"] | (0x55555555 & ~data["mask"])
+            probe = ((original & 0xfc0003d0) |
+                     (1 << 21) | (2 << 16) | (3 << 11))
+            self.assertEqual(probe & data["mask"], data["value"], name)
+            self.assertEqual(
+                ((probe >> 21) & 31, (probe >> 16) & 31,
+                 (probe >> 11) & 31), (1, 2, 3), name)
+            self.assertNotEqual((probe >> 16) & 31, (probe >> 11) & 31)
+            self.assertNotEqual((probe >> 21) & 31, (probe >> 16) & 31)
+            self.assertNotEqual((probe >> 21) & 31, (probe >> 11) & 31)
+
     def test_sleigh_semantics_reject_cpp_style_comments(self):
         # C++ // comments inside Sleigh constructor actions are NOT valid.
         # A single such comment can make the parser reject all subsequent
