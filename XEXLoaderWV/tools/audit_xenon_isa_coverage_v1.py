@@ -19,6 +19,7 @@ EXTRA_INVENTORY = ROOT / "tools/data/xenia_xform_vector_opcode_inventory_2026100
 EXTRA_NAMES = frozenset(("lvlx", "lvrx", "stvlx", "stvrx",
                          "lvlxl", "lvrxl", "stvlxl", "stvrxl"))
 SLEIGH = ROOT / "data/languages/xenon_vector_v1.sinc"
+ADDITIONAL_SLEIGH = ROOT / "data/languages/xenon_vector_remaining_v1.sinc"
 OUTPUT = ROOT / "build/xenon-isa-audit"
 FILLS = (("zero", 0), ("ones", 0xFFFFFFFF),
          ("55", 0x55555555), ("aa", 0xAAAAAAAA))
@@ -86,6 +87,18 @@ def parse_xenia_lookup(source: str) -> dict[str, tuple[int, int, int]]:
     return found
 
 
+def read_sleigh_source(path: Path) -> str:
+    """Return the actual Xenon vector sources included by its .slaspec.
+
+    A standalone --sleigh override remains a standalone input; the default
+    Xenon source is the combination of original and supplementary includes.
+    """
+    source = path.read_text(encoding="utf-8")
+    if path.resolve() == SLEIGH.resolve():
+        source += "\n" + ADDITIONAL_SLEIGH.read_text(encoding="utf-8")
+    return source
+
+
 def parse_sleigh(source: str) -> tuple[dict[str, str], list[str]]:
     custom_ops = set(re.findall(r"(?m)^\s*define pcodeop\s+(\w+)\s*;", source))
     families: dict[str, set[str]] = {}
@@ -104,7 +117,7 @@ def parse_sleigh(source: str) -> tuple[dict[str, str], list[str]]:
 
 def write_results(rows: list[dict], sleigh_path: Path, inventory_path: Path,
                   output: Path) -> None:
-    source = sleigh_path.read_text(encoding="utf-8")
+    source = read_sleigh_source(sleigh_path)
     implemented, custom_ops = parse_sleigh(source)
     output.mkdir(parents=True, exist_ok=True)
     counts = Counter()
@@ -154,7 +167,7 @@ def write_results(rows: list[dict], sleigh_path: Path, inventory_path: Path,
         "Inventory SHA-256: " + tick + hashlib.sha256(
             inventory_path.read_bytes()).hexdigest() + tick,
         "SLEIGH SHA-256: " + tick + hashlib.sha256(
-            sleigh_path.read_bytes()).hexdigest() + tick,
+            source.encode("utf-8")).hexdigest() + tick,
         "",
         f"Families: **{len(rows)}**. Native p-code bodies: "
         f"**{counts['native-pcode']}**. Opaque custom userops: "
