@@ -56,16 +56,35 @@ define pcodeop xenonVupklsb128;
     xenonD = (xenonA << shift) | (xenonB >> back);
 }
 
+# Third source of vperm128 is a 3-bit VC selector (VR0..VR7).
+# VX128_2 places VC in bits 6..8; bit 10 is VA's high bit.
+# Bind actual register dependencies, not merely the encoded VC immediate.
+xenonC: "vs32" is BITS_6_10=0 { export vs32; }
+xenonC: "vs33" is BITS_6_10=1 { export vs33; }
+xenonC: "vs34" is BITS_6_10=2 { export vs34; }
+xenonC: "vs35" is BITS_6_10=3 { export vs35; }
+xenonC: "vs36" is BITS_6_10=4 { export vs36; }
+xenonC: "vs37" is BITS_6_10=5 { export vs37; }
+xenonC: "vs38" is BITS_6_10=6 { export vs38; }
+xenonC: "vs39" is BITS_6_10=7 { export vs39; }
+xenonC: "vs32" is BITS_6_10=16 { export vs32; }
+xenonC: "vs33" is BITS_6_10=17 { export vs33; }
+xenonC: "vs34" is BITS_6_10=18 { export vs34; }
+xenonC: "vs35" is BITS_6_10=19 { export vs35; }
+xenonC: "vs36" is BITS_6_10=20 { export vs36; }
+xenonC: "vs37" is BITS_6_10=21 { export vs37; }
+xenonC: "vs38" is BITS_6_10=22 { export vs38; }
+xenonC: "vs39" is BITS_6_10=23 { export vs39; }
 # vperm128: opaque; Xenia mask/value fc000210/14000000
-:vperm128 xenonD,xenonA,xenonB,BITS_6_10 is OP=5 & xenonD & xenonA & xenonB & BITS_6_10 & BITS_4_5=0 & BIT_9=0
+:vperm128 xenonD,xenonA,xenonB,xenonC is OP=5 & xenonD & xenonA & xenonB & xenonC & BITS_4_5=0 & BIT_9=0
 {
-    result:16 = xenonVperm128(xenonA, xenonB, BITS_6_10:4);
+    result:16 = xenonVperm128(xenonA, xenonB, xenonC);
     xenonD = result;
 }
 
-:vperm128 xenonD,xenonA,xenonB,BITS_6_10 is OP=5 & xenonD & xenonA & xenonB & BITS_6_10 & BITS_4_5=2 & BIT_9=0
+:vperm128 xenonD,xenonA,xenonB,xenonC is OP=5 & xenonD & xenonA & xenonB & xenonC & BITS_4_5=2 & BIT_9=0
 {
-    result:16 = xenonVperm128(xenonA, xenonB, BITS_6_10:4);
+    result:16 = xenonVperm128(xenonA, xenonB, xenonC);
     xenonD = result;
 }
 
@@ -84,7 +103,11 @@ define pcodeop xenonVupklsb128;
     a3:4 = xenonA(12);
     b3:4 = xenonB(12);
     r3:4 = a3 f+ b3;
-    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+    lane3:16 = zext(r3) << 96;
+    lane2:16 = zext(r2) << 64;
+    lane1:16 = zext(r1) << 32;
+    lane0:16 = zext(r0);
+    xenonD = lane3 | lane2 | lane1 | lane0;
 }
 
 :vaddfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=0 & BITS_4_5=3
@@ -101,7 +124,11 @@ define pcodeop xenonVupklsb128;
     a3:4 = xenonA(12);
     b3:4 = xenonB(12);
     r3:4 = a3 f+ b3;
-    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+    lane3:16 = zext(r3) << 96;
+    lane2:16 = zext(r2) << 64;
+    lane1:16 = zext(r1) << 32;
+    lane0:16 = zext(r0);
+    xenonD = lane3 | lane2 | lane1 | lane0;
 }
 
 :vaddfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=16 & BITS_4_5=1
@@ -118,7 +145,11 @@ define pcodeop xenonVupklsb128;
     a3:4 = xenonA(12);
     b3:4 = xenonB(12);
     r3:4 = a3 f+ b3;
-    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+    lane3:16 = zext(r3) << 96;
+    lane2:16 = zext(r2) << 64;
+    lane1:16 = zext(r1) << 32;
+    lane0:16 = zext(r0);
+    xenonD = lane3 | lane2 | lane1 | lane0;
 }
 
 :vaddfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=16 & BITS_4_5=3
@@ -135,7 +166,11 @@ define pcodeop xenonVupklsb128;
     a3:4 = xenonA(12);
     b3:4 = xenonB(12);
     r3:4 = a3 f+ b3;
-    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+    lane3:16 = zext(r3) << 96;
+    lane2:16 = zext(r2) << 64;
+    lane1:16 = zext(r1) << 32;
+    lane0:16 = zext(r0);
+    xenonD = lane3 | lane2 | lane1 | lane0;
 }
 
 # vsubfp128: native; Xenia mask/value fc0003d0/14000050
@@ -153,7 +188,11 @@ define pcodeop xenonVupklsb128;
     a3:4 = xenonA(12);
     b3:4 = xenonB(12);
     r3:4 = a3 f- b3;
-    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+    lane3:16 = zext(r3) << 96;
+    lane2:16 = zext(r2) << 64;
+    lane1:16 = zext(r1) << 32;
+    lane0:16 = zext(r0);
+    xenonD = lane3 | lane2 | lane1 | lane0;
 }
 
 :vsubfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=1 & BITS_4_5=3
@@ -170,7 +209,11 @@ define pcodeop xenonVupklsb128;
     a3:4 = xenonA(12);
     b3:4 = xenonB(12);
     r3:4 = a3 f- b3;
-    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+    lane3:16 = zext(r3) << 96;
+    lane2:16 = zext(r2) << 64;
+    lane1:16 = zext(r1) << 32;
+    lane0:16 = zext(r0);
+    xenonD = lane3 | lane2 | lane1 | lane0;
 }
 
 :vsubfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=17 & BITS_4_5=1
@@ -187,7 +230,11 @@ define pcodeop xenonVupklsb128;
     a3:4 = xenonA(12);
     b3:4 = xenonB(12);
     r3:4 = a3 f- b3;
-    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+    lane3:16 = zext(r3) << 96;
+    lane2:16 = zext(r2) << 64;
+    lane1:16 = zext(r1) << 32;
+    lane0:16 = zext(r0);
+    xenonD = lane3 | lane2 | lane1 | lane0;
 }
 
 :vsubfp128 xenonD,xenonA,xenonB is OP=5 & xenonD & xenonA & xenonB & BITS_6_10=17 & BITS_4_5=3
@@ -204,7 +251,11 @@ define pcodeop xenonVupklsb128;
     a3:4 = xenonA(12);
     b3:4 = xenonB(12);
     r3:4 = a3 f- b3;
-    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+    lane3:16 = zext(r3) << 96;
+    lane2:16 = zext(r2) << 64;
+    lane1:16 = zext(r1) << 32;
+    lane0:16 = zext(r0);
+    xenonD = lane3 | lane2 | lane1 | lane0;
 }
 
 # vmaddfp128: opaque; Xenia mask/value fc0003d0/140000d0
@@ -745,7 +796,11 @@ define pcodeop xenonVupklsb128;
     shift:4 = (3 - lane) * 32;
     shifted:16 = xenonB >> shift;
     word:4 = shifted(0);
-    xenonD = (zext(word) << 96) | (zext(word) << 64) | (zext(word) << 32) | zext(word);
+    lane3:16 = zext(word) << 96;
+    lane2:16 = zext(word) << 64;
+    lane1:16 = zext(word) << 32;
+    lane0:16 = zext(word);
+    xenonD = lane3 | lane2 | lane1 | lane0;
 }
 
 :vspltw128 xenonD,xenonB,A_BITS is OP=6 & xenonD & xenonB & A_BITS & XOP_3_10=231 & BITS_0_1
@@ -754,7 +809,11 @@ define pcodeop xenonVupklsb128;
     shift:4 = (3 - lane) * 32;
     shifted:16 = xenonB >> shift;
     word:4 = shifted(0);
-    xenonD = (zext(word) << 96) | (zext(word) << 64) | (zext(word) << 32) | zext(word);
+    lane3:16 = zext(word) << 96;
+    lane2:16 = zext(word) << 64;
+    lane1:16 = zext(word) << 32;
+    lane0:16 = zext(word);
+    xenonD = lane3 | lane2 | lane1 | lane0;
 }
 
 # vspltisw128: native; Xenia mask/value fc0007f0/18000770
@@ -762,14 +821,22 @@ define pcodeop xenonVupklsb128;
 {
     imm:4 = A_BITS:4;
     word:4 = (imm << 27) s>> 27;
-    xenonD = (zext(word) << 96) | (zext(word) << 64) | (zext(word) << 32) | zext(word);
+    lane3:16 = zext(word) << 96;
+    lane2:16 = zext(word) << 64;
+    lane1:16 = zext(word) << 32;
+    lane0:16 = zext(word);
+    xenonD = lane3 | lane2 | lane1 | lane0;
 }
 
 :vspltisw128 xenonD,A_BITS is OP=6 & xenonD & A_BITS & XOP_3_10=239 & BITS_0_1
 {
     imm:4 = A_BITS:4;
     word:4 = (imm << 27) s>> 27;
-    xenonD = (zext(word) << 96) | (zext(word) << 64) | (zext(word) << 32) | zext(word);
+    lane3:16 = zext(word) << 96;
+    lane2:16 = zext(word) << 64;
+    lane1:16 = zext(word) << 32;
+    lane0:16 = zext(word);
+    xenonD = lane3 | lane2 | lane1 | lane0;
 }
 
 # vcmpeqfp128: opaque; Xenia mask/value fc000390/18000000
@@ -1040,7 +1107,11 @@ define pcodeop xenonVupklsb128;
     sh3:4 = b3 & 31;
     back3:4 = (32 - sh3) & 31;
     r3:4 = (a3 << sh3) | (a3 >> back3);
-    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+    lane3:16 = zext(r3) << 96;
+    lane2:16 = zext(r2) << 64;
+    lane1:16 = zext(r1) << 32;
+    lane0:16 = zext(r0);
+    xenonD = lane3 | lane2 | lane1 | lane0;
 }
 
 :vrlw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=1 & BITS_4_5=3
@@ -1065,7 +1136,11 @@ define pcodeop xenonVupklsb128;
     sh3:4 = b3 & 31;
     back3:4 = (32 - sh3) & 31;
     r3:4 = (a3 << sh3) | (a3 >> back3);
-    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+    lane3:16 = zext(r3) << 96;
+    lane2:16 = zext(r2) << 64;
+    lane1:16 = zext(r1) << 32;
+    lane0:16 = zext(r0);
+    xenonD = lane3 | lane2 | lane1 | lane0;
 }
 
 :vrlw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=17 & BITS_4_5=1
@@ -1090,7 +1165,11 @@ define pcodeop xenonVupklsb128;
     sh3:4 = b3 & 31;
     back3:4 = (32 - sh3) & 31;
     r3:4 = (a3 << sh3) | (a3 >> back3);
-    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+    lane3:16 = zext(r3) << 96;
+    lane2:16 = zext(r2) << 64;
+    lane1:16 = zext(r1) << 32;
+    lane0:16 = zext(r0);
+    xenonD = lane3 | lane2 | lane1 | lane0;
 }
 
 :vrlw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=17 & BITS_4_5=3
@@ -1115,7 +1194,11 @@ define pcodeop xenonVupklsb128;
     sh3:4 = b3 & 31;
     back3:4 = (32 - sh3) & 31;
     r3:4 = (a3 << sh3) | (a3 >> back3);
-    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+    lane3:16 = zext(r3) << 96;
+    lane2:16 = zext(r2) << 64;
+    lane1:16 = zext(r1) << 32;
+    lane0:16 = zext(r0);
+    xenonD = lane3 | lane2 | lane1 | lane0;
 }
 
 # vslw128: native; Xenia mask/value fc0003d0/180000d0
@@ -1137,7 +1220,11 @@ define pcodeop xenonVupklsb128;
     b3:4 = xenonB(12);
     sh3:4 = b3 & 31;
     r3:4 = a3 << sh3;
-    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+    lane3:16 = zext(r3) << 96;
+    lane2:16 = zext(r2) << 64;
+    lane1:16 = zext(r1) << 32;
+    lane0:16 = zext(r0);
+    xenonD = lane3 | lane2 | lane1 | lane0;
 }
 
 :vslw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=3 & BITS_4_5=3
@@ -1158,7 +1245,11 @@ define pcodeop xenonVupklsb128;
     b3:4 = xenonB(12);
     sh3:4 = b3 & 31;
     r3:4 = a3 << sh3;
-    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+    lane3:16 = zext(r3) << 96;
+    lane2:16 = zext(r2) << 64;
+    lane1:16 = zext(r1) << 32;
+    lane0:16 = zext(r0);
+    xenonD = lane3 | lane2 | lane1 | lane0;
 }
 
 :vslw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=19 & BITS_4_5=1
@@ -1179,7 +1270,11 @@ define pcodeop xenonVupklsb128;
     b3:4 = xenonB(12);
     sh3:4 = b3 & 31;
     r3:4 = a3 << sh3;
-    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+    lane3:16 = zext(r3) << 96;
+    lane2:16 = zext(r2) << 64;
+    lane1:16 = zext(r1) << 32;
+    lane0:16 = zext(r0);
+    xenonD = lane3 | lane2 | lane1 | lane0;
 }
 
 :vslw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=19 & BITS_4_5=3
@@ -1200,7 +1295,11 @@ define pcodeop xenonVupklsb128;
     b3:4 = xenonB(12);
     sh3:4 = b3 & 31;
     r3:4 = a3 << sh3;
-    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+    lane3:16 = zext(r3) << 96;
+    lane2:16 = zext(r2) << 64;
+    lane1:16 = zext(r1) << 32;
+    lane0:16 = zext(r0);
+    xenonD = lane3 | lane2 | lane1 | lane0;
 }
 
 # vsraw128: native; Xenia mask/value fc0003d0/18000150
@@ -1222,7 +1321,11 @@ define pcodeop xenonVupklsb128;
     b3:4 = xenonB(12);
     sh3:4 = b3 & 31;
     r3:4 = a3 s>> sh3;
-    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+    lane3:16 = zext(r3) << 96;
+    lane2:16 = zext(r2) << 64;
+    lane1:16 = zext(r1) << 32;
+    lane0:16 = zext(r0);
+    xenonD = lane3 | lane2 | lane1 | lane0;
 }
 
 :vsraw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=5 & BITS_4_5=3
@@ -1243,7 +1346,11 @@ define pcodeop xenonVupklsb128;
     b3:4 = xenonB(12);
     sh3:4 = b3 & 31;
     r3:4 = a3 s>> sh3;
-    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+    lane3:16 = zext(r3) << 96;
+    lane2:16 = zext(r2) << 64;
+    lane1:16 = zext(r1) << 32;
+    lane0:16 = zext(r0);
+    xenonD = lane3 | lane2 | lane1 | lane0;
 }
 
 :vsraw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=21 & BITS_4_5=1
@@ -1264,7 +1371,11 @@ define pcodeop xenonVupklsb128;
     b3:4 = xenonB(12);
     sh3:4 = b3 & 31;
     r3:4 = a3 s>> sh3;
-    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+    lane3:16 = zext(r3) << 96;
+    lane2:16 = zext(r2) << 64;
+    lane1:16 = zext(r1) << 32;
+    lane0:16 = zext(r0);
+    xenonD = lane3 | lane2 | lane1 | lane0;
 }
 
 :vsraw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=21 & BITS_4_5=3
@@ -1285,7 +1396,11 @@ define pcodeop xenonVupklsb128;
     b3:4 = xenonB(12);
     sh3:4 = b3 & 31;
     r3:4 = a3 s>> sh3;
-    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+    lane3:16 = zext(r3) << 96;
+    lane2:16 = zext(r2) << 64;
+    lane1:16 = zext(r1) << 32;
+    lane0:16 = zext(r0);
+    xenonD = lane3 | lane2 | lane1 | lane0;
 }
 
 # vsrw128: native; Xenia mask/value fc0003d0/180001d0
@@ -1307,7 +1422,11 @@ define pcodeop xenonVupklsb128;
     b3:4 = xenonB(12);
     sh3:4 = b3 & 31;
     r3:4 = a3 >> sh3;
-    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+    lane3:16 = zext(r3) << 96;
+    lane2:16 = zext(r2) << 64;
+    lane1:16 = zext(r1) << 32;
+    lane0:16 = zext(r0);
+    xenonD = lane3 | lane2 | lane1 | lane0;
 }
 
 :vsrw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=7 & BITS_4_5=3
@@ -1328,7 +1447,11 @@ define pcodeop xenonVupklsb128;
     b3:4 = xenonB(12);
     sh3:4 = b3 & 31;
     r3:4 = a3 >> sh3;
-    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+    lane3:16 = zext(r3) << 96;
+    lane2:16 = zext(r2) << 64;
+    lane1:16 = zext(r1) << 32;
+    lane0:16 = zext(r0);
+    xenonD = lane3 | lane2 | lane1 | lane0;
 }
 
 :vsrw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=23 & BITS_4_5=1
@@ -1349,7 +1472,11 @@ define pcodeop xenonVupklsb128;
     b3:4 = xenonB(12);
     sh3:4 = b3 & 31;
     r3:4 = a3 >> sh3;
-    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+    lane3:16 = zext(r3) << 96;
+    lane2:16 = zext(r2) << 64;
+    lane1:16 = zext(r1) << 32;
+    lane0:16 = zext(r0);
+    xenonD = lane3 | lane2 | lane1 | lane0;
 }
 
 :vsrw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=23 & BITS_4_5=3
@@ -1370,7 +1497,11 @@ define pcodeop xenonVupklsb128;
     b3:4 = xenonB(12);
     sh3:4 = b3 & 31;
     r3:4 = a3 >> sh3;
-    xenonD = (zext(r3) << 96) | (zext(r2) << 64) | (zext(r1) << 32) | zext(r0);
+    lane3:16 = zext(r3) << 96;
+    lane2:16 = zext(r2) << 64;
+    lane1:16 = zext(r1) << 32;
+    lane0:16 = zext(r0);
+    xenonD = lane3 | lane2 | lane1 | lane0;
 }
 
 # vmaxfp128: opaque; Xenia mask/value fc0003d0/18000280
