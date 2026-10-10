@@ -640,3 +640,106 @@ define pcodeop xenonVrlimi128;
     out:16 = xenonVrlimi128(xenonD, xenonB, A_BITS:4, 3:4);
     xenonD = out;
 }
+
+# VX128 word merges, observed at 800BD280 and 800BD35C in retail
+# 17559 and verified against Xenia's OP=6 primary opcode decoder.
+# OP6 bits 22..25 encode 12=vmrghw128 and 13=vmrglw128, bit27=0.
+# Other bits carry the extended A register and do not change the opcode.
+# The four instruction patterns per family cover all VA high-bit values.
+# Word lanes are ordered from MSB (x) to LSB (w), as in Xenia.
+:vmrghw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=12 & BITS_4_5=0
+{
+    aFirst:4 = xenonA(12);
+    bFirst:4 = xenonB(12);
+    aSecond:4 = xenonA(8);
+    bSecond:4 = xenonB(8);
+    first:16 = zext(aFirst) << 96;
+    second:16 = zext(bFirst) << 64;
+    third:16 = zext(aSecond) << 32;
+    fourth:16 = zext(bSecond);
+    xenonD = first | second | third | fourth;
+}
+:vmrghw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=12 & BITS_4_5=2
+{
+    aFirst:4 = xenonA(12);
+    bFirst:4 = xenonB(12);
+    aSecond:4 = xenonA(8);
+    bSecond:4 = xenonB(8);
+    first:16 = zext(aFirst) << 96;
+    second:16 = zext(bFirst) << 64;
+    third:16 = zext(aSecond) << 32;
+    fourth:16 = zext(bSecond);
+    xenonD = first | second | third | fourth;
+}
+:vmrghw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=28 & BITS_4_5=0
+{
+    aFirst:4 = xenonA(12);
+    bFirst:4 = xenonB(12);
+    aSecond:4 = xenonA(8);
+    bSecond:4 = xenonB(8);
+    first:16 = zext(aFirst) << 96;
+    second:16 = zext(bFirst) << 64;
+    third:16 = zext(aSecond) << 32;
+    fourth:16 = zext(bSecond);
+    xenonD = first | second | third | fourth;
+}
+:vmrghw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=28 & BITS_4_5=2
+{
+    aFirst:4 = xenonA(12);
+    bFirst:4 = xenonB(12);
+    aSecond:4 = xenonA(8);
+    bSecond:4 = xenonB(8);
+    first:16 = zext(aFirst) << 96;
+    second:16 = zext(bFirst) << 64;
+    third:16 = zext(aSecond) << 32;
+    fourth:16 = zext(bSecond);
+    xenonD = first | second | third | fourth;
+}
+:vmrglw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=13 & BITS_4_5=0
+{
+    aFirst:4 = xenonA(4);
+    bFirst:4 = xenonB(4);
+    aSecond:4 = xenonA(0);
+    bSecond:4 = xenonB(0);
+    first:16 = zext(aFirst) << 96;
+    second:16 = zext(bFirst) << 64;
+    third:16 = zext(aSecond) << 32;
+    fourth:16 = zext(bSecond);
+    xenonD = first | second | third | fourth;
+}
+:vmrglw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=13 & BITS_4_5=2
+{
+    aFirst:4 = xenonA(4);
+    bFirst:4 = xenonB(4);
+    aSecond:4 = xenonA(0);
+    bSecond:4 = xenonB(0);
+    first:16 = zext(aFirst) << 96;
+    second:16 = zext(bFirst) << 64;
+    third:16 = zext(aSecond) << 32;
+    fourth:16 = zext(bSecond);
+    xenonD = first | second | third | fourth;
+}
+:vmrglw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=29 & BITS_4_5=0
+{
+    aFirst:4 = xenonA(4);
+    bFirst:4 = xenonB(4);
+    aSecond:4 = xenonA(0);
+    bSecond:4 = xenonB(0);
+    first:16 = zext(aFirst) << 96;
+    second:16 = zext(bFirst) << 64;
+    third:16 = zext(aSecond) << 32;
+    fourth:16 = zext(bSecond);
+    xenonD = first | second | third | fourth;
+}
+:vmrglw128 xenonD,xenonA,xenonB is OP=6 & xenonD & xenonA & xenonB & BITS_6_10=29 & BITS_4_5=2
+{
+    aFirst:4 = xenonA(4);
+    bFirst:4 = xenonB(4);
+    aSecond:4 = xenonA(0);
+    bSecond:4 = xenonB(0);
+    first:16 = zext(aFirst) << 96;
+    second:16 = zext(bFirst) << 64;
+    third:16 = zext(aSecond) << 32;
+    fourth:16 = zext(bSecond);
+    xenonD = first | second | third | fourth;
+}
