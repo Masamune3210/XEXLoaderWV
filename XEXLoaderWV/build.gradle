@@ -94,8 +94,8 @@ tasks.register("prepareXenonIsa") {
     outputs.file(xenonLegacyIsa)
     doLast {
         String src = xenonStockIsa.getText("UTF-8")
-        String dcbzOld = ":dcbz A,B is $(NOTVLE) & OP=31 & A & B & XOP_1_10=1014"
-        String dcbzNew = ":dcbz A,B is $(NOTVLE) & OP=31 & BITS_21_25=0 & A & B & XOP_1_10=1014"
+        String dcbzOld = ':dcbz A,B is $(NOTVLE) & OP=31 & A & B & XOP_1_10=1014'
+        String dcbzNew = ':dcbz A,B is $(NOTVLE) & OP=31 & BITS_21_25=0 & A & B & XOP_1_10=1014'
         if (src.indexOf(dcbzOld) < 0 ||
                 src.indexOf(dcbzOld) != src.lastIndexOf(dcbzOld) ||
                 !src.contains("define pcodeop stvepxOp;") ||
