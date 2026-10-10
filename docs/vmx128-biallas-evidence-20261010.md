@@ -1,3 +1,10 @@
+## Adopted project reference policy (2026-10-10)
+
+**Decision:** Biallas's [2006 VMX128 reference](https://biallas.net/doc/vmx128/vmx128.txt), interpreted with the already known corrections and additions ([Xenia PR #2331](https://github.com/xenia-project/xenia/pull/2331), [PR #2372](https://github.com/xenia-project/xenia/pull/2372)), is the **working authority for Xenon VMX128 instruction encodings, register layouts and documented mnemonics until contrary evidence is found**. The project's default is to implement the corrected reference rather than demand independent verification of each established encoding. In a discrepancy, document the observed counterexample and investigate that specific instruction.
+
+The original document's own admission of incomplete semantics still matters for areas it does not describe: precise floating-point rounding/estimates, saturating arithmetic/VSCR, CR6 updates, D3D packing, and other behavior must not be invented. Xenia, powerpc-rs and XenonRecomp remain useful sources for such gaps, not replacement authorities over corrected opcode diagrams. **Accepting the specification as a baseline does not mean that our SLEIGH or p-code translation has been tested.**
+
+Concrete accepted corrections currently in scope: `stvewx128`, corrected store-operand labeling, `vandc128`, `vrlw128`, `vsro128`, `vmsum3fp128` and `vmsum4fp128` name typos, and missing `vupkhsh128` (`0x180007A0`) and `vupklsh128` (`0x180007E0`). The last two already have disjoint opaque SLEIGH constructors and appended fixture coverage. Historical cautionary notes below describe earlier research state and must be read in light of this later policy.
 ## Implemented decoding correction (2026-10-10)
 
 - **Implemented in the existing `fix/import-thunk-modeling-20261009` branch**: explicit `vupkhsh128` / `vupklsh128` constructors with opcode words `0x180007A0` / `0x180007E0` and `0xFC1F07F0` mask. These match the signed-halfword aliases associated with VA128=0x60. P-code has separate result-producing opaque `xenonVupkhsh128` and `xenonVupklsh128` operations consuming VB and writing VD; no unsupported lane sign-extension arithmetic was invented.
