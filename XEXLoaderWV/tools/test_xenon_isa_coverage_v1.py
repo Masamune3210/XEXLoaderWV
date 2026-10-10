@@ -883,6 +883,8 @@ class XenonIsaInventoryTests(unittest.TestCase):
                       script)
         self.assertIn("runShuffles(manifest, base);", script)
         self.assertIn("runDotProducts(manifest, base);", script)
+        self.assertIn("runWholeVectorShifts(manifest, base);", script)
+        self.assertIn("XENON WHOLE-VECTOR SHIFT NATIVE NUMERICAL P-CODE AUDIT", script)
         self.assertIn("XENON FP DOT PRODUCT NATIVE NUMERICAL P-CODE AUDIT", script)
         self.assertIn("import ghidra.app.emulator.DefaultEmulator;", script)
         self.assertIn('pattern == 0 && selector == 0;', script)
@@ -1041,6 +1043,96 @@ class XenonIsaInventoryTests(unittest.TestCase):
                         struct.unpack(">f", result[:4])[0], float(dot))
                     count += 1
         self.assertEqual(count, 48)
+
+    def test_native_whole_vector_shift_numeric_matrix(self):
+        # Exact 128-bit native shifts. Only control bits 3..6 matter;
+        # bit 7 and low three bits must be ignored.
+        import re
+
+        script = (audit.ROOT.parent / "ghidra_scripts" /
+                  "AuditXenonNumericalPcode.java").read_text(
+                      encoding="utf-8")
+        source = audit.ADDITIONAL_SLEIGH.read_text(encoding="utf-8")
+        operations = (
+            ("vslo128", 0x14000390, "<<"),
+            ("vsro128", 0x140003d0, ">>"),
+        )
+        self.assertIn("runWholeVectorShifts(manifest, base);", script)
+        self.assertIn(
+            'recordSuite("WHOLE-SHIFT", passed, failed, problems)',
+            script)
+        self.assertIn('if ((encoded & 0x78) != (count * 8))', script)
+        self.assertIn('bytesB[15] = (byte) ((count << 3)', script)
+        self.assertIn('(pattern == 0 ? 0x05 : 0x87)', script)
+        self.assertIn('!fixtureMatches(address, originalWord)', script)
+        self.assertIn('emulator.writeMemory(address, opcode);', script)
+        self.assertIn('emulator.readMemory(address, 4)', script)
+        self.assertIn('emulator.readRegister(aReg)', script)
+        self.assertIn('emulator.readRegister(bReg)', script)
+        self.assertNotIn('currentProgram.getMemory().setBytes(', script)
+
+        selectors = re.findall(
+            r'new WholeVectorShift\("([^"]+)",\s*(0x[0-9a-fA-F]+)L,'
+            r'\s*(true|false)\)', script)
+        self.assertEqual(
+            selectors,
+            [("vslo128", "0x14000390", "true"),
+             ("vsro128", "0x140003d0", "false")])
+        total = 0
+        mask128 = (1 << 128) - 1
+        for name, selector, direction in operations:
+            self.assertEqual(
+                len(re.findall(r"(?m)^:" + name + r" ", source)), 4)
+            bodies = re.findall(
+                r"(?m)^:" + name + r" [^\n]+\n"
+                r"\{\n([\s\S]*?)\n\}", source)
+            for body in bodies:
+                self.assertIn("last:1 = xenonB(0);", body)
+                self.assertIn("shift:4 = zext(last & 0x78);", body)
+                self.assertIn("xenonD = xenonA " + direction +
+                              " shift;", body)
+
+            for variant in range(4):
+                mbh, oe = variant & 1, variant >> 1
+                word = (selector | (1 << 21) | (2 << 16) |
+                        (3 << 11) | (mbh << 5) | (oe << 10))
+                self.assertEqual(word & 0xfc0003d0, selector)
+                self.assertEqual((word >> 5) & 1, mbh)
+                self.assertEqual((word >> 10) & 1, oe)
+                for pattern in range(2):
+                    if pattern == 0:
+                        aa = bytes((0x10 + i) & 255 for i in range(16))
+                        bb = bytearray((0xa0 - i) & 255
+                                       for i in range(16))
+                    else:
+                        aa = bytes((0x80 + i * 7) & 255 for i in range(16))
+                        bb = bytearray((0x05 + i * 11) & 255
+                                       for i in range(16))
+                    a = int.from_bytes(aa, "big")
+                    for count in range(16):
+                        control = (count << 3) | (
+                            0x05 if pattern == 0 else 0x87)
+                        bb[-1] = control
+                        self.assertEqual(control & 0x78, count * 8)
+                        self.assertNotEqual(control & 7, 0)
+                        if pattern:
+                            self.assertEqual(control & 0x80, 0x80)
+                        self.assertEqual(len(bb), 16)
+                        b = int.from_bytes(bb, "big")
+                        shift = b & 0x78
+                        self.assertEqual(shift, count * 8)
+                        result = ((a << shift) & mask128
+                                  if direction == "<<" else a >> shift)
+                        self.assertTrue(0 <= result <= mask128)
+                        # Compare bytewise oracles independent of BigInteger.
+                        nbytes = count
+                        expected = (aa[nbytes:] +
+                                    bytes(nbytes) if direction == "<<"
+                                    else bytes(nbytes) + aa[:16-nbytes])
+                        self.assertEqual(
+                            result.to_bytes(16, "big"), expected)
+                        total += 1
+        self.assertEqual(total, 256)
 
     def test_unified_numerical_script_is_only_entrypoint(self):
         from pathlib import Path
