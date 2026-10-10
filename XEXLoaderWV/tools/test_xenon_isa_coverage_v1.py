@@ -172,8 +172,17 @@ class XenonIsaInventoryTests(unittest.TestCase):
         self.assertIn("fixtureMatches(address, word)", source)
         self.assertNotIn("currentProgram.getMemory().setBytes(", source)
         self.assertIn('vectorRegister("vs33")', source)
-        self.assertIn('vectorRegister("vs34")', source)
         self.assertIn('vectorRegister("vs35")', source)
+        self.assertIn(
+            'Register a = vectorRegister(guardedFpSourceAName(variant));',
+            source)
+        self.assertIn(
+            'String[] names = { "vs34", "xv34", "xv66", "xv98" };',
+            source)
+        self.assertIn("((word >>> 5) & 1) != (variant & 1)", source)
+        self.assertIn(
+            "((word >>> 10) & 1) != ((variant >>> 1) & 1)",
+            source)
         self.assertIn("emulator.readRegister(a)", source)
         self.assertIn("emulator.readRegister(b)", source)
 
@@ -191,6 +200,17 @@ class XenonIsaInventoryTests(unittest.TestCase):
                                   (word >> 16) & 31,
                                   (word >> 11) & 31),
                                  (1, 2, 3))
+                self.assertEqual((word >> 5) & 1, variant & 1)
+                self.assertEqual((word >> 10) & 1, (variant >> 1) & 1)
+                # These are genuine VX128 VA register extension bits.
+                expected_a = ("vs34", "xv34", "xv66", "xv98")[variant]
+                mbh, oe = variant & 1, (variant >> 1) & 1
+                definition = (
+                    f'xenonA: "{expected_a}" is vrAR=2 & '
+                    f'MBH={mbh} & OE={oe} '
+                    f'{{ export {expected_a}; }}')
+                self.assertIn(
+                    definition, audit.SLEIGH.read_text(encoding="utf-8"))
             for label, a_string, b_string, d_string in patterns:
                 a, b, d = ([
                     int(x.strip()) for x in values.split(",")]
