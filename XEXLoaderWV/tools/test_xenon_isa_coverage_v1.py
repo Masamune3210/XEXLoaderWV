@@ -109,6 +109,22 @@ class XenonIsaInventoryTests(unittest.TestCase):
             self.assertIn(
                 "String " + symbol + " = ':dcbz A,B is $(NOTVLE)", gradle)
 
+    def test_copied_isa_includes_and_128bit_zero_widths(self):
+        # The copied stock ppc_isa.sinc cannot resolve a local vsx.sinc.
+        # Resolve it using the same -dPowerPC argument as other stock files.
+        gradle = (audit.ROOT / "build.gradle").read_text(encoding="utf-8")
+        self.assertIn("""String stockVsxInclude = '@include "vsx.sinc"'""",
+                      gradle)
+        self.assertIn(
+            """String resolvedVsxInclude = '@include "$(PowerPC)/data/languages/vsx.sinc"'""",
+            gradle)
+        self.assertIn("src = src.replace(stockVsxInclude, resolvedVsxInclude)",
+                      gradle)
+        sleigh = audit.SLEIGH.read_text(encoding="utf-8")
+        self.assertNotIn("0:16", sleigh,
+                         "SLEIGH integer constants cannot be 16 bytes wide")
+        self.assertIn("zeroVec:16 = zext(0:8);", sleigh)
+
     def test_fixture_generation(self):
         with tempfile.TemporaryDirectory() as folder:
             out = Path(folder)
