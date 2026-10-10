@@ -321,6 +321,7 @@ class XenonIsaInventoryTests(unittest.TestCase):
         for filename in (
             "xenon_vector_v1.sinc",
             "xenon_vector_remaining_v1.sinc",
+            "xenon_64_be.slaspec",
             "xenia_vmx128_opcode_inventory_20261009.tsv",
             "xenia_xform_vector_opcode_inventory_20261009.tsv",
         ):
@@ -363,6 +364,9 @@ class XenonIsaInventoryTests(unittest.TestCase):
             self.assertIn("Extra inventory SHA-256: " + chr(96) +
                           hashlib.sha256(
                               audit.EXTRA_INVENTORY.read_bytes()).hexdigest(),
+                          report)
+            self.assertIn("Language specification SHA-256: " + chr(96) +
+                          hashlib.sha256((audit.ROOT / "data/languages/xenon_64_be.slaspec").read_bytes()).hexdigest(),
                           report)
             self.assertIn("Generator SHA-256: " + chr(96) +
                           hashlib.sha256(Path(audit.__file__).read_bytes()).hexdigest(),
