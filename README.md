@@ -174,3 +174,42 @@ The remaining 16 opcode bookmarks reflect missing stock PowerPC language
 constructors; fixing those requires a compatible SLEIGH processor language,
 not manipulating the PE loader or concealing errors. The current working
 language and successful .pdata state remain unchanged.
+
+
+### Experimental Xenon PowerPC language (VMX128 groundwork)
+
+The default Ghidra `PowerPC:BE:64:A2ALT-32addr` cannot decode several actual
+Xbox 360 vector instructions. The extension now contains an **experimental
+separate language**, `PowerPC:BE:64:XENON-32addr`, compiled from
+`data/languages/xenon_64_be.slaspec` and `xenon_vector_v1.sinc`.
+The compiler's `-dPowerPC` option imports the installed Ghidra 12.1.3
+stock processor sources. **Do not overwrite Ghidra's stock PowerPC .sla or
+switch the language of an existing verified kernel Program to test it.**
+
+The initial Xenon variant adds 128 independently addressable vector registers
+and instruction constructors for `lvx128`, `lvlx`, `lvrx`, and
+`vupkd3d128`. The indexed loads include vector p-code; D3D unpack uses an
+explicit **opaque userop** because its per-format numeric behavior is not
+yet modeled. This is a decoder prototype, **not complete Xenon compatibility**.
+
+The verified 17559 kernel contains **422 32-bit words** matching those four
+patterns in executable `.text` (269 `lvx128`, 127 `lvlx`, 15 `lvrx`,
+11 `vupkd3d128`); all 16 current vector-error bookmarks are included.
+
+**Safe validation workflow:** build the extension with Ghidra 12.1.3,
+then preserve your existing `A2ALT` kernel database. On a **separate**
+fresh import using the specialized kernel memory-PE loader, select the
+experimental `XENON-32addr` language choice explicitly; the original
+`A2ALT-32addr` language remains the preferred default. After auto-analysis
+run `ghidra_scripts/VerifyXboxKrnl17559XenonDecodeV1.java` and verify
+16/16 bookmark addresses decode. Do not delete existing bookmarks merely
+because a Ghidra language is now available. Compare the new Program's
+function and export coverage with the proven kernel database.
+
+For independent opcode-pattern validation on the verified source image, run
+`python tools/validate_xenon_sleigh_patterns_v1.py xboxkrnl.exe`.
+
+**Status:** SLEIGH source and loader selection integration are committed;
+the language **has not been compiled or runtime-tested** against the user's
+Ghidra installation. Report any `SleighCompile` errors so source can be
+fixed before using the experimental variant.
