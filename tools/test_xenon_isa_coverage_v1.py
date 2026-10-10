@@ -66,7 +66,7 @@ class XenonIsaInventoryTests(unittest.TestCase):
                 continue
             rules = re.findall(
                 r"(?m)^:" + re.escape(row["mnemonic"]) +
-                r" [^\\n]+ is ([^\\n]+)", source)
+                r" [^\n]+ is ([^\n]+)", source)
             self.assertTrue(rules, row["mnemonic"])
             for fill in (0, 0xFFFFFFFF, 0x55555555, 0xAAAAAAAA):
                 word = row["value"] | (fill & (~row["mask"] & 0xFFFFFFFF))
