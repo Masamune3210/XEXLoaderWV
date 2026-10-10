@@ -562,13 +562,14 @@ public class Xbox360RetailKernelPdataAnalyzer extends AbstractAnalyzer {
         }
 
         log.appendMsg(String.format(
-            "Xbox 360 kernel 17559: .pdata functions created=%d, existing=%d, " +
+            "Xbox 360 kernel 17559: language=%s, .pdata functions created=%d, existing=%d, " +
             "skipped=%d, pending disassembly=%d, entry data conflicts=%d, " +
             "flow bodies updated=%d, flow failures=%d, truncated flows=%d, " +
             "export labels=%d, leaf entrypoints added=%d, already marked=%d, " +
             "special export functions created=%d, special failures=%d, " +
             "bugcheck noreturn set=%d, fatal call overrides=%d, " +
             "stale padding bookmarks removed=%d, fatal-flow failures=%d",
+            program.getLanguageID().getIdAsString(),
             created, alreadyPresent, skipped, deferredDisassembly, blockedByDefinedData,
             flowBodiesSet, flowBodyFailures, flowBodyOutOfRange,
             newLabels, leafEntrypoints, previouslyMarkedEntrypoints,
