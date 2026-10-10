@@ -124,7 +124,7 @@ tasks.register("prepareXenonIsa") {
             throw new GradleException("Xenon ISA collision filtering failed")
         }
         xenonLegacyIsa.setText(
-            "# Generated from installed Ghidra ppc_isa.sinc; do not edit.\\n" +
+            "# Generated from installed Ghidra ppc_isa.sinc; do not edit.\n" +
             src, "UTF-8")
     }
 }
