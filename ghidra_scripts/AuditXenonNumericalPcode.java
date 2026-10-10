@@ -578,9 +578,7 @@ public class AuditXenonNumericalPcode extends GhidraScript {
             + "the Program fixture bytes are unchanged.");
         println("Numerical instruction cases only, not Xenon hardware equivalence.");
         println("");
-        println("UNRESOLVED / INCORRECT STATES (" + problems.size() + ")");
-        if (problems.isEmpty()) println("None");
-        for (String problem : problems) println(problem);
+        println("Unresolved details follow in the combined result below.");
         recordSuite("PACK", passed, failed, problems);
     }
 
@@ -878,9 +876,7 @@ public class AuditXenonNumericalPcode extends GhidraScript {
             "FP behavior remain unverified.");
         println("Original decoder fixture Program bytes were not changed.");
         println("");
-        println("UNRESOLVED / INCORRECT STATES (" + problems.size() + ")");
-        if (problems.isEmpty()) println("None");
-        for (String problem : problems) println(problem);
+        println("Unresolved details follow in the combined result below.");
         recordSuite("GUARDED-FP", passed, failed, problems);
     }
 
@@ -981,9 +977,7 @@ public class AuditXenonNumericalPcode extends GhidraScript {
         println("Original 344-word fixture Program bytes were not modified.");
         println("Userop formats 3,5,6,7 not numerically tested.");
         println("");
-        println("UNRESOLVED / INCORRECT STATES (" + problems.size() + ")");
-        if (problems.isEmpty()) println("None");
-        for (String problem : problems) println(problem);
+        println("Unresolved details follow in the combined result below.");
         recordSuite("D3D", passed, failed, problems);
 
         // One script entry point and exactly one manifest selection.
