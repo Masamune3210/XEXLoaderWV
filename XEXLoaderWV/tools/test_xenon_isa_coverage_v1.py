@@ -125,6 +125,30 @@ class XenonIsaInventoryTests(unittest.TestCase):
                          "SLEIGH integer constants cannot be 16 bytes wide")
         self.assertIn("zeroVec:16 = zext(0:8);", sleigh)
 
+    def test_embedded_dcbzl_collision_filter_wiring(self):
+        # Stock ppc_common includes the embedded dcbzl alias, which has the
+        # same opcode selector as Xenon's dcbz128. Only the Xenon variant
+        # should use filtered copies of these inherited language files.
+        root = audit.ROOT
+        gradle = (root / "build.gradle").read_text(encoding="utf-8")
+        slaspec = (root / "data/languages/xenon_64_be.slaspec").read_text(
+            encoding="utf-8")
+        self.assertIn('@include "xenon_ppc_common.sinc"', slaspec)
+        self.assertNotIn(
+            '@include "$(PowerPC)/data/languages/ppc_common.sinc"', slaspec)
+        for fragment in (
+            'tasks.register("prepareXenonCommon")',
+            'inputs.files(xenonStockCommon, xenonStockEmbedded)',
+            'outputs.files(xenonCommon, xenonEmbedded)',
+            """String target = ':dcbzl RA_OR_ZERO,B'""",
+            """String dcbzlPattern = 'BITS_21_25=1 & B & XOP_1_10=1014 & BIT_0=0'""",
+            """'@include "$(PowerPC)/data/languages/ppc_instructions.sinc"'""",
+            """'@include "xenon_ppc_embedded.sinc"'""",
+            'embedded = embedded.substring(0, comment) + embedded.substring(end)',
+            'tasks.named("prepareXenonCommon")',
+        ):
+            self.assertIn(fragment, gradle)
+
     def test_fixture_generation(self):
         with tempfile.TemporaryDirectory() as folder:
             out = Path(folder)
