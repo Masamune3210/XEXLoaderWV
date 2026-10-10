@@ -1,3 +1,8 @@
+## Ordinary XEX Xenon language preference (2026-10-09)
+
+- Commit `9ffcd7a66e7f3d58e3f3f2bbcb5a1e8bcb8ea43b` changes **only** XEX load-spec selection: for any XEX2 image, offer `PowerPC:BE:64:XENON-32addr` as preferred when its language metadata is installed, with stock `PowerPC:BE:64:A2ALT-32addr` still selectable. If the Xenon language is absent, A2ALT remains the only/preferred choice. This mirrors the isolated kernel loader's already-implemented preference, without relaxing kernel SHA restrictions or changing XEX decrypt/import-thunk behavior.
+- **Verification pending:** rebuild/install extension and freshly import an ordinary retail XEX with native VMX128 operations. Confirm language shown at import, validate disassembly and external imports, and compare against a second fresh import manually selecting stock A2ALT. Existing Ghidra Programs retain the language selected when created. VMX128 floating-point/permutation userops are still semantically opaque, so successful decoding alone is not full decompilation correctness.
+
 ## Fresh Xenon Program .gzf(8): two new Vector Merge Low Word decode gaps (2026-10-09)
 
 - The user reported Ghidra V2 script `RepairAuditXboxKrnl17559XenonVmxV2.java` passed: **29/29 correct instructions, 0 undecoded, 0 wrong, 0 opcode mismatches, 0 newly disassembled, 0 stale bookmarks removed, 0 unresolved states**. This verifies the preceding V2 opcode family tranche in the current Program.
