@@ -16,5 +16,7 @@
 @include "$(PowerPC)/data/languages/ppc_a2.sinc"
 @include "$(PowerPC)/data/languages/quicciii.sinc"
 @include "$(PowerPC)/data/languages/FPRC.sinc"
-@include "$(PowerPC)/data/languages/altivec.sinc"
+# Xenon predates POWER ISA 2.07 / 3.0: avoid overlapping later opcodes.
+# Gradle derives this variant-local copy from the installed Ghidra source.
+@include "xenon_altivec_pre207.sinc"
 @include "xenon_vector_v1.sinc"
