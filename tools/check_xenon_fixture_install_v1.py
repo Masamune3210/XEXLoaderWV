@@ -128,7 +128,7 @@ def main() -> int:
     for archive in archives[:5]:
         with zipfile.ZipFile(archive) as z:
             members = [n for n in z.namelist()
-                       if n.replace("\\", "/").endswith("/data/languages/xenon_64_be.sla")]
+                       if n.replace("\\", "/").lstrip("/").endswith("data/languages/xenon_64_be.sla")]
             if not members:
                 print("WARNING: archive missing Xenon SLA:", archive)
                 continue
