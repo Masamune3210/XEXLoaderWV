@@ -295,6 +295,20 @@ tasks.register("prepareXenonCommon") {
         common = common.replace(stockAtomicUserop,
             stockAtomicUserop + '\n' + xenonAtomicUserop)
 
+        String stockDwordAtomicUserop =
+            'define pcodeop storeDoubleWordConditionalIndexed;'
+        String xenonDwordAtomicUserop =
+            'define pcodeop xenonAtomicStoreDoubleWordConditional;'
+        if (common.indexOf(stockDwordAtomicUserop) < 0 ||
+                common.indexOf(stockDwordAtomicUserop) !=
+                    common.lastIndexOf(stockDwordAtomicUserop) ||
+                common.contains(xenonDwordAtomicUserop)) {
+            throw new GradleException(
+                "Installed PPC doubleword conditional-store userop declaration changed")
+        }
+        common = common.replace(stockDwordAtomicUserop,
+            stockDwordAtomicUserop + '\n' + xenonDwordAtomicUserop)
+
         String embedded = xenonStockEmbedded.getText("UTF-8")
         String target = ':dcbzl RA_OR_ZERO,B'
         String dcbzlPattern = 'BITS_21_25=1 & B & XOP_1_10=1014 & BIT_0=0'
@@ -393,6 +407,43 @@ tasks.register("prepareXenonCommon") {
                 "Xenon conditional-store semantics replacement")
         }
         instructions = instructions.replace(stockStwcx, xenonStwcx)
+
+
+        // The installed stdcx. has the same unconditional-store,
+        // stale-CR0, and lost-failure problems as stwcx. Keep the
+        // doubleword transaction opaque, with an explicit success bit.
+        String stockStdcx = ''':stdcx. S,RA_OR_ZERO,B 	is OP=31 & S & RA_OR_ZERO & B & XOP_1_10=214 & BIT_0=1
+{
+	EA:$(REGISTER_SIZE) = RA_OR_ZERO + B;
+	if (RESERVE == 0) goto inst_next;
+	*[ram]:8 EA = storeDoubleWordConditionalIndexed(S,RA_OR_ZERO,B);
+	# set when a stwcx. or stdcx. successfully completes
+	cr0flags(0:$(REGISTER_SIZE));
+}'''
+        String xenonStdcx = ''':stdcx. S,RA_OR_ZERO,B 	is OP=31 & S & RA_OR_ZERO & B & XOP_1_10=214 & BIT_0=1
+{
+    EA:$(REGISTER_SIZE) = RA_OR_ZERO + B;
+    local succeeded:1 = 0;
+    if (RESERVE == 0) goto <finishDoubleWordConditional>;
+    # The single opaque userop owns the atomic memory side effect.
+    succeeded = xenonAtomicStoreDoubleWordConditional(EA, S, RESERVE_ADDRESS, RESERVE_LENGTH);
+    <finishDoubleWordConditional>
+    RESERVE = 0;
+    RESERVE_LENGTH = 0;
+    setCrBit(cr0, 0, 0);
+    setCrBit(cr0, 1, 0);
+    setCrBit(cr0, 2, succeeded);
+    setCrBit(cr0, 3, (xer_so & 1));
+}'''
+        if (instructions.indexOf(stockStdcx) < 0 ||
+                instructions.indexOf(stockStdcx) !=
+                    instructions.lastIndexOf(stockStdcx) ||
+                instructions.contains(xenonStdcx)) {
+            throw new GradleException(
+                "Installed Ghidra stdcx. constructor changed; refusing " +
+                "Xenon conditional-store semantics replacement")
+        }
+        instructions = instructions.replace(stockStdcx, xenonStdcx)
 
         // ppc_instructions.sinc is copied into the extension, so its five
         // stock-relative instruction helper includes no longer resolve.
