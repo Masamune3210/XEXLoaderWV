@@ -59,6 +59,45 @@ gradle buildExtension
 If you are building from Eclipse or another IDE, make sure it uses a compatible JDK and Gradle version for the Ghidra version you are targeting.
 
 
+### Current Xenon branch verification (Ghidra 12.1.3)
+
+The experimental `PowerPC:BE:64:XENON-32addr` language and the
+`fix/import-thunk-modeling-20261009` branch are validated against
+**Ghidra 12.1.3**; the generic loader build history above refers to the
+older 12.0.4 environment.
+
+A single `gradle buildExtension` now regenerates the Xenon ISA fixture,
+runs `tools/test_xenon_isa_coverage_v1.py`, compiles the real SLEIGH
+language, and only then packages the extension. Build failures in either
+the Python suite or SLEIGH are fatal. The unified numerical Ghidra script
+is `ghidra_scripts/AuditXenonNumericalPcode.java`. It locates its TSV
+beside the imported fixture binary, with an optional
+`XENON_ISA_FIXTURE_TSV` environment override, not a user-specific path.
+
+Previously observed results: 86/86 family decoding expectations,
+3,414/3,414 Xenon numerical p-code cases, 13/13 emulator-private STSWI
+byte-store cases, and 5/5 `lwarx` plus 5/5 `stwcx.` real-kernel p-code
+checks. The latter verify p-code *structure*, **not** executable hardware
+contention behavior. The `stdcx.` doubleword atomic refinement is
+source-checked but has not been compiled or runtime-verified in the
+user's Ghidra installation. Both atomic-store commits and `sync`
+barriers remain intentionally opaque user operations.
+
+The retail 17559 `.pdata` span `0x800890AC..0x800890F8`
+(end exclusive) belongs to a separate, genuine helper,
+`FUN_800890ac`, reached by a branch from
+`RtlEnterCriticalSection`. Do not merge those functions.
+For detailed verification state and deliberately unresolved signatures,
+see `docs/xboxkrnl17559-atomic-decomp-20261011.md` and
+`docs/import-thunk-modeling-20261009.md`.
+
+The older kernel import and decoder sections below are **chronological
+investigation notes**, not current test instructions. Several one-off Java
+audit scripts cited there were retired; only scripts actually present
+under `ghidra_scripts/` should be run. This preserves historical results
+without presenting deleted filenames as supported entrypoints.
+
+
 ## Xbox 360 retail 17559 kernel memory-image PE import
 
 **IMPORTANT: The raw 17559 kernel split from the firmware is an already-mapped
@@ -113,9 +152,9 @@ ordinal mapping, preserving aliases.
 4. Confirm the actual bytes at `0x80061010` are `7D 88 02 A6`
    (`mflr r12`), and `0x80089EB0` (`NtClose`) has the verified
    prologue. The earlier broken import presented zeros at `0x80061010`.
-5. After Auto Analyze completes, run the read-only
-   `ghidra_scripts/AuditXboxKrnl17559FlowBodiesV2.java` and compare
-   its surviving entry and export counts to the previous broken-byte run.
+5. After Auto Analyze completes, compare the function/export counts with
+   the independently recorded `.pdata` results in the branch handoff.
+   The original `AuditXboxKrnl17559FlowBodiesV2.java` was retired.
 
 The late Ghidra flow-repair errors and 700+ function removals seen in the
 previous tests occurred against **incorrectly mapped instructions**.
@@ -150,9 +189,9 @@ four `lvlx`, one `lvrx`, one `vupkd3d128`), plus a fall-through-into-padding
 bookmark after the `KeBugCheckEx` call in `KeLeaveUserMode`. Function-boundary
 success does not imply all instructions or their p-code are recovered.
 
-`ghidra_scripts/AnnotateXboxKrnl17559MissingVectorInstructionsV1.java`
-can attach SHA- and opcode-verified EOL comments identifying the 16 decoded
-mnemonics in an existing Program. **It deliberately leaves all error bookmarks,
+The retired `AnnotateXboxKrnl17559MissingVectorInstructionsV1.java`
+previously attached SHA- and opcode-verified EOL comments identifying those
+16 decoded mnemonics in existing Programs. **It deliberately leaves all error bookmarks,
 instruction bytes and function definitions alone**, and cannot substitute for
 a Xenon VMX128-compatible language module. Check that `KeBugCheckEx` is marked
 No Return and that its call at `0x80073730` terminates control flow before
@@ -165,10 +204,10 @@ unsupported-instruction bookmarks to manufacture a clean audit.
 The analyzer now automatically models the verified `KeLeaveUserMode` fatal
 branch as a nonreturning call to `KeBugCheckEx`, validates its exact bytes,
 and removes **only** the matching stale padding error bookmark. To apply
-that same correction **without reimporting** an existing database, run
-`ghidra_scripts/RepairXboxKrnl17559ErrorBookmarksV2.java` in Ghidra.
-This script also comments the 16 Xenon instructions with independently
-verified mnemonics, but does **not** purport to decode them.
+that same correction **without reimporting** an existing database, the
+historical `RepairXboxKrnl17559ErrorBookmarksV2.java` was used; it is now
+retired. Do not assume that source is included in this checkout or remove
+bookmarks without rechecking the expected bytes.
 
 The remaining 16 opcode bookmarks reflect missing stock PowerPC language
 constructors; fixing those requires a compatible SLEIGH processor language,
@@ -201,18 +240,17 @@ then preserve your existing `A2ALT` kernel database. On a **separate**
 fresh import using the specialized kernel memory-PE loader, select the
 experimental `XENON-32addr` language choice explicitly; the original
 `A2ALT-32addr` language remains the preferred default. After auto-analysis
-run `ghidra_scripts/VerifyXboxKrnl17559XenonDecodeV1.java` and verify
-16/16 bookmark addresses decode. Do not delete existing bookmarks merely
+the historical 16/16 bookmark-address decode result can be compared with
+the completed Xenon ISA fixture and actual kernel audits. Do not delete existing bookmarks merely
 because a Ghidra language is now available. Compare the new Program's
 function and export coverage with the proven kernel database.
 
 For independent opcode-pattern validation on the verified source image, run
 `python tools/validate_xenon_sleigh_patterns_v1.py xboxkrnl.exe`.
 
-**Status:** SLEIGH source and loader selection integration are committed;
-the language **has not been compiled or runtime-tested** against the user's
-Ghidra installation. Report any `SleighCompile` errors so source can be
-fixed before using the experimental variant.
+**Historical status:** this described the initial language prototype.
+The later compiled Xenon language and runtime audits are summarized in the
+current verification section above.
 
 
 ### Xenon kernel decoder follow-up: second VMX128 tranche
@@ -230,17 +268,15 @@ preserve source/destination dependencies with **opaque userops** rather
 than incorrect fabricated numerical semantics. Run `gradle buildExtension`
 to compile/check the updated SLEIGH before installing.
 
-The directly runnable `ghidra_scripts/RepairAuditXboxKrnl17559XenonVmxV2.java`
-checks all 29 original and newly uncovered error sites under the Xenon
-language and optionally disassembles precise failing instructions. It
-deletes a stale Bad Instruction bookmark **only after** verifying that
-the exact expected instruction now decodes. The pure byte-level
+The retired `RepairAuditXboxKrnl17559XenonVmxV2.java` historically checked
+29 original and newly uncovered error sites and selectively cleared only
+bookmarks whose exact instructions were verified to decode. The pure byte-level
 `tools/validate_xenon_sleigh_patterns_v2.py` provides an independent
 raw-encoding check against the two supported SHA-256-verified kernel images.
 
-**Status:** source committed but second-round SLEIGH compilation and
-runtime 29/29 decode verification pending. Do not call the VMX128
-implementation numerically complete based on absent bookmarks alone.
+**Historical status:** subsequent 29/29 decoder verification completed.
+Do not infer numerical p-code correctness from the absence of bookmarks;
+refer to the separate numerical audit counts above.
 
 
 ### Xenon VMX128 word merges (kernel `xboxkrnl.exe(8).gzf`)
@@ -254,13 +290,12 @@ with concrete 128-bit four-word interleave p-code, accounting for
 eight exact matches (four per instruction family) in verified kernel
 `.text`.
 
-Use `ghidra_scripts/RepairAuditXboxKrnl17559XenonVmxV3.java` to check
-all 37 confirmed Xenon opcode sites and selectively clear *only*
-stale matching constructor bookmarks after successful disassembly.
+The retired `RepairAuditXboxKrnl17559XenonVmxV3.java` checked 37
+confirmed opcode sites. It is not an available runnable script on this
+branch; the raw byte-pattern validator remains available.
 `tools/validate_xenon_sleigh_patterns_v3.py` independently checks
 the exact opcode words against the verified 17559 image.
 
-**Implementation status:** source changes and raw encoding validation
-completed; Ghidra's new SLEIGH compiler/runtime 37/37 decoding
-still require verification. Avoid claiming full VMX128 p-code fidelity,
-since earlier FP and permutation families still use opaque userops.
+**Historical implementation status:** this predates the later 86-family
+fixture and 3,414-case numerical audit. The remaining opaque operations
+and verification boundaries are described in the current section above.
