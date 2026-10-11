@@ -1078,6 +1078,9 @@ class XenonIsaInventoryTests(unittest.TestCase):
                 'new ParameterImpl("poolAddress"',
                 'f.updateFunction(null, null',
                 'APPLY_ALLOCATOR_PROTOTYPES = true',
+                'preflightAllocatorPrototypes(allocator, free);',
+                'preflightNames(SAVE_GPR, "__savegprlr_");',
+                'preflightNames(REST_GPR, "__restgprlr_");',
         ):
             self.assertIn(expected, src)
         for forbidden in (
