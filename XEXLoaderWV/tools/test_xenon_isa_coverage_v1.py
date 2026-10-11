@@ -619,6 +619,40 @@ class XenonIsaInventoryTests(unittest.TestCase):
             constructor.count("xenonAtomicStoreWordConditional("), 1)
         self.assertEqual(constructor.count("<finishStoreConditional>"), 2)
 
+    def test_xenon_stdcx_preserves_opaque_atomic_success_result(self):
+        # A doubleword conditional store has the same reservation and
+        # CR0 completion contract as the verified word conditional store.
+        # No unconditional 8-byte memory write is permissible.
+        gradle = (audit.ROOT / "build.gradle").read_text(encoding="utf-8")
+        start = gradle.index("String xenonStdcx = '''")
+        end = gradle.index("'''", start + len("String xenonStdcx = '''"))
+        constructor = gradle[start:end]
+        for fragment in (
+                "define pcodeop xenonAtomicStoreDoubleWordConditional;",
+                "common = common.replace(stockDwordAtomicUserop,",
+                "instructions = instructions.replace(stockStdcx, xenonStdcx)",
+                "Installed Ghidra stdcx. constructor changed",
+        ):
+            self.assertIn(fragment, gradle)
+        for fragment in (
+                "XOP_1_10=214 & BIT_0=1",
+                "local succeeded:1 = 0;",
+                "if (RESERVE == 0) goto <finishDoubleWordConditional>;",
+                "succeeded = xenonAtomicStoreDoubleWordConditional(",
+                "RESERVE = 0;",
+                "RESERVE_LENGTH = 0;",
+                "setCrBit(cr0, 0, 0);",
+                "setCrBit(cr0, 1, 0);",
+                "setCrBit(cr0, 2, succeeded);",
+                "setCrBit(cr0, 3, (xer_so & 1));",
+        ):
+            self.assertIn(fragment, constructor)
+        self.assertNotIn("*[ram]:8", constructor)
+        self.assertNotIn("cr0flags(0:", constructor)
+        self.assertNotIn("goto inst_next", constructor)
+        self.assertEqual(
+            constructor.count("xenonAtomicStoreDoubleWordConditional("), 1)
+
     def test_copied_instruction_helpers_use_installed_powerpc_path(self):
         # Generated PPC instructions live outside their stock directory.
         # Relative stock include paths would fail at the first lmw helper.
