@@ -1056,6 +1056,34 @@ class XenonIsaInventoryTests(unittest.TestCase):
         self.assertIn('already++', src)
         self.assertIn('No functions created/merged', src)
 
+    def test_second_pass_kernel_metadata_preserves_unresolved_parameters(self):
+        source = (audit.ROOT.parent / "ghidra_scripts" /
+                  "AnnotateXboxKrnl17559SecondPassV1.java"
+                  ).read_text(encoding="utf-8")
+        for expected in (
+                "public class AnnotateXboxKrnl17559SecondPassV1",
+                "0x80067A28L", "0x800D91B0L", "0x800EDB80L",
+                "0x800FD830L", "0x80151088L",
+                "spans.size() == 3188",
+                "hasExpectedBookmark(at)",
+                "covering(spans, address) == null",
+                'getParameters()',
+                'parameters.length != 16',
+                '"r3:8", "r4:4", "r5:4"',
+                '"allocationSize", "allocationTag", "poolSelection"',
+                'p[13 + k].setName(names[k], SourceType.USER_DEFINED)',
+                'code.setComment(CommentType.PRE',
+                "All function counts, .pdata intervals, return types",
+        ):
+            self.assertIn(expected, source)
+        for forbidden in (
+                "updateFunction(", "replaceParameters(", "removeParameter(",
+                "setReturnType(", "setCallingConvention(", "setDataType(",
+                "createFunction(", "removeFunction(", "clearListing(",
+                "setBytes(", "setBody(", "setNoReturn(",
+        ):
+            self.assertNotIn(forbidden, source)
+
     def test_xenon_shared_helper_metadata_preserves_all_signatures(self):
         scripts = audit.ROOT.parent / "ghidra_scripts"
         src = (scripts / "ApplyXboxKrnl17559SharedRegisterHelpersV2.java"
