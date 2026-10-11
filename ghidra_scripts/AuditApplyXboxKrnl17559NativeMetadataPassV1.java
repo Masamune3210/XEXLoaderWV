@@ -6,10 +6,10 @@
 // xboxkrnl.exe(20261011-022926).gzf. All 3,188 verified .pdata intervals
 // match; the newer archive contains 110 native annotation strings.
 //
-// This script ONLY conditionally adds missing source-grounded data labels
+// This script ONLY conditionally adds missing source-grounded labels/names
 // and idempotent NOTE bookmarks at functions that already carry explicit
 // native annotations about addic./subic. CR0 widths.
-// No functions, prototypes, datatypes, code, bytes, comments or unwind
+// No function boundaries, prototypes, datatypes, code, bytes, comments or unwind
 // boundaries are rewritten. In particular, all inferred FPR inputs remain.
 
 import java.util.ArrayList;
@@ -56,13 +56,39 @@ public class AuditApplyXboxKrnl17559NativeMetadataPassV1 extends GhidraScript {
     // Addresses and names are already recorded in the newly supplied
     // serialized Program. Do not recreate a type if a declaration is absent.
     private static final long[] DATA_ADDRESSES = {
-        0x800418E8L, 0x801A561CL, 0x801B0EE0L, 0x801B0EE8L
+        0x80040F78L, 0x80041048L, 0x80041118L,
+        0x800418E8L, 0x80042628L, 0x80042644L,
+        0x801A561CL, 0x801B0EE0L, 0x801B0EE8L
     };
     private static final String[] DATA_NAMES = {
-        "RtlCrc32LookupTable", "IoCancelSpinLockWord",
-        "KeInterruptTime100ns", "KeSystemTime100ns"
+        "NlsUppercasePageIndex", "NlsLowercasePageIndex",
+        "NlsCaseDeltaWords", "RtlCrc32LookupTable",
+        "RtlpLeapYearMonthStartDays", "RtlpCommonYearMonthStartDays",
+        "IoCancelSpinLockWord", "KeInterruptTime100ns",
+        "KeSystemTime100ns"
     };
-    private static final int[] DATA_MIN_LENGTHS = {1024, 4, 8, 8};
+    private static final int[] DATA_MIN_LENGTHS = {
+        1, 1, 2, 1024, 26, 26, 4, 8, 8
+    };
+    // These are inferred descriptive names recorded in the new GZF's
+    // actual named-symbol/address table. Never replace manually named
+    // functions or invent signatures. Reapply only when the existing
+    // function retains its original native-provenance annotation.
+    private static final long[] FUNCTION_ADDRESSES = {
+        0x8007345CL, 0x80077FB0L, 0x80078280L,
+        0x80078B18L, 0x80078BF0L, 0x800885CCL,
+        0x8008915CL, 0x80089868L, 0x8010D210L
+    };
+    private static final String[] FUNCTION_NAMES = {
+        "KiComputeTimerDueTimeAndBucketObserved",
+        "KiInsertApcAndSignalThreadObserved",
+        "KiDeliverCurrentThreadUserApcsObserved",
+        "KiInsertTimerOrderedObserved",
+        "KiPrepareAndInsertTimerObserved",
+        "RtlpMoveMemoryBytes", "RtlpSignalCriticalSection",
+        "RtlpCompletedYearsSince1601Observed",
+        "RtlpCountUtf16CodeUnitsZeroTerminated"
+    };
     private static final Set<String> STRUCT_NAMES = new HashSet<>(Arrays.asList(
         "CriticalSectionObserved28", "ReadWriteLockObserved56",
         "DispatcherPrefix16", "EventPrefix16", "SemaphorePrefix20",
@@ -172,6 +198,39 @@ public class AuditApplyXboxKrnl17559NativeMetadataPassV1 extends GhidraScript {
         return applied;
     }
 
+    private int restoreNativeFunctionNames() throws Exception {
+        int applied = 0;
+        for (int i = 0; i < FUNCTION_ADDRESSES.length; i++) {
+            monitor.checkCancelled();
+            Address address = toAddr(FUNCTION_ADDRESSES[i]);
+            Function function = currentProgram.getFunctionManager()
+                .getFunctionAt(address);
+            if (function == null) {
+                println("FUNCTION " + address + " missing; no new function created");
+                continue;
+            }
+            String present = function.getName();
+            String desired = FUNCTION_NAMES[i];
+            println("FUNCTION " + address + " current=" + present +
+                " recorded=" + desired +
+                " params=" + function.getParameterCount() +
+                " return=" + function.getReturnType().getName());
+            if (desired.equals(present)) continue;
+            // Do not impose descriptive names without original native
+            // annotations that support them; no guessed call graph edits.
+            String comment = function.getRepeatableComment();
+            if (!present.startsWith("FUN_") ||
+                comment == null ||
+                !comment.contains("Kernel native annotation")) {
+                println("  SKIP: existing semantic name or native evidence absent");
+                continue;
+            }
+            function.setName(desired, SourceType.USER_DEFINED);
+            ++applied;
+        }
+        return applied;
+    }
+
     private int flagPreviouslyObservedWidthQuestions() throws Exception {
         BookmarkManager manager = currentProgram.getBookmarkManager();
         FunctionIterator iter = currentProgram.getFunctionManager()
@@ -225,8 +284,10 @@ public class AuditApplyXboxKrnl17559NativeMetadataPassV1 extends GhidraScript {
         inspectStructures();
 
         int labels = inspectOrRestoreLabels();
+        int functions = restoreNativeFunctionNames();
         int notes = flagPreviouslyObservedWidthQuestions();
         println("Applied missing data labels=" + labels +
+            "; restored native-evidenced function names=" + functions +
             "; new source-backed review bookmarks=" + notes);
         println("No parameter count, datatype, return type, function body, " +
             "calling convention, instruction bytes, or .pdata range changed.");
