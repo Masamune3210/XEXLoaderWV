@@ -100,6 +100,7 @@ public class AuditApplyXboxKrnl17559NativeMetadataPassV1 extends GhidraScript {
         "MutantObserved29", "TimerObserved40", "TimerPrefix40",
         "DpcObserved28", "DpcPrefix20", "WaitBlockObserved24",
         "DeviceQueueObserved16", "DeviceQueueEntryObserved13",
+        "DeviceQueuePrefix16", "ListEntry32",
         "SListHeaderObserved8", "SListEntry32",
         "UnicodeString32", "AnsiString32", "TimeFieldsObserved16",
         "ApcObserved40"
@@ -165,8 +166,15 @@ public class AuditApplyXboxKrnl17559NativeMetadataPassV1 extends GhidraScript {
                     " length=" + member.getLength());
             }
         }
-        println("Recognized new native structures=" + found.size() +
-            " (missing type names are not fabricated)");
+        List<String> missing = new ArrayList<>(STRUCT_NAMES);
+        missing.removeAll(found);
+        Collections.sort(missing);
+        println("Recognized native structures=" + found.size() +
+            "/" + STRUCT_NAMES.size() +
+            " (read-only inspection; missing types are not fabricated)");
+        if (!missing.isEmpty()) {
+            println("Names absent from Program datatype manager: " + missing);
+        }
     }
 
     private int inspectOrRestoreLabels() throws Exception {
