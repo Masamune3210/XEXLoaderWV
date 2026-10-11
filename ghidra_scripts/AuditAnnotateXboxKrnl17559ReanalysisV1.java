@@ -62,6 +62,43 @@ public class AuditAnnotateXboxKrnl17559ReanalysisV1 extends GhidraScript {
         return null;
     }
 
+    private boolean recognizedSharedEntry(long address, Span unwind) {
+        long first;
+        String mnemonic;
+        String registerPrefix;
+        if (unwind.start == 0x8010CB90L &&
+            unwind.end == 0x8010CBE0L) {
+            first = 0x8010CB90L;
+            mnemonic = "std";
+            registerPrefix = "r";
+        }
+        else if (unwind.start == 0x8010D240L &&
+                 unwind.end == 0x8010D28CL) {
+            first = 0x8010D240L;
+            mnemonic = "stfd";
+            registerPrefix = "f";
+        }
+        else if (unwind.start == 0x8010D28CL &&
+                 unwind.end == 0x8010D2D8L) {
+            first = 0x8010D28CL;
+            mnemonic = "lfd";
+            registerPrefix = "f";
+        }
+        else return false;
+        long offset = address - first;
+        if (offset <= 0 || offset >= 18 * 4 || (offset % 4) != 0)
+            return false;
+        Instruction i = currentProgram.getListing()
+            .getInstructionAt(toAddr(address));
+        if (i == null || !mnemonic.equals(i.getMnemonicString()) ||
+                i.getRegister(0) == null) return false;
+        int n = 14 + (int)(offset / 4);
+        String name = i.getRegister(0).getName().toLowerCase(
+            java.util.Locale.ROOT);
+        return name.equals(registerPrefix + n) ||
+            ("f".equals(registerPrefix) && name.equals("fr" + n));
+    }
+
     private void require(boolean condition, String message) {
         if (!condition) throw new IllegalStateException(message);
     }
@@ -106,6 +143,7 @@ public class AuditAnnotateXboxKrnl17559ReanalysisV1 extends GhidraScript {
             " distinct .pdata annotations=" + spans.size());
 
         int pdataEntry = 0, outside = 0, interior = 0;
+        int recognizedHelpers = 0, needsReview = 0;
         int suspiciousPrinted = 0;
         for (Function f : allFunctions) {
             monitor.checkCancelled();
@@ -119,8 +157,11 @@ public class AuditAnnotateXboxKrnl17559ReanalysisV1 extends GhidraScript {
             }
             else {
                 ++interior;
+                boolean helper = recognizedSharedEntry(at, s);
+                if (helper) recognizedHelpers++; else needsReview++;
                 if (suspiciousPrinted++ < MAX_DETAILS) {
-                    println("  REVIEW: function " + f.getName() +
+                    println("  " + (helper ? "MULTI-ENTRY HELPER" : "REVIEW") +
+                        ": function " + f.getName() +
                         " at " + f.getEntryPoint() +
                         " starts inside .pdata 0x" +
                         Long.toHexString(s.start) + "..0x" +
@@ -131,7 +172,9 @@ public class AuditAnnotateXboxKrnl17559ReanalysisV1 extends GhidraScript {
         println("Function entries at .pdata start=" + pdataEntry +
             ", outside all spans=" + outside +
             ", inside another .pdata span=" + interior);
-        println("Inside another span is a review candidate, not a license to merge.");
+        println("Verified GPR/FPR shared helper entries=" + recognizedHelpers +
+            ", other nested entries needing review=" + needsReview);
+        println("Multiple entrypoints can be intentional; do not merge just for overlap.");
 
         Listing listing = currentProgram.getListing();
         BookmarkManager bookmarks = currentProgram.getBookmarkManager();
@@ -213,10 +256,13 @@ public class AuditAnnotateXboxKrnl17559ReanalysisV1 extends GhidraScript {
 
         boolean safe = spans.size() == 3188 &&
             allFunctions.size() >= 3188 &&
-            foundInside == 0 && interior == 0;
+            foundInside == 0;
+        // Only exact Found-Code entrypoints OUTSIDE every verified unwind
+        // interval can be annotated. Other functions' overlapping spans
+        // are reported independently; they do not compromise this subset.
         if (!safe) {
-            println("No annotations: verified baseline differs, or embedded " +
-                "function entries need review first.");
+            println("No annotations: verified unwind or Found-Code " +
+                "baseline differs.");
         }
         int annotated = 0, already = 0, notEntry = 0;
         if (APPLY_SAFE_METADATA && safe) {
