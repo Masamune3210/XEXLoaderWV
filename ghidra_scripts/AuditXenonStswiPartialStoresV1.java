@@ -11,6 +11,9 @@ import ghidra.program.model.address.Address;
 import java.math.BigInteger;
 import java.util.Arrays;
 
+// The existing verified byte-store numerical audit intentionally uses the
+// legacy Ghidra emulator API; suppress only its removal diagnostic.
+@SuppressWarnings("removal")
 public class AuditXenonStswiPartialStoresV1 extends GhidraScript {
     private static final long CODE = 0x80061010L;
     private static final long DEST = 0x80061200L;
