@@ -6,7 +6,8 @@
 // xboxkrnl.exe(20261011-022926).gzf. All 3,188 verified .pdata intervals
 // match; the newer archive contains 110 native annotation strings.
 //
-// This script ONLY conditionally adds missing source-grounded labels/names
+// This script defaults to read-only. Optional restoration is limited to
+// previously recorded source-grounded labels/names
 // and idempotent NOTE bookmarks at functions that already carry explicit
 // native annotations about addic./subic. CR0 widths.
 // No function boundaries, prototypes, datatypes, code, bytes, comments or unwind
@@ -38,6 +39,10 @@ import ghidra.program.model.symbol.SourceType;
 import ghidra.program.model.symbol.Symbol;
 
 public class AuditApplyXboxKrnl17559NativeMetadataPassV1 extends GhidraScript {
+    // Supplemental saved-annotation report proves the original metadata is
+    // already applied and freshly verified. Stay read-only by default:
+    // rerunning metadata restoration could cause unnecessary drift.
+    private static final boolean APPLY_METADATA = false;
     private static final String SHA =
         "e1d1c87dbcbec01c71c5400cc129a462fa46738d267e29151a91c5354bdf6cb8";
     private static final String LANGUAGE = "PowerPC:BE:64:XENON-32addr";
@@ -283,15 +288,25 @@ public class AuditApplyXboxKrnl17559NativeMetadataPassV1 extends GhidraScript {
             currentProgram.getFunctionManager().getFunctionCount());
         inspectStructures();
 
-        int labels = inspectOrRestoreLabels();
-        int functions = restoreNativeFunctionNames();
-        int notes = flagPreviouslyObservedWidthQuestions();
+        int labels = 0, functions = 0, notes = 0;
+        if (APPLY_METADATA) {
+            labels = inspectOrRestoreLabels();
+            functions = restoreNativeFunctionNames();
+            notes = flagPreviouslyObservedWidthQuestions();
+        }
+        else {
+            println("READ ONLY: metadata has already been saved and independently " +
+                "verified in the four-pass native-annotation report.");
+            println("Data/function restoration and new NOTE bookmarks disabled.");
+        }
         println("Applied missing data labels=" + labels +
             "; restored native-evidenced function names=" + functions +
             "; new source-backed review bookmarks=" + notes);
         println("No parameter count, datatype, return type, function body, " +
             "calling convention, instruction bytes, or .pdata range changed.");
-        println("Native addic./subic. width mismatch remains an UNVERIFIED " +
-            "ISA question; this script does not change arithmetic semantics.");
+        println("Native addic./subic. CR0 width discrepancy was reproduced " +
+            "for an integer wraparound input in the saved report. " +
+            "Hardware semantics require independent architectural validation; " +
+            "this script does not change arithmetic semantics.");
     }
 }
