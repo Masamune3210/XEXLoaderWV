@@ -96,6 +96,41 @@ public class AuditXboxKrnl17559AtomicPcodeV1 extends GhidraScript {
         return true;
     }
 
+    private void examineCriticalSectionBranch() {
+        // An earlier decompilation showed a local branch from
+        // RtlEnterCriticalSection to a separately named FUN_800890AC.
+        // Inspect actual ownership/flow rather than merging functions
+        // based on the address adjacency or misleading symbol names.
+        Address from = toAddr(0x80088FF8L);
+        Address target = toAddr(0x800890ACL);
+        Instruction branch = currentProgram.getListing().getInstructionAt(from);
+        Function sourceFunction =
+            currentProgram.getFunctionManager().getFunctionContaining(from);
+        Function targetFunction =
+            currentProgram.getFunctionManager().getFunctionContaining(target);
+        Function directTarget =
+            currentProgram.getFunctionManager().getFunctionAt(target);
+        println("Potential RtlEnterCriticalSection function split:");
+        println("  branch=" + (branch == null ? "<undefined>" :
+            branch.toString()) + " @ " + from);
+        if (branch != null) {
+            for (Address flow : branch.getFlows()) {
+                println("  actual flow target=" + flow);
+            }
+        }
+        println("  source owner=" + (sourceFunction == null ? "<none>" :
+            sourceFunction.getName() + " @ " +
+            sourceFunction.getEntryPoint()));
+        println("  800890AC owner=" +
+            (targetFunction == null ? "<none>" :
+                targetFunction.getName() + " @ " +
+                targetFunction.getEntryPoint()));
+        println("  function starts at 800890AC=" +
+            (directTarget == null ? "<no>" : directTarget.getName()));
+        println("  same function=" + (sourceFunction != null &&
+            sourceFunction.equals(targetFunction)));
+    }
+
     @Override
     public void run() throws Exception {
         String language = currentProgram.getLanguageID().toString();
@@ -117,6 +152,7 @@ public class AuditXboxKrnl17559AtomicPcodeV1 extends GhidraScript {
             monitor.checkCancelled();
             examine(location, "sync", false);
         }
+        examineCriticalSectionBranch();
         println("RESERVATION PCODE " + good + "/" + PAIRS.length +
             " real lwarx instructions wrote all 3 reservation registers.");
         if (good != PAIRS.length) {
