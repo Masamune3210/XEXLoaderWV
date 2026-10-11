@@ -295,6 +295,28 @@ tasks.register("prepareXenonCommon") {
                 !instructions.contains(newReservation)) {
             throw new GradleException("Xenon lwarx reservation patch failed")
         }
+        // ppc_instructions.sinc is copied into the extension, so its five
+        // stock-relative instruction helper includes no longer resolve.
+        // Anchor every helper to the installed, version-matched PowerPC
+        // sources using the existing -dPowerPC SLEIGH define. Never copy
+        // or modify those Ghidra-owned helper files.
+        for (String helper : [
+                "lmwInstructions.sinc", "lswInstructions.sinc",
+                "mulhwInstructions.sinc", "stmwInstructions.sinc",
+                "stswiInstructions.sinc"]) {
+            File stockHelper = new File(xenonStockInstructions.parentFile, helper)
+            String relativeInclude = '@include "' + helper + '"'
+            String resolvedInclude =
+                '@include "$(PowerPC)/data/languages/' + helper + '"'
+            if (!stockHelper.isFile() ||
+                    instructions.indexOf(relativeInclude) < 0 ||
+                    instructions.indexOf(relativeInclude) !=
+                        instructions.lastIndexOf(relativeInclude)) {
+                throw new GradleException(
+                    "Installed Ghidra PPC instruction include changed: " + helper)
+            }
+            instructions = instructions.replace(relativeInclude, resolvedInclude)
+        }
         xenonCommon.setText(
             "# Generated from installed Ghidra ppc_common.sinc; do not edit.\n" +
             common, "UTF-8")
