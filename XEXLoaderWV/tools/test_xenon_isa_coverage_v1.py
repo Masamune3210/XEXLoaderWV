@@ -995,6 +995,39 @@ class XenonIsaInventoryTests(unittest.TestCase):
         # manifest and report, even when status categories stay identical.
         self.assertNotIn("outputs.", body)
 
+    def test_committed_ghidra_java_audits_keep_compile_contracts(self):
+        # The Ghidra GUI compiles scripts separately from buildExtension.
+        # A checked TaskMonitor exception once broke the helper script
+        # even though the SLEIGH extension built correctly.
+        root = audit.ROOT.parent / "ghidra_scripts"
+        for name in (
+                "AuditXboxKrnl17559AtomicPcodeV1",
+                "AuditXboxKrnl17559AtomicPcodeV2",
+                "AuditXboxKrnl17559CriticalSectionHelperV1",
+                "AuditXenonNumericalPcode",
+                "AuditXenonStswiPartialStoresV1",
+        ):
+            source = (root / (name + ".java")).read_text(encoding="utf-8")
+            self.assertIn(
+                "public class " + name + " extends GhidraScript", source)
+        helper = (root /
+                  "AuditXboxKrnl17559CriticalSectionHelperV1.java"
+                  ).read_text(encoding="utf-8")
+        self.assertIn(
+            "import ghidra.util.exception.CancelledException;", helper)
+        self.assertIn(
+            "private void dumpFunction(Function fn) throws CancelledException",
+            helper)
+        self.assertIn("monitor.checkCancelled();", helper)
+        for name in ("AuditXenonNumericalPcode",
+                     "AuditXenonStswiPartialStoresV1"):
+            source = (root / (name + ".java")).read_text(encoding="utf-8")
+            self.assertIn('import ghidra.app.emulator.EmulatorHelper;', source)
+            self.assertIn('@SuppressWarnings("removal")', source)
+        # The source audit intentionally retains the legacy emulator
+        # until its exact private-memory numerical behavior can be
+        # replaced and independently verified.
+
     def test_extension_build_runs_offline_regressions_and_sleigh(self):
         # A clean checkout must exercise the checked-in numerical source
         # assertions automatically rather than rely on remembered scripts.
