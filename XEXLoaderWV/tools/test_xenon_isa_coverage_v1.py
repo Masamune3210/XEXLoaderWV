@@ -556,6 +556,35 @@ class XenonIsaInventoryTests(unittest.TestCase):
         self.assertEqual(
             0x10221c30 & 0xfc00003f, 0x10000030)
 
+    def test_legacy_lwarx_reservation_bookkeeping_is_xenon_local(self):
+        # Real xboxkrnl 17559 (0x80064574/800647bc/80088fbc)
+        # executes lwarx immediately before stwcx. in lock loops.
+        # The stock BIT_0=0 lwarx body comments out reservation writes,
+        # whereas the less-specific PPC ISA constructor does set them.
+        gradle = (audit.ROOT / "build.gradle").read_text(
+            encoding="utf-8")
+        slaspec = (audit.ROOT /
+                   "data/languages/xenon_64_be.slaspec").read_text(
+                       encoding="utf-8")
+        assert '@include "xenon_ppc_common.sinc"' in slaspec
+        assert 'xenonStockInstructions' in gradle
+        assert 'xenonInstructions' in gradle
+        assert 'inputs.files(xenonStockCommon, xenonStockEmbedded, xenonStockInstructions)' in gradle
+        assert 'outputs.files(xenonCommon, xenonEmbedded, xenonInstructions)' in gradle
+        assert """'@include "xenon_ppc_instructions.sinc"'""" in gradle
+        assert "'XOP_1_10=20 & BIT_0=0'" in gradle
+        assert "'ea:$(REGISTER_SIZE) = RA_OR_ZERO+B;'" in gradle
+        assert "'D = zext(*:4(ea));'" in gradle
+        assert "oldReservation" in gradle
+        assert "'\\t#RESERVE = 1;\\n\\t#RESERVE_ADDRSS:$(REGISTER_SIZE) = ea;'" in gradle
+        assert "'\\tRESERVE = 1;\\n\\tRESERVE_LENGTH = 4;\\n\\tRESERVE_ADDRESS = ea;'" in gradle
+        assert "lwarxBody.replace(oldReservation, newReservation)" in gradle
+        assert "instructions.substring(lwarxEnd + 2)" in gradle
+        assert 'xenonInstructions.setText(' in gradle
+        assert "refusing Xenon reservation patch" in gradle
+        # No claim that this resolves the separate conditional-store
+        # and sync CALLOTHERs; hardware contention remains opaque.
+
     def test_embedded_dcbzl_collision_filter_wiring(self):
         # Stock ppc_common includes the embedded dcbzl alias, which has the
         # same opcode selector as Xenon's dcbz128. Only the Xenon variant
