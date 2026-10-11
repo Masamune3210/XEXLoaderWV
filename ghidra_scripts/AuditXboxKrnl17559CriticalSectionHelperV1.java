@@ -13,9 +13,10 @@ import ghidra.program.model.listing.InstructionIterator;
 import ghidra.program.model.listing.Parameter;
 import ghidra.program.model.symbol.Reference;
 import ghidra.program.model.symbol.ReferenceIterator;
+import ghidra.util.exception.CancelledException;
 
 public class AuditXboxKrnl17559CriticalSectionHelperV1 extends GhidraScript {
-    private void dumpFunction(Function fn) {
+    private void dumpFunction(Function fn) throws CancelledException {
         if (fn == null) {
             println("Missing function");
             return;
