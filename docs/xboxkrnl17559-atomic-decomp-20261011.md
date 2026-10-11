@@ -72,3 +72,11 @@ Size: 0x1C (minimum observed span; not proven allocation size)
 - Real kernel decompiler: **16/16** functions completed; three functions showed 1/1/6 CALLOTHER sites, as supplied by user.
 - Reservation source patch: added, **not yet compiled/rerun in Ghidra**.
 - Original 3,414 numerical regression cases: previously confirmed passing; **not rerun** and not expanded.
+
+## Build regression after lwarx source copy (2026-10-10)
+
+- User ran `gradle buildExtension` from inner `XEXLoaderWV`. `generateXenonIsaFixture` succeeded (86 families, 344 words); `verifyXenonSleigh` failed while preprocessing generated `xenon_ppc_instructions.sinc` at stock line 2245 because its relative `@include "lmwInstructions.sinc"` no longer pointed into Ghidra's PowerPC source folder.
+- Ghidra 12.1.3's stock `ppc_instructions.sinc` has **five** relative helpers: `lmwInstructions.sinc`, `lswInstructions.sinc`, `mulhwInstructions.sinc`, `stmwInstructions.sinc`, and `stswiInstructions.sinc`. All five exist in the installed stock language directory and none has nested includes. This is an include-location regression of the copied file, not a failed ISA numerical fixture or invalid `lwarx` semantics.
+- Updated `prepareXenonCommon` to rewrite those five includes to `$(PowerPC)/data/languages/<helper>` in the generated Xenon-only copy. Each name must occur exactly once and its installed stock file must exist; fail closed otherwise. The existing `-dPowerPC` compiler option resolves the prefix. No stock files are modified.
+- Added a source-level test for all five include rewrites and brought the pre-existing embedded collision tests' expected generator inputs/outputs and instruction include into sync with the `lwarx` change.
+- **Status:** source changes committed; the corrected build and SLEIGH compile have **not yet been run in the user's installation**. The next action is to pull and rerun `gradle buildExtension`, then recheck the same three real kernel functions under the rebuilt Xenon language. Do not repeat the completed 3,414-case numerical p-code audit merely to establish that include relocation compiles.
