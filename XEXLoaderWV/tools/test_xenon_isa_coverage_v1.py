@@ -605,6 +605,39 @@ class XenonIsaInventoryTests(unittest.TestCase):
         ):
             self.assertIn(fragment, gradle)
 
+    def test_xenon_stswi_partial_store_uses_only_requested_bytes(self):
+        # Ghidra 12.1.3 ignores 'sa' in storeRegisterPartial.
+        # The Xenon-only macro must write high-order bytes of the low
+        # 32-bit GPR word and never clobber trailing destination bytes.
+        gradle = (audit.ROOT / "build.gradle").read_text(
+            encoding="utf-8")
+        start = gradle.index("String xenonPartialStore = '''")
+        end = gradle.index("'''", start + len("String xenonPartialStore = '''"))
+        macro = gradle[start:end]
+        self.assertIn("common = common.replace(stockPartialStore, xenonPartialStore)", gradle)
+        self.assertIn("common.indexOf(stockPartialStore)", gradle)
+        self.assertIn("local wholeGpr:8 = reg;", macro)
+        self.assertIn("local word:4 = wholeGpr:4;", macro)
+        self.assertIn("local word:4 = reg;", macro)
+        self.assertNotIn("*:4(ea)", macro)
+        for fragment in (
+                "*:1(ea) = word(3);",
+                "if (sa == 1) goto <partialDone>;",
+                "*:1(ea) = word(2);",
+                "if (sa == 2) goto <partialDone>;",
+                "*:1(ea) = word(1);",
+                "<partialDone>",
+        ):
+            self.assertIn(fragment, macro)
+        self.assertEqual(macro.count("*:1(ea)"), 3)
+        # Numeric oracle independent of machine-word width. For Xenon,
+        # STSWI sees only a GPR's low 32 bits, in big-endian byte order.
+        for value in (0x1122334455667788, 0xaabbccdd, 0xffffffff00000000):
+            word = (value & 0xffffffff).to_bytes(4, "big")
+            extracted = [word[0], word[1], word[2]]
+            for count in (1, 2, 3):
+                self.assertEqual(bytes(extracted[:count]), word[:count])
+
     def test_embedded_dcbzl_collision_filter_wiring(self):
         # Stock ppc_common includes the embedded dcbzl alias, which has the
         # same opcode selector as Xenon's dcbz128. Only the Xenon variant
