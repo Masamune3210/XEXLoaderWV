@@ -138,6 +138,53 @@ public class ApplyXboxKrnl17559SharedRegisterHelpersV1 extends GhidraScript {
                p.getSource() != SourceType.USER_DEFINED;
     }
 
+    private void preflightNames(long first, String prefix) {
+        for (int reg = 14; reg <= 31; reg++) {
+            Function f = currentProgram.getFunctionManager()
+                .getFunctionAt(toAddr(first + (reg - 14) * 4L));
+            if (f == null) continue;
+            String name = f.getName();
+            check(name.startsWith("FUN_") || name.equals(prefix + reg),
+                "Preserving unexpected existing helper name " + name);
+        }
+    }
+
+    private void preflightAllocatorPrototypes(Function alloc, Function free) {
+        Parameter[] ap = alloc.getParameters();
+        if (ap.length == 3 &&
+            "allocationSize".equals(ap[0].getName()) &&
+            "allocationTag".equals(ap[1].getName()) &&
+            "poolSelection".equals(ap[2].getName())) {
+            // Idempotent already-refined case. Storage already set explicitly.
+        }
+        else {
+            check(ap.length == 16,
+                "Unexpected allocator parameter count; no changes applied");
+            for (int k = 0; k < 13; k++)
+                check(isAutoParameter(ap[k]) &&
+                    ap[k].getVariableStorage().toString().startsWith("f"),
+                    "Allocator argument " + k + " is not an inferred FPR");
+            String[] gp = {"r3", "r4", "r5"};
+            for (int k = 0; k < 3; k++)
+                check(isAutoParameter(ap[13 + k]) &&
+                    ap[13 + k].getVariableStorage().toString()
+                        .startsWith(gp[k] + ":"),
+                    "Allocator GPR argument " + k + " was edited");
+        }
+        Parameter[] fp = free.getParameters();
+        if (fp.length == 1 && "poolAddress".equals(fp[0].getName())) {
+            // Idempotent already-refined case.
+        }
+        else {
+            check(fp.length == 13,
+                "Unexpected free-pool parameter count; no changes applied");
+            for (Parameter p : fp)
+                check(isAutoParameter(p) &&
+                    p.getVariableStorage().toString().startsWith("f"),
+                    "FreePool has manually defined/non-FPR arguments");
+        }
+    }
+
     private void repairAllocator(Function f) throws Exception {
         Parameter[] all = f.getParameters();
         if (all.length == 3 && "allocationSize".equals(all[0].getName())
@@ -224,6 +271,20 @@ public class ApplyXboxKrnl17559SharedRegisterHelpersV1 extends GhidraScript {
         boolean fprSave = completeFamily(SAVE_FPR, "stfd", "fpr");
         boolean fprRestore = completeFamily(REST_FPR, "lfd", "fpr");
 
+        // Validate ALL planned writes before changing any function name or
+        // prototype. If the current database differs, abort safely.
+        preflightNames(SAVE_GPR, "__savegprlr_");
+        preflightNames(REST_GPR, "__restgprlr_");
+        if (fprSave) preflightNames(SAVE_FPR, "__savefpr_");
+        if (fprRestore) preflightNames(REST_FPR, "__restfpr_");
+        Function allocator = null, free = null;
+        if (APPLY_ALLOCATOR_PROTOTYPES) {
+            allocator = knownExport(0x800644E8L,
+                "ExAllocatePoolTypeWithTag");
+            free = knownExport(0x80064768L, "ExFreePool");
+            preflightAllocatorPrototypes(allocator, free);
+        }
+
         println("17559 SHARED SAVE/RESTORE ROUTINE METADATA");
         println("Verified 18 GPR stores, 18 GPR loads, two paired");
         println("prologue calls and two matching epilogue branches.");
@@ -243,9 +304,6 @@ public class ApplyXboxKrnl17559SharedRegisterHelpersV1 extends GhidraScript {
         else println("FPR restore opcode/register pattern did not match; skipped names");
 
         if (APPLY_ALLOCATOR_PROTOTYPES) {
-            Function allocator = knownExport(0x800644E8L,
-                "ExAllocatePoolTypeWithTag");
-            Function free = knownExport(0x80064768L, "ExFreePool");
             // Existing conventions and return types are retained.
             repairAllocator(allocator);
             repairFree(free);
