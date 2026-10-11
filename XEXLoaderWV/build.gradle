@@ -502,8 +502,26 @@ tasks.register("generateXenonIsaFixture", Exec) {
     // Intentionally no output cache/up-to-date declaration: always regenerate.
 }
 
-tasks.register("verifyXenonSleigh", Exec) {
+// Gate every extension build on the offline Python regression suite as
+// well as the real SLEIGH compiler. The Python tests inspect the recorded
+// ISA families, generated fixtures, p-code source invariants, and the
+// checked-in unified Ghidra numerical audit. Missing test dependencies
+// are build failures, rather than silently omitted checks.
+tasks.register("testXenonIsaCoverage", Exec) {
+    group = "verification"
+    description = "Run complete offline Xenon ISA regression suite"
     dependsOn tasks.named("generateXenonIsaFixture")
+    workingDir projectDir
+    def onWindows = System.getProperty("os.name").toLowerCase(java.util.Locale.ROOT).contains("windows")
+    def pythonCommand = project.findProperty("XENON_PYTHON")?.toString() ?:
+        (onWindows ? "python" : "python3")
+    commandLine pythonCommand, "tools/test_xenon_isa_coverage_v1.py"
+    // Deliberately run each build: tests validate external source files,
+    // not just one generated artifact's timestamp.
+}
+
+tasks.register("verifyXenonSleigh", Exec) {
+    dependsOn tasks.named("generateXenonIsaFixture"), tasks.named("testXenonIsaCoverage")
     dependsOn tasks.named("prepareXenonLegacyAltivec"), tasks.named("prepareXenonIsa"), tasks.named("prepareXenonCommon")
     group = "verification"
     description = "Compile Xenon SLEIGH with the installed Ghidra compiler before extension packaging"
