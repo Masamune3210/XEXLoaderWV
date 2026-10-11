@@ -585,6 +585,26 @@ class XenonIsaInventoryTests(unittest.TestCase):
         # No claim that this resolves the separate conditional-store
         # and sync CALLOTHERs; hardware contention remains opaque.
 
+    def test_copied_instruction_helpers_use_installed_powerpc_path(self):
+        # Generated PPC instructions live outside their stock directory.
+        # Relative stock include paths would fail at the first lmw helper.
+        gradle = (audit.ROOT / "build.gradle").read_text(
+            encoding="utf-8")
+        for helper in (
+                "lmwInstructions.sinc", "lswInstructions.sinc",
+                "mulhwInstructions.sinc", "stmwInstructions.sinc",
+                "stswiInstructions.sinc"):
+            self.assertIn(f'"{helper}"', gradle)
+        for fragment in (
+            "new File(xenonStockInstructions.parentFile, helper)",
+            'String relativeInclude =',
+            'String resolvedInclude =',
+            '@include "$(PowerPC)/data/languages/',
+            "instructions = instructions.replace(relativeInclude, resolvedInclude)",
+            "!stockHelper.isFile()",
+        ):
+            self.assertIn(fragment, gradle)
+
     def test_embedded_dcbzl_collision_filter_wiring(self):
         # Stock ppc_common includes the embedded dcbzl alias, which has the
         # same opcode selector as Xenon's dcbz128. Only the Xenon variant
@@ -598,11 +618,11 @@ class XenonIsaInventoryTests(unittest.TestCase):
             '@include "$(PowerPC)/data/languages/ppc_common.sinc"', slaspec)
         for fragment in (
             'tasks.register("prepareXenonCommon")',
-            'inputs.files(xenonStockCommon, xenonStockEmbedded)',
-            'outputs.files(xenonCommon, xenonEmbedded)',
+            'inputs.files(xenonStockCommon, xenonStockEmbedded, xenonStockInstructions)',
+            'outputs.files(xenonCommon, xenonEmbedded, xenonInstructions)',
             """String target = ':dcbzl RA_OR_ZERO,B'""",
             """String dcbzlPattern = 'BITS_21_25=1 & B & XOP_1_10=1014 & BIT_0=0'""",
-            """'@include "$(PowerPC)/data/languages/ppc_instructions.sinc"'""",
+            """'@include "xenon_ppc_instructions.sinc"'""",
             """'@include "xenon_ppc_embedded.sinc"'""",
             'embedded = embedded.substring(0, comment) + embedded.substring(end)',
             'tasks.named("prepareXenonCommon")',
