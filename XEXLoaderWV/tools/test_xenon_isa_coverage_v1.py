@@ -1056,39 +1056,47 @@ class XenonIsaInventoryTests(unittest.TestCase):
         self.assertIn('already++', src)
         self.assertIn('No functions created/merged', src)
 
-    def test_xenon_shared_helper_metadata_is_evidence_guarded(self):
-        src = (audit.ROOT.parent / "ghidra_scripts" /
-               "ApplyXboxKrnl17559SharedRegisterHelpersV1.java"
+    def test_xenon_shared_helper_metadata_preserves_all_signatures(self):
+        scripts = audit.ROOT.parent / "ghidra_scripts"
+        src = (scripts / "ApplyXboxKrnl17559SharedRegisterHelpersV2.java"
                ).read_text(encoding="utf-8")
         for expected in (
-                'public class ApplyXboxKrnl17559SharedRegisterHelpersV1',
-                '0x8010CB90L', '0x8010CBE0L',
-                '0x8010D240L', '0x8010D28CL',
-                '0x800644ECL', '0x8010CBB8L',
-                '0x8006476CL', '0x8010CBC4L',
-                '0x80064760L', '0x8010CC08L',
-                '0x80064964L', '0x8010CC14L',
+                "public class ApplyXboxKrnl17559SharedRegisterHelpersV2",
+                "0x8010CB90L", "0x8010CBE0L",
+                "0x8010D240L", "0x8010D28CL",
+                "0x800644ECL", "0x8010CBB8L",
+                "0x8006476CL", "0x8010CBC4L",
+                "0x80064760L", "0x8010CC08L",
+                "0x80064964L", "0x8010CC14L",
                 'completeFamily(SAVE_GPR, "std", "gpr")',
                 'completeFamily(REST_GPR, "ld", "gpr")',
                 'nameExistingEntries(SAVE_GPR, "__savegprlr_"',
                 'nameExistingEntries(REST_GPR, "__restgprlr_"',
-                'FunctionUpdateType.CUSTOM_STORAGE',
-                'params[k] = new ParameterImpl(names[k], t, reg',
-                'Undefined8DataType.dataType',
-                'new ParameterImpl("poolAddress"',
-                'f.updateFunction(null, null',
-                'APPLY_ALLOCATOR_PROTOTYPES = true',
-                'preflightAllocatorPrototypes(allocator, free);',
                 'preflightNames(SAVE_GPR, "__savegprlr_");',
                 'preflightNames(REST_GPR, "__restgprlr_");',
+                "ALL parameters, parameter storage, return types",
         ):
             self.assertIn(expected, src)
         for forbidden in (
-                'removeFunction(', 'createFunction(', 'setBody(',
-                'setReturnType(', 'setCallingConvention(',
-                'clearListing(', 'setBytes(', 'setNoReturn(',
+                "removeFunction(", "createFunction(", "setBody(",
+                "setReturnType(", "setCallingConvention(",
+                "clearListing(", "setBytes(", "setNoReturn(",
+                "updateFunction(", "replaceParameters(", "removeParameter(",
+                "ParameterImpl", "CUSTOM_STORAGE", "APPLY_ALLOCATOR_PROTOTYPES",
+                "repairAllocator(", "repairFree(", "setDataType(",
         ):
             self.assertNotIn(forbidden, src)
+
+        # V1 was previously recommended with unsafe parameter deletion;
+        # leave a fail-closed tombstone even if users retained that name.
+        retired = (scripts / "ApplyXboxKrnl17559SharedRegisterHelpersV1.java"
+                   ).read_text(encoding="utf-8")
+        self.assertIn("retired", retired)
+        self.assertIn("ApplyXboxKrnl17559SharedRegisterHelpersV2.java",
+                      retired)
+        for forbidden in ("updateFunction(", "setName(", "setDataType(",
+                          "createFunction(", "setBytes("):
+            self.assertNotIn(forbidden, retired)
 
     def test_committed_ghidra_java_audits_keep_compile_contracts(self):
         # The Ghidra GUI compiles scripts separately from buildExtension.
