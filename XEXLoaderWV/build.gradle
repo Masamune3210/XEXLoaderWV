@@ -278,6 +278,23 @@ tasks.register("prepareXenonCommon") {
         }
         common = common.replace(stockPartialStore, xenonPartialStore)
 
+        // A store-conditional is not a regular memory store: hardware may
+        // reject a reservation even when its flag was previously set.
+        // Model the atomic commit and success result as ONE opaque operation.
+        // No unconditional STORE may escape into the decompiler's p-code.
+        String stockAtomicUserop = 'define pcodeop storeWordConditionalIndexed;'
+        String xenonAtomicUserop =
+            'define pcodeop xenonAtomicStoreWordConditional;'
+        if (common.indexOf(stockAtomicUserop) < 0 ||
+                common.indexOf(stockAtomicUserop) !=
+                    common.lastIndexOf(stockAtomicUserop) ||
+                common.contains(xenonAtomicUserop)) {
+            throw new GradleException(
+                "Installed PPC conditional-store userop declarations changed")
+        }
+        common = common.replace(stockAtomicUserop,
+            stockAtomicUserop + '\n' + xenonAtomicUserop)
+
         String embedded = xenonStockEmbedded.getText("UTF-8")
         String target = ':dcbzl RA_OR_ZERO,B'
         String dcbzlPattern = 'BITS_21_25=1 & B & XOP_1_10=1014 & BIT_0=0'
@@ -335,6 +352,48 @@ tasks.register("prepareXenonCommon") {
                 !instructions.contains(newReservation)) {
             throw new GradleException("Xenon lwarx reservation patch failed")
         }
+
+        // The inherited stwcx. incorrectly writes an opaque value
+        // unconditionally after checking RESERVE and sets CR0.EQ=1.
+        // If RESERVE=0 it skips updating CR0 altogether. Replace only
+        // this verified exact constructor in the Xenon-specific copy.
+        // The new userop combines *atomic* memory side effect and boolean
+        // completion status; all contention behavior stays unresolved.
+        String stockStwcx = ''':stwcx. S,RA_OR_ZERO,B \tis OP=31 & S & RA_OR_ZERO & B & XOP_1_10=150 & BIT_0=1
+{
+\tEA:$(REGISTER_SIZE) = RA_OR_ZERO + B;
+\tif (RESERVE == 0) goto inst_next;
+\t*[ram]:4 EA = storeWordConditionalIndexed(S,RA_OR_ZERO,B);
+\t# set when a stwcx. or stdcx. successfully completes
+\tcr0flags(0:$(REGISTER_SIZE));
+}'''
+        String xenonStwcx = ''':stwcx. S,RA_OR_ZERO,B \tis OP=31 & S & RA_OR_ZERO & B & XOP_1_10=150 & BIT_0=1
+{
+    EA:$(REGISTER_SIZE) = RA_OR_ZERO + B;
+    local succeeded:1 = 0;
+    if (RESERVE == 0) goto <finishStoreConditional>;
+    # This opaque userop represents the ATOMIC commit and reports
+    # hardware success. It must not be replaced by a plain STORE:
+    # another processor may invalidate the reservation at any time.
+    succeeded = xenonAtomicStoreWordConditional(EA, S:4, RESERVE_ADDRESS, RESERVE_LENGTH);
+    <finishStoreConditional>
+    RESERVE = 0;
+    RESERVE_LENGTH = 0;
+    setCrBit(cr0, 0, 0);
+    setCrBit(cr0, 1, 0);
+    setCrBit(cr0, 2, succeeded);
+    setCrBit(cr0, 3, (xer_so & 1));
+}'''
+        if (instructions.indexOf(stockStwcx) < 0 ||
+                instructions.indexOf(stockStwcx) !=
+                    instructions.lastIndexOf(stockStwcx) ||
+                instructions.contains(xenonStwcx)) {
+            throw new GradleException(
+                "Installed Ghidra stwcx. constructor changed; refusing " +
+                "Xenon conditional-store semantics replacement")
+        }
+        instructions = instructions.replace(stockStwcx, xenonStwcx)
+
         // ppc_instructions.sinc is copied into the extension, so its five
         // stock-relative instruction helper includes no longer resolve.
         // Anchor every helper to the installed, version-matched PowerPC
