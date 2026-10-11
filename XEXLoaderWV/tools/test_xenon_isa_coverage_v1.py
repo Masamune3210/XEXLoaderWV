@@ -995,6 +995,32 @@ class XenonIsaInventoryTests(unittest.TestCase):
         # manifest and report, even when status categories stay identical.
         self.assertNotIn("outputs.", body)
 
+    def test_extension_build_runs_offline_regressions_and_sleigh(self):
+        # A clean checkout must exercise the checked-in numerical source
+        # assertions automatically rather than rely on remembered scripts.
+        gradle = (audit.ROOT / "build.gradle").read_text(
+            encoding="utf-8")
+        begin = gradle.index(
+            'tasks.register("testXenonIsaCoverage", Exec)')
+        sleigh = gradle.index('tasks.register("verifyXenonSleigh", Exec)')
+        diagnostics = gradle.index(
+            'tasks.register("diagnoseXenonSleigh", Exec)')
+        self.assertLess(begin, sleigh)
+        suite = gradle[begin:sleigh]
+        verifier = gradle[sleigh:diagnostics]
+        self.assertIn(
+            'commandLine pythonCommand, "tools/test_xenon_isa_coverage_v1.py"',
+            suite)
+        self.assertIn('dependsOn tasks.named("generateXenonIsaFixture")',
+                      suite)
+        self.assertIn('tasks.named("testXenonIsaCoverage")', verifier)
+        self.assertIn('tasks.named("prepareXenonCommon")', verifier)
+        self.assertIn(
+            'tasks.matching { it.name in ["build", "buildExtension", "assemble"] }',
+            gradle)
+        self.assertIn('dependsOn tasks.named("verifyXenonSleigh")',
+                      gradle)
+
     def test_java_fixture_manifest_header(self):
         # Numerical checks share one script and the existing 344-word fixture.
         source = (audit.ROOT.parent / "ghidra_scripts" /
