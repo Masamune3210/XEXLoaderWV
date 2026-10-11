@@ -995,6 +995,36 @@ class XenonIsaInventoryTests(unittest.TestCase):
         # manifest and report, even when status categories stay identical.
         self.assertNotIn("outputs.", body)
 
+    def test_critical_section_helper_metadata_script_preserves_pdata(self):
+        # Verified kernel 17559 uses a distinct .pdata function at 800890AC.
+        # Apply the inferred wait-helper name, not a body merge or a new
+        # Ghidra function. Existing return and ABI datatypes stay untouched.
+        src = (audit.ROOT.parent / "ghidra_scripts" /
+               "ApplyXboxKrnl17559CriticalSectionWaitMetadataV1.java"
+               ).read_text(encoding="utf-8")
+        self.assertIn(
+            "public class ApplyXboxKrnl17559CriticalSectionWaitMetadataV1",
+            src)
+        self.assertIn(
+            'private static final String WAIT_NAME = "RtlpWaitForCriticalSection";',
+            src)
+        self.assertIn("0x800890F7L", src)
+        self.assertIn("0x800890F8", src)
+        self.assertIn("0x80088FF8L", src)
+        self.assertIn("0x80073120", src)
+        self.assertIn("0x800890DCL", src)
+        self.assertIn("0x800890E0L", src)
+        self.assertIn("ReferenceIterator refs =", src)
+        self.assertIn('helper.setName(WAIT_NAME, SourceType.USER_DEFINED);', src)
+        self.assertIn('p.setName(PARAM_NAME, SourceType.USER_DEFINED);', src)
+        self.assertIn("helper.setRepeatableComment(existing +", src)
+        self.assertNotIn("createFunction(", src)
+        self.assertNotIn("removeFunction(", src)
+        self.assertNotIn("setReturnType(", src)
+        self.assertNotIn("setBody(", src)
+        self.assertNotIn("setBytes(", src)
+        self.assertNotIn("clearListing(", src)
+
     def test_committed_ghidra_java_audits_keep_compile_contracts(self):
         # The Ghidra GUI compiles scripts separately from buildExtension.
         # A checked TaskMonitor exception once broke the helper script
