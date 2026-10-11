@@ -1712,12 +1712,10 @@ class XenonIsaInventoryTests(unittest.TestCase):
             sorted(p.name for p in root.glob("AuditXenonNumericalPcode*.java")),
             ["AuditXenonNumericalPcode.java"])
         self.assertEqual(script.count('askFile('), 0)
-        self.assertIn(
-            '"C:/Users/Johnny/Downloads/Source Files/testing/XEXLoaderWV/"',
-            script)
-        self.assertIn(
-            '"XEXLoaderWV/build/xenon-isa-audit/xenon_isa_fixture_v1.tsv"',
-            script)
+        self.assertIn('currentProgram.getExecutablePath()', script)
+        self.assertIn('System.getenv("XENON_ISA_FIXTURE_TSV")', script)
+        self.assertIn('new File(parent, "xenon_isa_fixture_v1.tsv")', script)
+        self.assertNotIn('"C:/Users/Johnny/Downloads/', script)
         self.assertIn("if (!manifest.isFile())", script)
         self.assertIn("manifest.getAbsolutePath()", script)
 
