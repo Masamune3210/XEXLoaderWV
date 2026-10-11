@@ -212,13 +212,16 @@ def xenonStockCommon = new File(ghidraInstallDir,
     "Ghidra/Processors/PowerPC/data/languages/ppc_common.sinc")
 def xenonStockEmbedded = new File(ghidraInstallDir,
     "Ghidra/Processors/PowerPC/data/languages/ppc_embedded.sinc")
+def xenonStockInstructions = new File(ghidraInstallDir,
+    "Ghidra/Processors/PowerPC/data/languages/ppc_instructions.sinc")
 def xenonCommon = file("data/languages/xenon_ppc_common.sinc")
 def xenonEmbedded = file("data/languages/xenon_ppc_embedded.sinc")
+def xenonInstructions = file("data/languages/xenon_ppc_instructions.sinc")
 tasks.register("prepareXenonCommon") {
     group = "verification"
-    description = "Remove inherited embedded dcbzl alias from Xenon-only PPC language"
-    inputs.files(xenonStockCommon, xenonStockEmbedded)
-    outputs.files(xenonCommon, xenonEmbedded)
+    description = "Isolate embedded dcbzl and restore Xenon lwarx reservation bookkeeping"
+    inputs.files(xenonStockCommon, xenonStockEmbedded, xenonStockInstructions)
+    outputs.files(xenonCommon, xenonEmbedded, xenonInstructions)
     doLast {
         String common = xenonStockCommon.getText("UTF-8")
         String instructionsInclude = '@include "ppc_instructions.sinc"'
@@ -231,7 +234,7 @@ tasks.register("prepareXenonCommon") {
                 "Installed ppc_common.sinc includes changed; cannot isolate Xenon dcbzl")
         }
         common = common.replace(instructionsInclude,
-            '@include "$(PowerPC)/data/languages/ppc_instructions.sinc"')
+            '@include "xenon_ppc_instructions.sinc"')
         common = common.replace(embeddedInclude,
             '@include "xenon_ppc_embedded.sinc"')
 
@@ -255,12 +258,52 @@ tasks.register("prepareXenonCommon") {
         if (embedded.contains(target) || embedded.contains('#dcbzl ')) {
             throw new GradleException("Xenon embedded dcbzl exclusion failed")
         }
+        // Ghidra 12.1.3's legacy BIT_0=0 lwarx constructor takes
+        // precedence over its generic ISA constructor but comments out
+        // RESERVE writes. Actual xboxkrnl 17559 stwcx. loops depend on
+        // that state. Preserve the legacy decoder and load exactly; turn
+        // on the three already-established reservation assignments only
+        // in the generated Xenon language, failing closed on source drift.
+        String instructions = xenonStockInstructions.getText("UTF-8")
+        String lwarxHead = ':lwarx D,RA_OR_ZERO,B'
+        int lwarxStart = instructions.indexOf(lwarxHead)
+        int lwarxEnd = instructions.indexOf("\n}", lwarxStart)
+        String oldReservation =
+            '\t#RESERVE = 1;\n\t#RESERVE_ADDRSS:$(REGISTER_SIZE) = ea;'
+        String newReservation =
+            '\tRESERVE = 1;\n\tRESERVE_LENGTH = 4;\n\tRESERVE_ADDRESS = ea;'
+        if (lwarxStart < 0 || lwarxEnd <= lwarxStart ||
+                instructions.indexOf(lwarxHead,
+                    lwarxStart + lwarxHead.length()) >= 0) {
+            throw new GradleException(
+                "Installed Ghidra lwarx layout changed; refusing Xenon reservation patch")
+        }
+        String lwarxBody = instructions.substring(lwarxStart, lwarxEnd + 2)
+        if (!lwarxBody.contains('XOP_1_10=20 & BIT_0=0') ||
+                !lwarxBody.contains('ea:$(REGISTER_SIZE) = RA_OR_ZERO+B;') ||
+                !lwarxBody.contains(oldReservation) ||
+                !lwarxBody.contains('D = zext(*:4(ea));') ||
+                lwarxBody.indexOf(oldReservation) !=
+                    lwarxBody.lastIndexOf(oldReservation)) {
+            throw new GradleException(
+                "Stock legacy lwarx semantics changed; not modifying Xenon variant")
+        }
+        instructions = instructions.substring(0, lwarxStart) +
+            lwarxBody.replace(oldReservation, newReservation) +
+            instructions.substring(lwarxEnd + 2)
+        if (instructions.contains(oldReservation) ||
+                !instructions.contains(newReservation)) {
+            throw new GradleException("Xenon lwarx reservation patch failed")
+        }
         xenonCommon.setText(
             "# Generated from installed Ghidra ppc_common.sinc; do not edit.\n" +
             common, "UTF-8")
         xenonEmbedded.setText(
             "# Generated from installed Ghidra ppc_embedded.sinc; do not edit.\n" +
             embedded, "UTF-8")
+        xenonInstructions.setText(
+            "# Generated from installed Ghidra ppc_instructions.sinc; do not edit.\n" +
+            instructions, "UTF-8")
     }
 }
 
