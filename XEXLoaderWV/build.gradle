@@ -359,15 +359,15 @@ tasks.register("prepareXenonCommon") {
         // this verified exact constructor in the Xenon-specific copy.
         // The new userop combines *atomic* memory side effect and boolean
         // completion status; all contention behavior stays unresolved.
-        String stockStwcx = ''':stwcx. S,RA_OR_ZERO,B \tis OP=31 & S & RA_OR_ZERO & B & XOP_1_10=150 & BIT_0=1
+        String stockStwcx = ''':stwcx. S,RA_OR_ZERO,B 	is OP=31 & S & RA_OR_ZERO & B & XOP_1_10=150 & BIT_0=1
 {
-\tEA:$(REGISTER_SIZE) = RA_OR_ZERO + B;
-\tif (RESERVE == 0) goto inst_next;
-\t*[ram]:4 EA = storeWordConditionalIndexed(S,RA_OR_ZERO,B);
-\t# set when a stwcx. or stdcx. successfully completes
-\tcr0flags(0:$(REGISTER_SIZE));
+	EA:$(REGISTER_SIZE) = RA_OR_ZERO + B;
+	if (RESERVE == 0) goto inst_next;
+	*[ram]:4 EA = storeWordConditionalIndexed(S,RA_OR_ZERO,B);
+	# set when a stwcx. or stdcx. successfully completes
+	cr0flags(0:$(REGISTER_SIZE));
 }'''
-        String xenonStwcx = ''':stwcx. S,RA_OR_ZERO,B \tis OP=31 & S & RA_OR_ZERO & B & XOP_1_10=150 & BIT_0=1
+        String xenonStwcx = ''':stwcx. S,RA_OR_ZERO,B 	is OP=31 & S & RA_OR_ZERO & B & XOP_1_10=150 & BIT_0=1
 {
     EA:$(REGISTER_SIZE) = RA_OR_ZERO + B;
     local succeeded:1 = 0;
