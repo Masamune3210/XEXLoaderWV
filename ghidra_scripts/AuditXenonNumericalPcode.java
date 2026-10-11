@@ -33,6 +33,9 @@ import ghidra.program.model.address.Address;
 import ghidra.program.model.lang.Register;
 import ghidra.program.model.listing.Instruction;
 
+// Ghidra 12.1.3 marks the still-required legacy emulator API for removal.
+// This warning is intentional until numerical probes migrate APIs.
+@SuppressWarnings("removal")
 public class AuditXenonNumericalPcode extends GhidraScript {
     private final List<String> combinedProblems = new ArrayList<>();
     private int combinedPassed = 0;
