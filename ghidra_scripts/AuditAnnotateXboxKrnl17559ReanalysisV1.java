@@ -143,7 +143,8 @@ public class AuditAnnotateXboxKrnl17559ReanalysisV1 extends GhidraScript {
             " distinct .pdata annotations=" + spans.size());
 
         int pdataEntry = 0, outside = 0, interior = 0;
-        int recognizedHelpers = 0, needsReview = 0;
+        int recognizedHelpers = 0, pairedVectorCandidates = 0,
+            needsReview = 0;
         int suspiciousPrinted = 0;
         for (Function f : allFunctions) {
             monitor.checkCancelled();
@@ -158,9 +159,18 @@ public class AuditAnnotateXboxKrnl17559ReanalysisV1 extends GhidraScript {
             else {
                 ++interior;
                 boolean helper = recognizedSharedEntry(at, s);
-                if (helper) recognizedHelpers++; else needsReview++;
+                boolean pairedVector = (
+                    (s.start == 0x8010D2E0L && s.end == 0x8010D578L &&
+                     at == 0x8010D51CL) ||
+                    (s.start == 0x8010D578L && s.end == 0x8010D810L &&
+                     at == 0x8010D7B4L));
+                if (helper) recognizedHelpers++;
+                else if (pairedVector) pairedVectorCandidates++;
+                else needsReview++;
                 if (suspiciousPrinted++ < MAX_DETAILS) {
-                    println("  " + (helper ? "MULTI-ENTRY HELPER" : "REVIEW") +
+                    println("  " + (helper ? "MULTI-ENTRY HELPER" :
+                        (pairedVector ? "PAIRED VECTOR CANDIDATE (unverified)" :
+                         "REVIEW")) +
                         ": function " + f.getName() +
                         " at " + f.getEntryPoint() +
                         " starts inside .pdata 0x" +
@@ -172,7 +182,9 @@ public class AuditAnnotateXboxKrnl17559ReanalysisV1 extends GhidraScript {
         println("Function entries at .pdata start=" + pdataEntry +
             ", outside all spans=" + outside +
             ", inside another .pdata span=" + interior);
-        println("Verified GPR/FPR shared helper entries=" + recognizedHelpers +
+        println("Opcode-confirmed GPR/FPR helper entries=" + recognizedHelpers +
+            ", paired vector candidates (not yet opcode-verified)=" +
+            pairedVectorCandidates +
             ", other nested entries needing review=" + needsReview);
         println("Multiple entrypoints can be intentional; do not merge just for overlap.");
 
