@@ -1062,6 +1062,9 @@ class XenonIsaInventoryTests(unittest.TestCase):
                   ).read_text(encoding="utf-8")
         for token in (
             "public class AuditApplyXboxKrnl17559NativeMetadataPassV1",
+            "private static final boolean APPLY_METADATA = false;",
+            'if (APPLY_METADATA) {',
+            "READ ONLY: metadata has already been saved",
             "0x80040F78L", "0x80041048L", "0x80041118L",
             "0x800418E8L", "0x80042628L", "0x80042644L",
             "0x8007345CL", "0x80077FB0L", "0x80078280L",
