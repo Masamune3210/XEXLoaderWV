@@ -15,9 +15,12 @@ public class AuditXenonStswiPartialStoresV1 extends GhidraScript {
     private static final long CODE = 0x80061010L;
     private static final long DEST = 0x80061200L;
     private static final int SENTINEL_LENGTH = 48;
-    private static final long R3 = 0x1122334455667788L;
-    private static final long R5 = 0x99AABBCCDDEEFF00L;
-    private static final long R6 = 0x123456780BADF00DL;
+    private static final long[] SOURCE_REGS = {
+        0x1122334455667788L, 0x99AABBCCDDEEFF00L,
+        0x123456780BADF00DL, 0x0123456789ABCDEFL,
+        0xFEDCBA9876543210L, 0x0F1E2D3C4B5A6978L,
+        0xC001D00DCAFEBABEL, 0xA1B2C3D4E5F60718L
+    };
 
     private static void require(boolean ok, String message) {
         if (!ok) {
@@ -34,16 +37,16 @@ public class AuditXenonStswiPartialStoresV1 extends GhidraScript {
         };
     }
 
-    // Primary opcode 31, RS=r3, RA=r4, NB=n, XO=725, Rc=0.
+    // Primary opcode 31, RS=r3, RA=r20, NB=n, XO=725, Rc=0.
     private static int stswi(int nb) {
-        return (31 << 26) | (3 << 21) | (4 << 16) |
+        return (31 << 26) | (3 << 21) | (20 << 16) |
             ((nb & 31) << 11) | (725 << 1);
     }
 
     private static byte[] expected(int byteCount) {
         byte[] expected = new byte[SENTINEL_LENGTH];
         Arrays.fill(expected, (byte) 0xA5);
-        long[] regs = { R3, R5, R6 };
+        long[] regs = SOURCE_REGS;
         for (int index = 0; index < byteCount; ++index) {
             int word = index / 4;
             int byteInWord = index % 4;
@@ -61,10 +64,14 @@ public class AuditXenonStswiPartialStoresV1 extends GhidraScript {
             byte[] sentinel = new byte[SENTINEL_LENGTH];
             Arrays.fill(sentinel, (byte) 0xA5);
             emu.writeMemory(dest, sentinel);
-            emu.writeRegister("r3", BigInteger.valueOf(R3));
-            emu.writeRegister("r4", BigInteger.valueOf(dest.getOffset()));
-            emu.writeRegister("r5", BigInteger.valueOf(R5));
-            emu.writeRegister("r6", BigInteger.valueOf(R6));
+            // Use a separate RA register: STSWI reads consecutive
+            // source registers (r3, r4, ...), including the second GPR.
+            // Using RA=r4 would overwrite that source with the pointer.
+            for (int index = 0; index < SOURCE_REGS.length; ++index) {
+                emu.writeRegister("r" + (3 + index),
+                    BigInteger.valueOf(SOURCE_REGS[index]));
+            }
+            emu.writeRegister("r20", BigInteger.valueOf(dest.getOffset()));
             emu.writeRegister(emu.getPCRegister(),
                 BigInteger.valueOf(code.getOffset()));
 
@@ -80,7 +87,7 @@ public class AuditXenonStswiPartialStoresV1 extends GhidraScript {
                 " memory mismatch (including bytes beyond requested range)" +
                 "\\nExpected: " + Arrays.toString(want) +
                 "\\nActual:   " + Arrays.toString(got));
-            println("PASS: stswi r3,r4," + encodedNb +
+            println("PASS: stswi r3,r20," + encodedNb +
                 " stored " + count + " byte(s) without clobber");
         }
         finally {
@@ -102,10 +109,9 @@ public class AuditXenonStswiPartialStoresV1 extends GhidraScript {
                 currentProgram.getMemory().contains(dest),
             "Expected retail kernel 17559 test addresses are unmapped");
 
-        // All partial tails (1/2/3), one full word, two-word cases
-        // with partial tails, plus the architectural NB=0 -> 32 case.
-        // 32-byte case is checked separately below with enough registers.
-        int[] cases = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
+        // Every 1/2/3-byte tail, whole-word transitions, and both
+        // NB=31 and architectural NB=0 (32 bytes).
+        int[] cases = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 31, 32 };
         println("XENON STSWI BYTE-STORE AUDIT (emulator state only)");
         for (int count : cases) {
             monitor.checkCancelled();
