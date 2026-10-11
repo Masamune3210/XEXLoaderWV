@@ -1037,7 +1037,9 @@ class XenonIsaInventoryTests(unittest.TestCase):
             'getFunctions(true)',
             'getRepeatableComment()',
             'findSpan(spans, at)',
-            'foundInside == 0 && interior == 0',
+            'foundInside == 0',
+            'recognizedSharedEntry(at, s)',
+            'other nested entries needing review',
             'spans.size() == 3188',
             'getFunctionAt(addr)',
             'f.setRepeatableComment(',
@@ -1053,6 +1055,37 @@ class XenonIsaInventoryTests(unittest.TestCase):
         self.assertIn('APPLY_SAFE_METADATA = true', src)
         self.assertIn('already++', src)
         self.assertIn('No functions created/merged', src)
+
+    def test_xenon_shared_helper_metadata_is_evidence_guarded(self):
+        src = (audit.ROOT.parent / "ghidra_scripts" /
+               "ApplyXboxKrnl17559SharedRegisterHelpersV1.java"
+               ).read_text(encoding="utf-8")
+        for expected in (
+                'public class ApplyXboxKrnl17559SharedRegisterHelpersV1',
+                '0x8010CB90L', '0x8010CBE0L',
+                '0x8010D240L', '0x8010D28CL',
+                '0x800644ECL', '0x8010CBB8L',
+                '0x8006476CL', '0x8010CBC4L',
+                '0x80064760L', '0x8010CC08L',
+                '0x80064964L', '0x8010CC14L',
+                'completeFamily(SAVE_GPR, "std", "gpr")',
+                'completeFamily(REST_GPR, "ld", "gpr")',
+                'nameExistingEntries(SAVE_GPR, "__savegprlr_"',
+                'nameExistingEntries(REST_GPR, "__restgprlr_"',
+                'FunctionUpdateType.CUSTOM_STORAGE',
+                'params[k] = new ParameterImpl(names[k], t, reg',
+                'Undefined8DataType.dataType',
+                'new ParameterImpl("poolAddress"',
+                'f.updateFunction(null, null',
+                'APPLY_ALLOCATOR_PROTOTYPES = true',
+        ):
+            self.assertIn(expected, src)
+        for forbidden in (
+                'removeFunction(', 'createFunction(', 'setBody(',
+                'setReturnType(', 'setCallingConvention(',
+                'clearListing(', 'setBytes(', 'setNoReturn(',
+        ):
+            self.assertNotIn(forbidden, src)
 
     def test_committed_ghidra_java_audits_keep_compile_contracts(self):
         # The Ghidra GUI compiles scripts separately from buildExtension.
