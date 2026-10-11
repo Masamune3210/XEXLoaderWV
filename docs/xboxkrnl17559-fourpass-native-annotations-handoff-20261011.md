@@ -1,0 +1,37 @@
+# Xbox kernel 17559: four saved native-annotation passes (2026-10-10)
+
+## Source and authority
+The user supplied `2026-10-10-2151-xbox360-kernel-saved-annotations.md` after uploading `xboxkrnl.exe(20261011-043046).gzf`. This document captures the **user-supplied research report's** findings and verification claims. They explain the large native metadata delta independently observed in the third GZF. Preserve distinctions: source claims of read-only/fresh verification are not re-executed by this repository commit. The complete user report remains a conversation attachment.
+
+Input Ghidra Program: `/System Firmware/xboxkrnl.exe` in `X360 Decomp.gpr`; SHA256 `e1d1c87dbcbec01c71c5400cc129a462fa46738d267e29151a91c5354bdf6cb8`; Ghidra 12.1.3, `PowerPC:BE:64:XENON-32addr` at `0x80040000`. The report states all 11 initialized mapped memory blocks match the original retail flat-layout image byte-for-byte; a superseded raw PE-file-offset comparison after `.timing` does **not** indicate image corruption.
+
+## Definitive reported saved state
+- **92 distinct function contract refinements** across four passes, **21 observed structures**, **nine data labels**, **six bounded data definitions**, **five typed/named stack locals**, and **83 targeted native p-code executions**, not an emulator-wide validation.
+- 4,265 functions / 908 named; 255,601 instructions; 4,982 defined-data units; 118 datatype records (50 newly added over the starting 68); zero Error bookmarks.
+- Existing instruction bytes, memory mappings, function bodies and boundaries, unresolved FPR parameters and unrelated metadata preserved. ABI/storage untouched except changes with native corroboration.
+- Saved passes ran via private PyGhidra/Ghidra environment with explicit Program transactions, rollback previews, independently verified result artifacts, and **fresh read-only reopen checks**. No language extension or SLEIGH changes, no reimport, no Ghidra GUI interaction.
+
+## Scope, in chronological order
+1. **First pass: 29 function contracts**, nine observed structures, 22 added datatype records (68 -> 90). Recovered `RtlCompareString` (0x80086498), `RtlCompareUnicodeString` (0x80086590) signed `longlong` returns and `RtlCompareMemoryUlong` (0x8008859C) `ulonglong` matching-prefix byte count. Introduced 8-byte counted ANSI/Unicode descriptors with two 16-bit byte lengths and 32-bit data address; initializers and prefix event/semaphore/timer/DPC/queue structures. Verified NLS and 256-entry big-endian reflected CRC32 table; named observed move and UTF16-scan helpers, keeping other unknown returns. Nine leaf/native cases.
+2. **Second pass: 27 function contracts**, five more structures (total 100 datatype records). Restored `KeWaitForMultipleObjects` native `r3:8` return without removing its 21 parameters (13 FPR inputs), and `KeRemoveQueueDpc` incoming `r3:8` with corroborated call sites. Typed observed timers, DPCs, critical sections, mutants, wait blocks; `RtlpSignalCriticalSection` helper and timer helpers. 17 focused execution cases.
+3. **Third pass: 26 contracts**, five more structures (total 110 datatype records). Restored previous-head address returns of three `Interlocked*EntrySList` functions. Restored missing `r3:8` object inputs in `ExTryToAcquireReadWriteLockExclusive`, `ExTryToAcquireReadWriteLockShared`, `ExReleaseReadWriteLock`, and `KeRemoveQueueApc`, **without deleting any of their 13 original FPR parameters**. Observed `ReadWriteLockObserved56`, APC and time structures, calendar fields. 42 focused execution cases.
+4. **Fourth pass: 17 contracts, 12 new distinct targets**, two more queue structures, eight additional datatype records (total 118). Crucially, **`ExFreePool` at 0x80064768 now has native incoming `r3:8` restored**, justified by its own `0x80064774` incoming register use and caller `0x80065A60` / `0x80065A64` supplying the address; **all 13 previous FPR arguments remain**. Likewise restored `KeRemoveDeviceQueue` incoming `r3:8` after native register/caller evidence. Applied a three-argument *normal* APC callback datatype without assuming kernel callback ABI. Typed five existing stack locals, six bounded data definitions (CRC lookup uint[256], month-start ushort[13] tables, cancel-spin uint, 64-bit interrupt and system time words). 15 native execution cases.
+
+Counts `9 + 17 + 42 + 15 = 83` native cases. Some function contract targets overlap between passes; 92 is the de-duplicated count, not 99.
+
+## Crucial ABI discipline
+- The earlier speculative `ExFreePool` **13-to-1 replacement** was never justified and remains RETRACTED. The latest native pass restores *one additional* GPR input while leaving every previously existing unresolved FPR parameter unchanged. Do not try to infer removal, reordering, width adjustment, calling convention or return type from heuristic rendered C.
+- `ExAllocatePoolTypeWithTag` retains its original 16 inputs (13 FPR + 3 GPR). The existing GPR inputs were previously renamed without deleting the FPRs.
+- Xenon out-of-line `__savegprlr_*` and possible FPR/VMX helper calls still introduce misleading decompiler artifacts. Do not declare callfixups or remove args merely to make C prettier.
+- Datatype sizes/offsets reflect minimum *observed* spans, not a fully recovered ABI. Unwritten bytes, unknown callback interfaces and raw full-width address carriers remain unresolved.
+- Ghidra function-editor signatures must NOT contain `__stdcall`. Calling convention is a separate Ghidra setting.
+
+## Reproduced but not patched Xenon CR0 ISA issue
+The native report independently ran a real source instruction at **0x80064204**, `addic. r11,r11,1`, with `r11 = 0xFFFFFFFF`. The current Xenon SLEIGH/p-code computes a 64-bit `0x100000000`, sets CR0=4 (GT), whereas a low32 record comparison would give EQ. The source `isa-record-width-evidence.json` reproduces this behavior; Xenia PowerPC HIR's update-CR code was cited as comparison support for 32-bit truncation. **This verifies the current lift's behavioral disagreement with the low32 oracle**. Final hardware correctness remains a separate architectural question; no SLEIGH fix, build, or hardware contention claim was made. Do not silently change the language on receipt of an annotation report. Implement Xenon-only changes with targeted numerical/ISA fixtures and a full build only on an explicit continuation.
+
+## Stop conditions and next action
+The user-supplied report says the four native-annotation passes **completed and were asked to stop**. The saved Ghidra Program is already annotated. Its older per-pass `baseline`/`preview`/`apply` scripts and verifiers are **historical** and intentionally fail against the later saved metadata drift; don't rerun them. For new metadata work, capture a *fresh* independently checked baseline.
+
+The repository's `ghidra_scripts/AuditApplyXboxKrnl17559NativeMetadataPassV1.java` is now **read-only by default** (`APPLY_METADATA=false`), because the latest GZF and saved report document that native metadata is already present. It must not reapply verified annotations or add bookmarks merely to create activity. Source tests enforce the read-only default. No kernel reimport, full analyzer rerun, signature replacement, or additional native pass is needed just because this report was attached.
+
+References: existing branch docs `docs/import-thunk-modeling-20261009.md`, `docs/xboxkrnl17559-atomic-decomp-20261011.md`, exact new-name address inventory `docs/xboxkrnl17559_native_symbol_delta_20261011_v3.csv`.
