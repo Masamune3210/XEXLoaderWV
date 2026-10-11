@@ -1706,8 +1706,10 @@ class XenonIsaInventoryTests(unittest.TestCase):
         self.assertIn("XENON NATIVE PACK NUMERICAL P-CODE AUDIT", script)
         self.assertIn("XENON GUARDED FP NATIVE NUMERICAL P-CODE AUDIT", script)
         self.assertNotIn("currentProgram.getMemory().setBytes(", script)
+        # Separate, narrowly scoped STSWI/atomic diagnostic scripts are
+        # allowed; require exactly one unified *numerical* entry point.
         self.assertEqual(
-            sorted(p.name for p in root.glob("AuditXenon*.java")),
+            sorted(p.name for p in root.glob("AuditXenonNumericalPcode*.java")),
             ["AuditXenonNumericalPcode.java"])
         self.assertEqual(script.count('askFile('), 0)
         self.assertIn(
