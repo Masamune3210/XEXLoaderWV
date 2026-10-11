@@ -1025,6 +1025,35 @@ class XenonIsaInventoryTests(unittest.TestCase):
         self.assertNotIn("setBytes(", src)
         self.assertNotIn("clearListing(", src)
 
+    def test_reanalysis_metadata_audit_preserves_verified_pdata(self):
+        src = (audit.ROOT.parent / "ghidra_scripts" /
+               "AuditAnnotateXboxKrnl17559ReanalysisV1.java"
+               ).read_text(encoding="utf-8")
+        for required in (
+            "public class AuditAnnotateXboxKrnl17559ReanalysisV1",
+            'getExecutableSHA256()',
+            'getExecutableFormat()',
+            'getBookmarksIterator()',
+            'getFunctions(true)',
+            'getRepeatableComment()',
+            'findSpan(spans, at)',
+            'foundInside == 0 && interior == 0',
+            'spans.size() == 3188',
+            'getFunctionAt(addr)',
+            'f.setRepeatableComment(',
+        ):
+            self.assertIn(required, src)
+        for disallowed in (
+            "setNoReturn(", "setReturnType(", "setCallingConvention(",
+            "setBody(", "removeFunction(", "createFunction(",
+            "clearListing(", "setBytes(", "removeBookmark(",
+            "setDataType(", "setName(", "setPrimary(",
+        ):
+            self.assertNotIn(disallowed, src)
+        self.assertIn('APPLY_SAFE_METADATA = true', src)
+        self.assertIn('already++', src)
+        self.assertIn('No functions created/merged', src)
+
     def test_committed_ghidra_java_audits_keep_compile_contracts(self):
         # The Ghidra GUI compiles scripts separately from buildExtension.
         # A checked TaskMonitor exception once broke the helper script
