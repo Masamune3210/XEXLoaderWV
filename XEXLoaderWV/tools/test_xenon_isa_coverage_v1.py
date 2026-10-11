@@ -585,6 +585,40 @@ class XenonIsaInventoryTests(unittest.TestCase):
         # No claim that this resolves the separate conditional-store
         # and sync CALLOTHERs; hardware contention remains opaque.
 
+    def test_xenon_stwcx_models_atomic_result_without_forced_write(self):
+        # Real 17559 lwarx/stwcx. pairs now establish reservation
+        # bookkeeping; a conditional store must model BOTH outcomes,
+        # not assign success or write memory merely on RESERVE != 0.
+        gradle = (audit.ROOT / "build.gradle").read_text(
+            encoding="utf-8")
+        start = gradle.index("String xenonStwcx = '''")
+        end = gradle.index("'''", start + len("String xenonStwcx = '''"))
+        constructor = gradle[start:end]
+        for fragment in (
+                "define pcodeop xenonAtomicStoreWordConditional;",
+                "common = common.replace(stockAtomicUserop,",
+                "instructions = instructions.replace(stockStwcx, xenonStwcx)",
+                "Installed Ghidra stwcx. constructor changed",
+                "if (RESERVE == 0) goto <finishStoreConditional>;",
+                "succeeded = xenonAtomicStoreWordConditional(",
+                "RESERVE = 0;",
+                "RESERVE_LENGTH = 0;",
+                "setCrBit(cr0, 0, 0);",
+                "setCrBit(cr0, 1, 0);",
+                "setCrBit(cr0, 2, succeeded);",
+                "setCrBit(cr0, 3, (xer_so & 1));",
+        ):
+            self.assertIn(fragment, gradle if fragment.startswith(
+                ("define pcodeop", "common =", "instructions =", "Installed Ghidra"))
+                else constructor)
+        self.assertNotIn("*[ram]:4", constructor)
+        self.assertNotIn("cr0flags(0:", constructor)
+        self.assertNotIn("goto inst_next", constructor)
+        # Hardware contention remains in one opaque atomic operation.
+        self.assertEqual(
+            constructor.count("xenonAtomicStoreWordConditional("), 1)
+        self.assertEqual(constructor.count("<finishStoreConditional>"), 2)
+
     def test_copied_instruction_helpers_use_installed_powerpc_path(self):
         # Generated PPC instructions live outside their stock directory.
         # Relative stock include paths would fail at the first lmw helper.
