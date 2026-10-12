@@ -38,198 +38,6 @@ class XenonIsaInventoryTests(unittest.TestCase):
                     (left["mask"] & right["mask"]), 0,
                     f"{left['mnemonic']} overlaps {right['mnemonic']}")
 
-    def test_numerical_pack_v3_has_independent_source_register_probes(self):
-        # Decoder fixture deliberately uses homogeneous fills. Numerical
-        # tests must not treat those samples as independent VA / VB sources.
-        source = (audit.ROOT.parent /
-                  "ghidra_scripts/AuditXenonNumericalPcode.java").read_text(
-                      encoding="utf-8")
-        self.assertIn("getDefaultOperandRepresentation(index)", source)
-        self.assertIn("currentProgram.getRegister(rendered)", source)
-        self.assertIn('rendered.matches("(?:vs|xv)[0-9]{1,3}")', source)
-        self.assertIn('requireVectorRegister("vs33")', source)
-        self.assertIn('requireVectorRegister("vs34")', source)
-        self.assertIn('requireVectorRegister("vs35")', source)
-        self.assertIn('emulator.writeMemory(address, syntheticBytes);', source)
-        self.assertIn('emulator.readMemory(address, 4)', source)
-        self.assertNotIn('currentProgram.getMemory().setBytes(', source)
-
-        rows = {row["mnemonic"]: row for row in self.vmx}
-        names = ("vpkshss128", "vpkshus128", "vpkswss128",
-                 "vpkswus128", "vpkuhus128", "vpkuwus128")
-        for name in names:
-            data = rows[name]
-            self.assertEqual(data["mask"], 0xfc0003d0)
-            original = data["value"] | (0x55555555 & ~data["mask"])
-            probe = ((original & 0xfc0003d0) |
-                     (1 << 21) | (2 << 16) | (3 << 11))
-            self.assertEqual(probe & data["mask"], data["value"], name)
-            self.assertEqual(
-                ((probe >> 21) & 31, (probe >> 16) & 31,
-                 (probe >> 11) & 31), (1, 2, 3), name)
-            self.assertNotEqual((probe >> 16) & 31, (probe >> 11) & 31)
-            self.assertNotEqual((probe >> 21) & 31, (probe >> 16) & 31)
-            self.assertNotEqual((probe >> 21) & 31, (probe >> 11) & 31)
-
-    def test_native_d3d_unpack_numeric_probe_oracles(self):
-        # 96 emulator-private numerical probes must retain the exact
-        # vupkd3d128 selector, dest/source separation, and independently
-        # specified packed-bit results before Ghidra runtime execution.
-        import re
-
-        source = (audit.ROOT.parent /
-                  "ghidra_scripts/AuditXenonNumericalPcode.java").read_text(
-                      encoding="utf-8")
-        self.assertIn("emulator.writeMemory(address, bytes);", source)
-        self.assertIn("emulator.readMemory(address, 4)", source)
-        self.assertIn('vector(bank == 0 ? "vs33" : "xv65")', source)
-        self.assertIn('vector("vs35")', source)
-        self.assertNotIn("currentProgram.getMemory().setBytes(", source)
-        self.assertIn("originalFixtureMatches(address, originalWord)", source)
-        self.assertIn("for (int bank = 0; bank < 2; bank++)", source)
-        self.assertIn("for (int low = 0; low < 4; low++)", source)
-        pattern = re.compile(
-            r'new TestCase\("([^"]+)",\s*(\d+),\s*(0x[0-9a-fA-F]+)L,\s*'
-            r'((?:0x[0-9a-fA-F]+L|0L)(?:,\s*'
-            r'(?:0x[0-9a-fA-F]+L|0L)){3})\)')
-        cases = pattern.findall(source)
-        self.assertEqual(len(cases), 12)
-        self.assertEqual({int(fmt) for _, fmt, _, _ in cases},
-                         {0, 1, 2, 4})
-
-        def sign(value, bits):
-            return value - (1 << bits) if value & (1 << (bits - 1)) else value
-
-        def component(value, bits):
-            if value == -(1 << (bits - 1)):
-                return 0x7fc00000
-            return (0x40400000 + value) & 0xffffffff
-
-        for label, format_string, packed_string, words_string in cases:
-            fmt, packed = int(format_string), int(packed_string, 16)
-            expected = [int(x[:-1], 0)
-                        for x in re.findall(r'(?:0x[0-9a-fA-F]+|0)L',
-                                            words_string)]
-            self.assertEqual(len(expected), 4, label)
-            if fmt == 0:
-                rgba = [(packed >> 16) & 255, (packed >> 8) & 255,
-                        packed & 255, (packed >> 24) & 255]
-                actual = [0x3f800000 | value for value in rgba]
-            elif fmt == 1:
-                actual = [
-                    component(sign((packed >> 16) & 0xffff, 16), 16),
-                    component(sign(packed & 0xffff, 16), 16),
-                    0, 0x3f800000]
-            elif fmt == 2:
-                actual = [
-                    component(sign((packed >> shift) & 0x3ff, 10), 10)
-                    for shift in (0, 10, 20)]
-                actual.append(0x3f800000 | ((packed >> 30) & 3))
-            else:
-                actual = [
-                    component(sign((packed >> shift) & 0xffff, 16), 16)
-                    for shift in (48, 32, 16, 0)]
-            self.assertEqual(actual, expected, label)
-
-            for bank in (0, 1):
-                for low in range(4):
-                    word = (0x180007f0 | (1 << 21) | (3 << 11) |
-                            ((fmt * 4 + low) << 16) | (bank << 3))
-                    self.assertEqual(word & 0xfc0007f0, 0x180007f0)
-                    self.assertEqual((word >> 21) & 31, 1)
-                    self.assertEqual((word >> 11) & 31, 3)
-                    self.assertEqual((word >> 16) & 31, fmt * 4 + low)
-                    self.assertEqual((word >> 3) & 1, bank)
-
-    def test_guarded_fused_float_numeric_probe_matrix(self):
-        # Native semantics can only be asserted for nonzero integral f32
-        # inputs in [-2048, 2048] and exact, nonzero output lanes.
-        # Keep the three distinct operand formulas and all four encodings.
-        import re
-        import struct
-
-        source = (audit.ROOT.parent /
-                  "ghidra_scripts/AuditXenonNumericalPcode.java"
-                  ).read_text(encoding="utf-8")
-        families = re.findall(
-            r'new Family\("([^"]+)",\s*(0x[0-9a-fA-F]+)L,\s*(\d+)\)',
-            source)
-        self.assertEqual(
-            families,
-            [("vmaddfp128", "0x140000d0", "0"),
-             ("vmaddcfp128", "0x14000110", "1"),
-             ("vnmsubfp128", "0x14000150", "2")])
-        patterns = re.findall(
-            r'new Pattern\("([^"]+)",\s*'
-            r'new int\[\] \{([^}]*)\},\s*'
-            r'new int\[\] \{([^}]*)\},\s*'
-            r'new int\[\] \{([^}]*)\}\)',
-            source)
-        self.assertEqual(len(patterns), 6)
-
-        self.assertIn("emulator.writeMemory(address, op);", source)
-        self.assertIn("emulator.readMemory(address, 4)", source)
-        self.assertIn("fixtureMatches(address, word)", source)
-        self.assertNotIn("currentProgram.getMemory().setBytes(", source)
-        self.assertIn('vectorRegister("vs33")', source)
-        self.assertIn('vectorRegister("vs35")', source)
-        self.assertIn(
-            'Register a = vectorRegister(guardedFpSourceAName(variant));',
-            source)
-        self.assertIn(
-            'String[] names = { "vs34", "xv34", "xv66", "xv98" };',
-            source)
-        self.assertIn("((word >>> 5) & 1) != (variant & 1)", source)
-        self.assertIn(
-            "((word >>> 10) & 1) != ((variant >>> 1) & 1)",
-            source)
-        self.assertIn("emulator.readRegister(a)", source)
-        self.assertIn("emulator.readRegister(b)", source)
-
-        def bits(value):
-            return int.from_bytes(struct.pack(">f", float(value)), "big")
-
-        for _, selector_string, formula_string in families:
-            selector, formula = int(selector_string, 16), int(formula_string)
-            for variant in range(4):
-                word = (selector | (1 << 21) | (2 << 16) |
-                        (3 << 11) | ((variant & 1) << 5) |
-                        ((variant & 2) << 9))
-                self.assertEqual(word & 0xfc0003d0, selector)
-                self.assertEqual(((word >> 21) & 31,
-                                  (word >> 16) & 31,
-                                  (word >> 11) & 31),
-                                 (1, 2, 3))
-                self.assertEqual((word >> 5) & 1, variant & 1)
-                self.assertEqual((word >> 10) & 1, (variant >> 1) & 1)
-                # These are genuine VX128 VA register extension bits.
-                expected_a = ("vs34", "xv34", "xv66", "xv98")[variant]
-                mbh, oe = variant & 1, (variant >> 1) & 1
-                definition = (
-                    f'xenonA: "{expected_a}" is vrAR=2 & '
-                    f'MBH={mbh} & OE={oe} '
-                    f'{{ export {expected_a}; }}')
-                self.assertIn(
-                    definition, audit.SLEIGH.read_text(encoding="utf-8"))
-            for label, a_string, b_string, d_string in patterns:
-                a, b, d = ([
-                    int(x.strip()) for x in values.split(",")]
-                    for values in (a_string, b_string, d_string))
-                self.assertEqual((len(a), len(b), len(d)), (4, 4, 4),
-                                 label)
-                for av, bv, dv in zip(a, b, d):
-                    self.assertTrue(
-                        all(0 < abs(x) <= 2048 for x in (av, bv, dv)),
-                        (label, av, bv, dv))
-                    value = ((av * bv + dv) if formula == 0
-                             else (av * dv + bv) if formula == 1
-                             else (dv - av * bv))
-                    self.assertTrue(0 < abs(value) < (1 << 24),
-                                    (label, formula, value))
-                    self.assertEqual(
-                        struct.unpack(">f", struct.pack(">I", bits(value)))[0],
-                        float(value))
-
     def test_sleigh_semantics_reject_cpp_style_comments(self):
         # C++ // comments inside Sleigh constructor actions are NOT valid.
         # A single such comment can make the parser reject all subsequent
@@ -1165,38 +973,97 @@ class XenonIsaInventoryTests(unittest.TestCase):
                           "createFunction(", "setBytes("):
             self.assertNotIn(forbidden, retired)
 
-    def test_committed_ghidra_java_audits_keep_compile_contracts(self):
-        # The Ghidra GUI compiles scripts separately from buildExtension.
-        # A checked TaskMonitor exception once broke the helper script
-        # even though the SLEIGH extension built correctly.
+    def test_deleted_legacy_ghidra_scripts_remain_deleted(self):
+        # These scripts were intentionally removed from the active branch.
+        # Never resurrect them merely to satisfy obsolete source-text tests.
         root = audit.ROOT.parent / "ghidra_scripts"
-        for name in (
-                "AuditXboxKrnl17559AtomicPcodeV1",
-                "AuditXboxKrnl17559AtomicPcodeV2",
-                "AuditXboxKrnl17559CriticalSectionHelperV1",
-                "AuditXenonNumericalPcode",
-                "AuditXenonStswiPartialStoresV1",
+        legacy = (
+            "AuditXenonNumericalPcode.java",
+            "AuditXenonStswiPartialStoresV1.java",
+            "AuditXboxKrnl17559AtomicPcodeV1.java",
+            "AuditXboxKrnl17559AtomicPcodeV2.java",
+            "AuditXboxKrnl17559CriticalSectionHelperV1.java",
+        )
+        for filename in legacy:
+            self.assertFalse((root / filename).exists(), filename)
+
+    def test_xenon_addic_record_low32_patch_is_isolated(self):
+        gradle = (audit.ROOT / "build.gradle").read_text(encoding="utf-8")
+        for token in (
+            "String ppcAddicHead = ':addic. D,A,SIMM'",
+            "String ppcSubicHead = ':subic. D,A,tmp'",
+            "addicBody.endsWith(addicOriginalBody)",
+            "subicBody.endsWith(subicOriginalBody)",
+            "SIMM_SIGN=0", "SIMM_SIGN=1",
+            "String newRecordBody = 'cr0flags( D:4 );'",
+            "addicBody.replace('cr0flags( D );', newRecordBody)",
+            "subicBody.replace('cr0flags( D );', newRecordBody)",
+            "Installed PPC addic./subic. record constructor changed",
+            "refusing to alter Xenon CR0 semantics",
+            "xenonInstructions.setText(",
         ):
-            source = (root / (name + ".java")).read_text(encoding="utf-8")
-            self.assertIn(
-                "public class " + name + " extends GhidraScript", source)
-        helper = (root /
-                  "AuditXboxKrnl17559CriticalSectionHelperV1.java"
-                  ).read_text(encoding="utf-8")
-        self.assertIn(
-            "import ghidra.util.exception.CancelledException;", helper)
-        self.assertIn(
-            "private void dumpFunction(Function fn) throws CancelledException",
-            helper)
-        self.assertIn("monitor.checkCancelled();", helper)
-        for name in ("AuditXenonNumericalPcode",
-                     "AuditXenonStswiPartialStoresV1"):
-            source = (root / (name + ".java")).read_text(encoding="utf-8")
-            self.assertIn('import ghidra.app.emulator.EmulatorHelper;', source)
-            self.assertIn('@SuppressWarnings("removal")', source)
-        # The source audit intentionally retains the legacy emulator
-        # until its exact private-memory numerical behavior can be
-        # replaced and independently verified.
+            self.assertIn(token, gradle)
+        self.assertIn("D = A + SIMM;", gradle)
+        self.assertIn("xer_ca = carry(A,SIMM);", gradle)
+        self.assertIn("xer_ca=carry(A,SIMM);", gradle)
+        self.assertNotIn("String ppcAddicHead = ':addic D,A,SIMM'", gradle)
+        self.assertNotIn("String ppcSubicHead = ':subic D,A,tmp'", gradle)
+
+    def test_xenon_record_low32_numerical_oracles(self):
+        mask64 = (1 << 64) - 1
+        vectors = (
+            # 64-bit register input, immediate, expected CR0, full GPR
+            (0x00000000FFFFFFFF,  1, 0x2, 0x0000000100000000),
+            (0x000000007FFFFFFF,  1, 0x8, 0x0000000080000000),
+            (0x0000000100000000,  0, 0x2, 0x0000000100000000),
+            (0x0000000180000000,  0, 0x8, 0x0000000180000000),
+            (0x0000000000000001,  1, 0x4, 0x0000000000000002),
+            (0x0000000100000000, -1, 0x8, 0x00000000FFFFFFFF),
+            (0x0000000000000001, -1, 0x2, 0x0000000000000000),
+            (0x0000000000000002, -1, 0x4, 0x0000000000000001),
+            (0x0000000000000000, -1, 0x8, 0xFFFFFFFFFFFFFFFF),
+        )
+        differing_from_old_model = 0
+        for reg, immediate, cr0, full_register in vectors:
+            result = (reg + immediate) & mask64
+            low = result & 0xFFFFFFFF
+            signed_low = low if low < 0x80000000 else low - (1 << 32)
+            expected = 0x8 if signed_low < 0 else (
+                0x4 if signed_low > 0 else 0x2)
+            signed64 = result if result < (1 << 63) else result - (1 << 64)
+            old_cr = 0x8 if signed64 < 0 else (
+                0x4 if signed64 > 0 else 0x2)
+            if old_cr != expected:
+                differing_from_old_model += 1
+            self.assertEqual((result, expected), (full_register, cr0))
+        self.assertGreaterEqual(differing_from_old_model, 3)
+
+    def test_xenon_record_width_live_audit_is_emulator_private(self):
+        root = audit.ROOT.parent / "ghidra_scripts"
+        source = (root / "AuditXenonAddicRecordWidthV1.java").read_text(
+            encoding="utf-8")
+        for token in (
+            "class AuditXenonAddicRecordWidthV1",
+            "new EmulatorHelper(currentProgram)",
+            "emulator.writeMemory(site, syntheticBytes)",
+            "emulator.readMemory(site, 4)",
+            'emulator.writeRegister("r11"',
+            'emulator.writeRegister("xer_so", 0)',
+            'emulator.writeRegister("cr0", 0xa)',
+            "((DefaultEmulator) emulator.getEmulator()).disassemble(1)",
+            "emulator.step(monitor)",
+            'emulator.readRegister("r12")',
+            'emulator.readRegister("cr0")',
+            "cases.add(new Case(",
+            "Program unchanged",
+        ):
+            self.assertIn(token, source)
+        for danger in (
+            "currentProgram.getMemory().setBytes(",
+            "setCallingConvention(", "setReturnType(", "updateFunction(",
+            "createFunction(", "removeFunction(",
+        ):
+            self.assertNotIn(danger, source)
 
     def test_extension_build_runs_offline_regressions_and_sleigh(self):
         # A clean checkout must exercise the checked-in numerical source
@@ -1223,730 +1090,6 @@ class XenonIsaInventoryTests(unittest.TestCase):
             gradle)
         self.assertIn('dependsOn tasks.named("verifyXenonSleigh")',
                       gradle)
-
-    def test_java_fixture_manifest_header(self):
-        # Numerical checks share one script and the existing 344-word fixture.
-        source = (audit.ROOT.parent / "ghidra_scripts" /
-                  "AuditXenonNumericalPcode.java").read_text(
-                      encoding="utf-8")
-        self.assertIn("public class AuditXenonNumericalPcode", source)
-        self.assertIn('offset\\tword_be\\texpected_mnemonic\\t', source)
-        self.assertIn('line.split("\\t", -1)', source)
-        self.assertIn('"decode".equals(columns[5])', source)
-        self.assertIn("originalFixtureMatches(address, originalWord)", source)
-        self.assertIn("fixtureWordMatches(address, fixtureWords.get(address))",
-                      source)
-        expected = ("offset", "word_be", "expected_mnemonic",
-                    "sleigh_status", "variant", "decode_expectation")
-        with tempfile.TemporaryDirectory() as folder:
-            out = Path(folder)
-            audit.write_results(self.rows, audit.SLEIGH, audit.INVENTORY, out)
-            with (out / "xenon_isa_fixture_v1.tsv").open(
-                    encoding="utf-8", newline="") as handle:
-                self.assertEqual(tuple(handle.readline().strip().split("\t")),
-                                 expected)
-
-    def test_native_shuffle_numeric_selectors_and_oracles(self):
-        # Four extended-VA banks and independent VC register selectors.
-        # Run the fixed scalar oracle over the complete 128 shift matrix.
-        script = (audit.ROOT.parent / "ghidra_scripts" /
-                  "AuditXenonNumericalPcode.java").read_text(
-                      encoding="utf-8")
-        remaining = audit.ADDITIONAL_SLEIGH.read_text(
-            encoding="utf-8")
-        registers = audit.SLEIGH.read_text(encoding="utf-8")
-
-        self.assertEqual(remaining.count(":vsldoi128 xenonD,"), 2)
-        self.assertEqual(remaining.count(":vperm128 xenonD,"), 2)
-        self.assertIn("private void runShuffles(File manifest, Address base)",
-                      script)
-        self.assertIn("runShuffles(manifest, base);", script)
-        self.assertIn("runDotProducts(manifest, base);", script)
-        self.assertIn("runWholeVectorShifts(manifest, base);", script)
-        self.assertIn("runLaneShifts(manifest, base);", script)
-        self.assertIn("runLogicalOps(manifest, base);", script)
-        self.assertIn("runWordMerges(manifest, base);", script)
-        self.assertIn("runWordPermutations(manifest, base);", script)
-        self.assertIn("XENON WORD PERMUTATION NATIVE NUMERICAL P-CODE AUDIT", script)
-        self.assertIn("XENON WORD MERGE NATIVE NUMERICAL P-CODE AUDIT", script)
-        self.assertIn("XENON VECTOR BITWISE NATIVE NUMERICAL P-CODE AUDIT", script)
-        self.assertIn("XENON PER-LANE WORD SHIFT NATIVE NUMERICAL P-CODE AUDIT", script)
-        self.assertIn("XENON WHOLE-VECTOR SHIFT NATIVE NUMERICAL P-CODE AUDIT", script)
-        self.assertIn("XENON FP DOT PRODUCT NATIVE NUMERICAL P-CODE AUDIT", script)
-        self.assertIn("import ghidra.app.emulator.DefaultEmulator;", script)
-        self.assertIn('pattern == 0 && selector == 0;', script)
-        self.assertIn("((DefaultEmulator) emulator.getEmulator())", script)
-        self.assertIn(".disassemble(1)", script)
-        self.assertIn("emulatorDecoded=[", script)
-        self.assertIn("alternativeDestRegisters=", script)
-        self.assertIn('recordSuite("SHUFFLE", passed, failed, problems);',
-                      script)
-        self.assertIn("emulator.writeMemory(address, opcode);", script)
-        self.assertIn("emulator.readMemory(address, 4)", script)
-        self.assertIn('vectorRegister("vs36")', script)
-        self.assertIn('vectorRegister(guardedFpSourceAName(variant))',
-                      script)
-        self.assertIn("!fixtureMatches(address, original)", script)
-        self.assertNotIn("currentProgram.getMemory().setBytes(", script)
-        self.assertIn("int start = pattern == 0 ?", script)
-
-        va_names = ("vs34", "xv34", "xv66", "xv98")
-        for variant, va in enumerate(va_names):
-            mbh, oe = variant & 1, (variant >> 1) & 1
-            definition = (f'xenonA: "{va}" is vrAR=2 & '
-                          f'MBH={mbh} & OE={oe} {{ export {va}; }}')
-            self.assertIn(definition, registers)
-
-            for shift in range(16):
-                word = (0x10000010 | (1 << 21) | (2 << 16) |
-                        (3 << 11) | (shift << 6) |
-                        (mbh << 5) | (oe << 10))
-                self.assertEqual(word & 0xfc000010, 0x10000010)
-                self.assertEqual((word >> 6) & 15, shift)
-                self.assertEqual((word >> 5) & 1, mbh)
-                self.assertEqual((word >> 10) & 1, oe)
-            word = (0x14000000 | (1 << 21) | (2 << 16) |
-                    (3 << 11) | (4 << 6) |
-                    (mbh << 5) | (oe << 10))
-            self.assertEqual(word & 0xfc000210, 0x14000000)
-            self.assertEqual((word >> 6) & 7, 4)
-            self.assertEqual((word >> 9) & 1, 0)
-            self.assertIn(
-                f'xenonC: "vs36" is BITS_6_10={4 + (oe << 4)}',
-                remaining)
-
-        mask = (1 << 128) - 1
-        for input_variant in (0, 1):
-            aa = bytes((0x10 + i if input_variant == 0 else 0x80 + 7*i)
-                       & 255 for i in range(16))
-            bb = bytes((0xa0 - i if input_variant == 0 else 0x05 + 11*i)
-                       & 255 for i in range(16))
-            a_bits, b_bits = int.from_bytes(aa, "big"), int.from_bytes(
-                bb, "big")
-            for shift in range(16):
-                expected = int.from_bytes(aa[shift:] + bb[:shift],
-                                          "big")
-                actual = ((a_bits << (shift * 8)) |
-                          (b_bits >> (128 - shift * 8))) & mask
-                self.assertEqual(actual, expected)
-
-        # Control values select by bit4 (A/B) and low nibble (octet).
-        a = bytes(range(16))
-        b = bytes(range(0x80, 0x90))
-        controls = [
-            bytes(range(16)),
-            bytes(0x10 | i for i in range(16)),
-            bytes(0x20 | ((i & 1) << 4) | (15-i) for i in range(16)),
-            bytes(0xf0 | (15-i) for i in range(16)),
-            bytes(0x80 | (0x10 if i % 3 == 0 else 0) |
-                  ((i * 7 + 3) & 15) for i in range(16)),
-            bytes(0x40 | ((i & 1) << 4) for i in range(16)),
-            bytes([0x6f] * 16),
-            bytes([0x9f] * 16),
-        ]
-        self.assertEqual(len(controls), 8)
-        for c in controls:
-            expected = bytes((b if v & 16 else a)[v & 15] for v in c)
-            self.assertEqual(len(expected), 16)
-            # High selector bits [5..7] must not modify the chosen byte.
-            augmented = bytes(v ^ 0xe0 for v in c)
-            self.assertEqual(
-                bytes((b if v & 16 else a)[v & 15] for v in augmented),
-                expected)
-
-    def test_native_dot_product_numeric_matrix(self):
-        # Two independent SLEIGH sources implement exact binary32 dot
-        # reductions, with a different number of products.
-        import re
-        import struct
-
-        script = (audit.ROOT.parent / "ghidra_scripts" /
-                  "AuditXenonNumericalPcode.java").read_text(
-                      encoding="utf-8")
-        expected_ops = (
-            ("vmsum3fp128", "0x14000190", 3),
-            ("vmsum4fp128", "0x140001d0", 4),
-        )
-        operations = re.findall(
-            r'new DotOperation\("([^"]+)",\s*(0x[0-9a-fA-F]+)L,\s*(\d+)\)',
-            script)
-        self.assertEqual(
-            operations,
-            [(name, opcode, str(count)) for name, opcode, count
-             in expected_ops])
-        self.assertIn("runDotProducts(manifest, base);", script)
-        self.assertIn('recordSuite("DOT", passed, failed, problems)', script)
-        self.assertIn("emulator.writeMemory(address, opcode);", script)
-        self.assertIn("emulator.readMemory(address, 4)", script)
-        self.assertIn("fixtureMatches(address, originalWord)", script)
-        self.assertIn("emulator.readRegister(a)", script)
-        self.assertIn("emulator.readRegister(b)", script)
-        self.assertIn(
-            "Register a = vectorRegister(guardedFpSourceAName(variant));",
-            script)
-        self.assertIn("for (int i = 3; i >= 4 - operation.products; i--)",
-                      script)
-        self.assertNotIn("currentProgram.getMemory().setBytes(", script)
-
-        patterns = re.findall(
-            r'new Pattern\("([^"]+)",\s*'
-            r'new int\[\] \{([^}]*)\},\s*'
-            r'new int\[\] \{([^}]*)\},\s*'
-            r'new int\[\] \{([^}]*)\}\)',
-            script)
-        self.assertEqual(len(patterns), 6)
-        count = 0
-        for name, opcode_string, products in expected_ops:
-            opcode = int(opcode_string, 16)
-            code = (audit.SLEIGH if name == "vmsum4fp128"
-                    else audit.ADDITIONAL_SLEIGH).read_text(
-                        encoding="utf-8")
-            self.assertEqual(
-                len(re.findall(r"(?m)^:" + name + r" ", code)), 4)
-            for variant in range(4):
-                mbh, oe = variant & 1, variant >> 1
-                word = (opcode | (1 << 21) | (2 << 16) |
-                        (3 << 11) | (mbh << 5) | (oe << 10))
-                self.assertEqual(word & 0xfc0003d0, opcode)
-                self.assertEqual((word >> 5) & 1, mbh)
-                self.assertEqual((word >> 10) & 1, oe)
-                self.assertEqual(
-                    ((word >> 21) & 31, (word >> 16) & 31,
-                     (word >> 11) & 31), (1, 2, 3))
-                for _, a_string, b_string, _ in patterns:
-                    a = [int(v) for v in a_string.split(",")]
-                    b = [int(v) for v in b_string.split(",")]
-                    self.assertEqual(len(a), 4)
-                    self.assertEqual(len(b), 4)
-                    self.assertTrue(all(0 < abs(v) <= 2048
-                                        for v in a + b))
-                    dot = sum(a[i] * b[i] for i in range(4-products, 4))
-                    self.assertTrue(0 < abs(dot) < (1 << 24))
-                    bits = int.from_bytes(
-                        struct.pack(">f", float(dot)), "big")
-                    result = bits.to_bytes(4, "big") * 4
-                    self.assertEqual(len(result), 16)
-                    self.assertEqual(
-                        struct.unpack(">f", result[:4])[0], float(dot))
-                    count += 1
-        self.assertEqual(count, 48)
-
-    def test_native_whole_vector_shift_numeric_matrix(self):
-        # Exact 128-bit native shifts. Only control bits 3..6 matter;
-        # bit 7 and low three bits must be ignored.
-        import re
-
-        script = (audit.ROOT.parent / "ghidra_scripts" /
-                  "AuditXenonNumericalPcode.java").read_text(
-                      encoding="utf-8")
-        source = audit.ADDITIONAL_SLEIGH.read_text(encoding="utf-8")
-        operations = (
-            ("vslo128", 0x14000390, "<<"),
-            ("vsro128", 0x140003d0, ">>"),
-        )
-        self.assertIn("runWholeVectorShifts(manifest, base);", script)
-        self.assertIn(
-            'recordSuite("WHOLE-SHIFT", passed, failed, problems)',
-            script)
-        self.assertIn('if ((encoded & 0x78) != (count * 8))', script)
-        self.assertIn('bytesB[15] = (byte) ((count << 3)', script)
-        self.assertIn('(pattern == 0 ? 0x05 : 0x87)', script)
-        self.assertIn('!fixtureMatches(address, originalWord)', script)
-        self.assertIn('emulator.writeMemory(address, opcode);', script)
-        self.assertIn('emulator.readMemory(address, 4)', script)
-        self.assertIn('emulator.readRegister(aReg)', script)
-        self.assertIn('emulator.readRegister(bReg)', script)
-        self.assertNotIn('currentProgram.getMemory().setBytes(', script)
-
-        selectors = re.findall(
-            r'new WholeVectorShift\("([^"]+)",\s*(0x[0-9a-fA-F]+)L,'
-            r'\s*(true|false)\)', script)
-        self.assertEqual(
-            selectors,
-            [("vslo128", "0x14000390", "true"),
-             ("vsro128", "0x140003d0", "false")])
-        total = 0
-        mask128 = (1 << 128) - 1
-        for name, selector, direction in operations:
-            self.assertEqual(
-                len(re.findall(r"(?m)^:" + name + r" ", source)), 4)
-            bodies = re.findall(
-                r"(?m)^:" + name + r" [^\n]+\n"
-                r"\{\n([\s\S]*?)\n\}", source)
-            for body in bodies:
-                self.assertIn("last:1 = xenonB(0);", body)
-                self.assertIn("shift:4 = zext(last & 0x78);", body)
-                self.assertIn("xenonD = xenonA " + direction +
-                              " shift;", body)
-
-            for variant in range(4):
-                mbh, oe = variant & 1, variant >> 1
-                word = (selector | (1 << 21) | (2 << 16) |
-                        (3 << 11) | (mbh << 5) | (oe << 10))
-                self.assertEqual(word & 0xfc0003d0, selector)
-                self.assertEqual((word >> 5) & 1, mbh)
-                self.assertEqual((word >> 10) & 1, oe)
-                for pattern in range(2):
-                    if pattern == 0:
-                        aa = bytes((0x10 + i) & 255 for i in range(16))
-                        bb = bytearray((0xa0 - i) & 255
-                                       for i in range(16))
-                    else:
-                        aa = bytes((0x80 + i * 7) & 255 for i in range(16))
-                        bb = bytearray((0x05 + i * 11) & 255
-                                       for i in range(16))
-                    a = int.from_bytes(aa, "big")
-                    for count in range(16):
-                        control = (count << 3) | (
-                            0x05 if pattern == 0 else 0x87)
-                        bb[-1] = control
-                        self.assertEqual(control & 0x78, count * 8)
-                        self.assertNotEqual(control & 7, 0)
-                        if pattern:
-                            self.assertEqual(control & 0x80, 0x80)
-                        self.assertEqual(len(bb), 16)
-                        b = int.from_bytes(bb, "big")
-                        shift = b & 0x78
-                        self.assertEqual(shift, count * 8)
-                        result = ((a << shift) & mask128
-                                  if direction == "<<" else a >> shift)
-                        self.assertTrue(0 <= result <= mask128)
-                        # Compare bytewise oracles independent of BigInteger.
-                        nbytes = count
-                        expected = (aa[nbytes:] +
-                                    bytes(nbytes) if direction == "<<"
-                                    else bytes(nbytes) + aa[:16-nbytes])
-                        self.assertEqual(
-                            result.to_bytes(16, "big"), expected)
-                        total += 1
-        self.assertEqual(total, 256)
-
-    def test_native_word_lane_shift_numerical_matrix(self):
-        # Confirm each of the four independent 32-bit lanes obeys its own
-        # low-five-bit control, including signed right-shift and rotation.
-        import re
-
-        script = (audit.ROOT.parent / "ghidra_scripts" /
-                  "AuditXenonNumericalPcode.java").read_text(
-                      encoding="utf-8")
-        sleigh = audit.ADDITIONAL_SLEIGH.read_text(encoding="utf-8")
-        operations = (
-            ("vrlw128", 0x18000050, 0, "<<"),
-            ("vslw128", 0x180000d0, 1, "<<"),
-            ("vsraw128", 0x18000150, 2, "s>>"),
-            ("vsrw128", 0x180001d0, 3, ">>"),
-        )
-        self.assertIn("runLaneShifts(manifest, base);", script)
-        self.assertIn(
-            'recordSuite("LANE-SHIFT", passed, failed, problems)', script)
-        self.assertIn('if (!expected.equals(result) || !inputA.equals(afterA) ||',
-                      script)
-        self.assertIn('!inputB.equals(afterB))', script)
-        self.assertIn('!fixtureMatches(address, originalWord)', script)
-        self.assertIn('emulator.writeMemory(address, opcode);', script)
-        self.assertIn('emulator.readMemory(address, 4)', script)
-        self.assertNotIn('currentProgram.getMemory().setBytes(', script)
-        declared = re.findall(
-            r'new LaneShift\("([^"]+)",\s*(0x[0-9a-fA-F]+)L,\s*(\d+)\)',
-            script)
-        self.assertEqual(declared, [
-            (name, f"0x{selector:08x}", str(op)) for
-            name, selector, op, _ in operations])
-
-        src_match = re.search(
-            r'private static final int\[\]\[\] LANE_SHIFT_SOURCES = '
-            r'\{([\s\S]*?)\n    \};', script)
-        ctl_match = re.search(
-            r'private static final int\[\]\[\] LANE_SHIFT_COUNTS = '
-            r'\{([\s\S]*?)\n    \};', script)
-        self.assertIsNotNone(src_match)
-        self.assertIsNotNone(ctl_match)
-        read_arrays = lambda match: [
-            [int(v.strip(), 0) & 0xffffffff
-             for v in row.split(",") if v.strip()]
-            for row in re.findall(r'\{([^}]+)\}', match.group(1))]
-        inputs = read_arrays(src_match)
-        controls = read_arrays(ctl_match)
-        self.assertEqual(len(inputs), 2)
-        self.assertEqual(len(controls), 10)
-        self.assertTrue(all(len(row) == 4 for row in inputs + controls))
-        self.assertEqual(
-            sorted(value for row in controls[:8] for value in row),
-            list(range(32)))
-        self.assertTrue(
-            all(any(value & ~31 for value in row) for row in controls[8:]))
-
-        count = 0
-        mask = 0xffffffff
-        for name, selector, operation, op_text in operations:
-            rules = re.findall(
-                r'(?m)^:' + name + r' [^\n]+ is [^\n]+', sleigh)
-            self.assertEqual(len(rules), 4, name)
-            for lane in range(4):
-                self.assertIn(
-                    f"xenonInputALane{lane}:4 = xenonA({lane * 4});",
-                    sleigh)
-                self.assertIn(
-                    f"xenonInputBLane{lane}:4 = xenonB({lane * 4});",
-                    sleigh)
-                self.assertIn(f"sh{lane}:4 = xenonInputBLane{lane} & 31;",
-                              sleigh)
-                if operation == 0:
-                    self.assertIn(
-                        f"xenonResultLane{lane}:4 = "
-                        f"(xenonInputALane{lane} << sh{lane}) |",
-                        sleigh)
-                    self.assertIn(
-                        f"(xenonInputALane{lane} >> back{lane});", sleigh)
-                    self.assertIn(
-                        f"back{lane}:4 = (32 - sh{lane}) & 31;", sleigh)
-                else:
-                    self.assertIn(
-                        f"xenonResultLane{lane}:4 = "
-                        f"xenonInputALane{lane} {op_text} sh{lane};",
-                        sleigh)
-            for variant in range(4):
-                mbh, oe = variant & 1, variant >> 1
-                word = (selector | (1 << 21) | (2 << 16) |
-                        (3 << 11) | (mbh << 5) | (oe << 10))
-                self.assertEqual(word & 0xfc0003d0, selector)
-                self.assertEqual((word >> 5) & 1, mbh)
-                self.assertEqual((word >> 10) & 1, oe)
-                for row_a in inputs:
-                    for row_b in controls:
-                        actual = []
-                        for a, b in zip(row_a, row_b):
-                            sh = b & 31
-                            if operation == 0:
-                                value = ((a << sh) |
-                                         (a >> ((32 - sh) & 31))) & mask
-                            elif operation == 1:
-                                value = (a << sh) & mask
-                            elif operation == 2:
-                                signed = a if a < (1 << 31) else a - (1 << 32)
-                                value = (signed >> sh) & mask
-                            else:
-                                value = a >> sh
-                            actual.append(value)
-                        expected_bytes = b"".join(
-                            value.to_bytes(4, "big")
-                            for value in reversed(actual))
-                        self.assertEqual(len(expected_bytes), 16)
-                        count += 1
-        self.assertEqual(count, 320)
-
-    def test_native_vector_logical_numerical_matrix(self):
-        # Verify the independent A/B operands and old-D-as-mask in vsel,
-        # including complementary, sparse, dense and high-bit patterns.
-        import re
-
-        script = (audit.ROOT.parent / "ghidra_scripts" /
-                  "AuditXenonNumericalPcode.java").read_text(
-                      encoding="utf-8")
-        sleigh = audit.SLEIGH.read_text(encoding="utf-8")
-        operations = (
-            ("vand128", 0x14000210, 0, "xenonD = xenonA & xenonB;"),
-            ("vandc128", 0x14000250, 1, "xenonD = xenonA & ~xenonB;"),
-            ("vnor128", 0x14000290, 2, "xenonD = ~(xenonA | xenonB);"),
-            ("vor128", 0x140002d0, 3, "xenonD = xenonA | xenonB;"),
-            ("vxor128", 0x14000310, 4, "xenonD = xenonA ^ xenonB;"),
-            ("vsel128", 0x14000350, 5,
-             "xenonD = (xenonA & ~xenonD) | (xenonB & xenonD);"),
-        )
-        declared = re.findall(
-            r'new LogicalOp\("([^"]+)",\s*(0x[0-9a-fA-F]+)L,\s*(\d+)\)',
-            script)
-        self.assertEqual(
-            declared,
-            [(name, f"0x{opcode:08x}", str(kind))
-             for name, opcode, kind, _ in operations])
-
-        patterns = re.findall(
-            r'new LogicalPattern\("([^"]+)",\s*'
-            r'"([0-9a-f]{32})",\s*"([0-9a-f]{32})",\s*'
-            r'"([0-9a-f]{32})"\)', script)
-        self.assertEqual(len(patterns), 12)
-        self.assertEqual(len({p[0] for p in patterns}), 12)
-        self.assertIn("runLogicalOps(manifest, base);", script)
-        self.assertIn('recordSuite("LOGIC", passed, failed, problems)',
-                      script)
-        self.assertIn("emulator.writeRegister(destination, pattern.mask);",
-                      script)
-        self.assertIn("emulator.readRegister(destination).and(MASK128)",
-                      script)
-        self.assertIn("!pattern.a.equals(afterA)", script)
-        self.assertIn("!pattern.b.equals(afterB)", script)
-        self.assertIn("!fixtureMatches(address, originalWord)", script)
-        self.assertIn("emulator.writeMemory(address, opcode);", script)
-        self.assertIn("emulator.readMemory(address, 4)", script)
-        self.assertNotIn("currentProgram.getMemory().setBytes(", script)
-
-        mask128 = (1 << 128) - 1
-        cases = 0
-        for name, opcode, kind, semantics in operations:
-            constructors = re.findall(
-                r"(?m)^:" + name + r" [^\n]+\n"
-                r"\{\n([\s\S]*?)\n\}", sleigh)
-            self.assertEqual(len(constructors), 4, name)
-            self.assertTrue(all(semantics in body for body in constructors))
-            for variant in range(4):
-                word = (opcode | (1 << 21) | (2 << 16) |
-                        (3 << 11) | ((variant & 1) << 5) |
-                        ((variant >> 1) << 10))
-                self.assertEqual(word & 0xfc0003d0, opcode)
-                self.assertEqual((word >> 5) & 1, variant & 1)
-                self.assertEqual((word >> 10) & 1, variant >> 1)
-                for _, text_a, text_b, text_mask in patterns:
-                    a, b, old_d = (int(text_a, 16),
-                                   int(text_b, 16),
-                                   int(text_mask, 16))
-                    if kind == 0:
-                        result = a & b
-                    elif kind == 1:
-                        result = a & (~b & mask128)
-                    elif kind == 2:
-                        result = ~(a | b) & mask128
-                    elif kind == 3:
-                        result = a | b
-                    elif kind == 4:
-                        result = a ^ b
-                    else:
-                        result = (a & (~old_d & mask128)) | (b & old_d)
-                    self.assertEqual(len(result.to_bytes(16, "big")), 16)
-                    self.assertTrue(0 <= result <= mask128)
-                    if kind == 5:
-                        # Bitwise independent truth table, checking old D.
-                        for bit in range(128):
-                            expected_bit = (((b if (old_d >> bit) & 1
-                                              else a) >> bit) & 1)
-                            self.assertEqual((result >> bit) & 1,
-                                             expected_bit)
-                    cases += 1
-        self.assertEqual(cases, 288)
-
-    def test_native_word_merges_exact_lane_order(self):
-        # Real merge constructors take the high (3,2) or low (1,0)
-        # 32-bit word pairs of independent VA/VB, alternating A/B.
-        import re
-
-        script = (audit.ROOT.parent / "ghidra_scripts" /
-                  "AuditXenonNumericalPcode.java").read_text(
-                      encoding="utf-8")
-        source = audit.SLEIGH.read_text(encoding="utf-8")
-        operations = (
-            ("vmrghw128", 0x18000300, True),
-            ("vmrglw128", 0x18000340, False),
-        )
-        declared = re.findall(
-            r'new WordMerge\("([^"]+)",\s*(0x[0-9a-fA-F]+)L,\s*'
-            r'(true|false)\)', script)
-        self.assertEqual(
-            declared,
-            [(name, f"0x{opcode:08x}", str(high).lower())
-             for name, opcode, high in operations])
-        self.assertIn("runWordMerges(manifest, base);", script)
-        self.assertIn(
-            'recordSuite("WORD-MERGE", passed, failed, problems)', script)
-        self.assertIn("BigInteger initialD = expected.xor(MASK128);", script)
-        self.assertIn("emulator.writeRegister(destination, initialD);",
-                      script)
-        self.assertIn("!fixtureMatches(address, originalWord)", script)
-        self.assertIn("emulator.writeMemory(address, opcode);", script)
-        self.assertIn("emulator.readMemory(address, 4)", script)
-        self.assertIn("emulator.readRegister(aReg)", script)
-        self.assertIn("emulator.readRegister(bReg)", script)
-        self.assertNotIn("currentProgram.getMemory().setBytes(", script)
-
-        patterns = re.findall(
-            r'new LogicalPattern\("([^"]+)",\s*'
-            r'"([0-9a-f]{32})",\s*"([0-9a-f]{32})",\s*'
-            r'"([0-9a-f]{32})"\)', script)
-        self.assertEqual(len(patterns), 12)
-        mask128 = (1 << 128) - 1
-        cases = 0
-        for name, opcode, high in operations:
-            constructors = re.findall(
-                r"(?m)^:" + name + r" [^\n]+\n"
-                r"\{\n([\s\S]*?)\n\}", source)
-            self.assertEqual(len(constructors), 4, name)
-            first_offset, second_offset = (12, 8) if high else (4, 0)
-            for body in constructors:
-                self.assertIn(
-                    f"aFirst:4 = xenonA({first_offset});", body)
-                self.assertIn(
-                    f"bFirst:4 = xenonB({first_offset});", body)
-                self.assertIn(
-                    f"aSecond:4 = xenonA({second_offset});", body)
-                self.assertIn(
-                    f"bSecond:4 = xenonB({second_offset});", body)
-                self.assertIn(
-                    "xenonD = first | second | third | fourth;", body)
-            for variant in range(4):
-                word = (opcode | (1 << 21) | (2 << 16) |
-                        (3 << 11) | ((variant & 1) << 5) |
-                        ((variant >> 1) << 10))
-                self.assertEqual(word & 0xfc0003d0, opcode)
-                self.assertEqual((word >> 5) & 1, variant & 1)
-                self.assertEqual((word >> 10) & 1, variant >> 1)
-                for _, text_a, text_b, _ in patterns:
-                    a, b = int(text_a, 16), int(text_b, 16)
-                    words_a = [(a >> (i * 32)) & 0xffffffff
-                               for i in range(4)]
-                    words_b = [(b >> (i * 32)) & 0xffffffff
-                               for i in range(4)]
-                    upper = 3 if high else 1
-                    expected_words = [
-                        words_a[upper], words_b[upper],
-                        words_a[upper - 1], words_b[upper - 1],
-                    ]
-                    result_bytes = b"".join(
-                        word.to_bytes(4, "big") for word in expected_words)
-                    result = int.from_bytes(result_bytes, "big")
-                    self.assertTrue(0 <= result <= mask128)
-                    self.assertNotEqual(result ^ mask128, result)
-                    self.assertEqual(len(result_bytes), 16)
-                    cases += 1
-        self.assertEqual(cases, 96)
-
-    def test_native_word_permutation_exhaustive_immediates(self):
-        # Each instruction encodes an 8-bit 4-word selector via
-        # A_BITS[4:0] and the low 3 bits of BITS_6_10-8.
-        import re
-
-        script = (audit.ROOT.parent / "ghidra_scripts" /
-                  "AuditXenonNumericalPcode.java").read_text(
-                      encoding="utf-8")
-        sleigh = audit.SLEIGH.read_text(encoding="utf-8")
-        self.assertIn(
-            "private void runWordPermutations(File manifest, Address base)",
-            script)
-        self.assertIn("runWordPermutations(manifest, base);", script)
-        self.assertIn('recordSuite("WORD-PERMUTE", passed, failed, problems)',
-                      script)
-        self.assertIn(
-            "private static final long PERMUTE_WORD_MASK = 0xfc000630L;",
-            script)
-        self.assertIn(
-            "private static final long PERMUTE_WORD_SELECTOR = 0x18000210L;",
-            script)
-        self.assertIn('BigInteger initialD = expected.xor(MASK128);',
-                      script)
-        self.assertIn("emulator.writeRegister(source, b);", script)
-        self.assertIn("emulator.writeRegister(destination, initialD);",
-                      script)
-        self.assertIn("emulator.readRegister(source).and(MASK128)", script)
-        self.assertIn("!fixtureMatches(address, originalWord)", script)
-        self.assertIn("emulator.writeMemory(address, opcode);", script)
-        self.assertIn("emulator.readMemory(address, 4)", script)
-        self.assertNotIn("currentProgram.getMemory().setBytes(", script)
-        banks = re.search(
-            r'private static final String\[\] PERMUTE_WORD_B_BANKS = '
-            r'\{([\s\S]*?)\};', script)
-        self.assertIsNotNone(banks)
-        names = re.findall(r'"([^"]+)"', banks.group(1))
-        self.assertEqual(names, ["vs35", "xv35", "xv67", "xv99"])
-        for bank, name in enumerate(names):
-            self.assertIn(
-                f'xenonB: "{name}" is vrBR=3 & BITS_0_1={bank} '
-                f'{{ export {name}; }}', sleigh)
-
-        src = re.search(
-            r'private static final BigInteger\[\] PERMUTE_WORD_SOURCES = '
-            r'\{([\s\S]*?)\};', script)
-        self.assertIsNotNone(src)
-        vectors = re.findall(
-            r'new BigInteger\("([0-9a-f]{32})", 16\)',
-            src.group(1))
-        self.assertEqual(len(vectors), 2)
-        self.assertNotEqual(vectors[0], vectors[1])
-
-        rules = re.findall(
-            r'(?m)^:vpermwi128 [^\n]+\n'
-            r'\{\n([\s\S]*?)\n\}', sleigh)
-        self.assertEqual(len(rules), 8)
-        for extra, body in enumerate(rules):
-            self.assertIn(
-                f"permutation:4 = A_BITS:4 | {extra * 32}:4;", body)
-            for lane in range(4):
-                self.assertIn(
-                    f"pick{lane}:4 = (permutation >> {2 * lane}) & 3;",
-                    body)
-                self.assertIn(
-                    f"wordShift{lane}:4 = (3 - pick{lane}) * 32;",
-                    body)
-            self.assertIn(
-                "xenonD = packedWord3 | packedWord2 | packedWord1 | packedWord0;",
-                body)
-
-        count = 0
-        for bank in range(4):
-            for imm in range(256):
-                word = (0x18000210 | (1 << 21) | (3 << 11) |
-                        ((imm & 31) << 16) |
-                        ((imm >> 5) << 6) | bank)
-                self.assertEqual(word & 0xfc000630, 0x18000210)
-                self.assertEqual((word >> 16) & 31, imm & 31)
-                self.assertEqual((word >> 6) & 7, imm >> 5)
-                self.assertEqual(word & 3, bank)
-                self.assertEqual((word >> 2) & 3, 0)
-                self.assertEqual((word >> 11) & 31, 3)
-                for vector in vectors:
-                    source = bytes.fromhex(vector)
-                    # Reference uses MSB-indexed byte slices and populates
-                    # destination words from MSB to LSB, unlike the Java
-                    # BigInteger oracle's LSB-first reconstruction.
-                    source_words = [source[i:i+4] for i in (0, 4, 8, 12)]
-                    chosen = [
-                        source_words[(imm >> (6 - i * 2)) & 3]
-                        for i in range(4)]
-                    expected = b"".join(chosen)
-                    self.assertEqual(len(expected), 16)
-                    number = int.from_bytes(expected, "big")
-                    reference = sum(
-                        ((int.from_bytes(source_words[
-                            (imm >> (lane * 2)) & 3], "big"))
-                         << (lane * 32))
-                        for lane in range(4))
-                    self.assertEqual(number, reference)
-                    self.assertNotEqual(number ^ ((1 << 128) - 1), number)
-                    count += 1
-        self.assertEqual(count, 2048)
-
-    def test_unified_numerical_script_is_only_entrypoint(self):
-        from pathlib import Path
-
-        root = audit.ROOT.parent / "ghidra_scripts"
-        script = (root / "AuditXenonNumericalPcode.java").read_text(
-            encoding="utf-8")
-        self.assertEqual(script.count("protected void run()"), 1)
-        self.assertIn("XENON NUMERICAL P-CODE COMBINED RESULT", script)
-        self.assertEqual(script.count("UNRESOLVED / INCORRECT STATES"), 1)
-        self.assertIn(
-            'println("Unresolved details follow in the combined result below.");',
-            script)
-        self.assertIn("recordSuite(\"PACK\", passed, failed, problems)", script)
-        self.assertIn("recordSuite(\"D3D\", passed, failed, problems)", script)
-        self.assertIn("recordSuite(\"GUARDED-FP\", passed, failed, problems)", script)
-        self.assertIn("runSaturatingPacks(manifest, base);", script)
-        self.assertIn("runGuardedFp(manifest, base);", script)
-        self.assertIn("runShuffles(manifest, base);", script)
-        self.assertIn("XENON BYTE SHUFFLE NATIVE NUMERICAL P-CODE AUDIT", script)
-        self.assertIn("XENON D3D UNPACK NATIVE NUMERICAL P-CODE AUDIT", script)
-        self.assertIn("XENON NATIVE PACK NUMERICAL P-CODE AUDIT", script)
-        self.assertIn("XENON GUARDED FP NATIVE NUMERICAL P-CODE AUDIT", script)
-        self.assertNotIn("currentProgram.getMemory().setBytes(", script)
-        # Separate, narrowly scoped STSWI/atomic diagnostic scripts are
-        # allowed; require exactly one unified *numerical* entry point.
-        self.assertEqual(
-            sorted(p.name for p in root.glob("AuditXenonNumericalPcode*.java")),
-            ["AuditXenonNumericalPcode.java"])
-        self.assertEqual(script.count('askFile('), 0)
-        self.assertIn('currentProgram.getExecutablePath()', script)
-        self.assertIn('System.getenv("XENON_ISA_FIXTURE_TSV")', script)
-        self.assertIn('new File(parent, "xenon_isa_fixture_v1.tsv")', script)
-        self.assertNotIn('"C:/Users/Johnny/Downloads/', script)
-        self.assertIn("if (!manifest.isFile())", script)
-        self.assertIn("manifest.getAbsolutePath()", script)
 
     def test_opcode31_rc1_reserved_fixtures_are_preserved(self):
         # Cell Vector/SIMD PEM v2.07c X-form encodings fix bit 31 to 0,
@@ -2623,85 +1766,6 @@ class XenonIsaInventoryTests(unittest.TestCase):
                                   else d - a * b)
                         if answer != 0:
                             self.assertEqual(f32(answer), float(answer))
-
-    def test_ghidra_numerical_pack_audit_vectors_are_consistent(self):
-        # The companion Ghidra Java script actually steps native p-code.
-        # Validate its independent boundary-case oracle without Ghidra.
-        import re
-
-        script = (audit.ROOT.parent / "ghidra_scripts" /
-                  "AuditXenonNumericalPcode.java").read_text(
-                      encoding="utf-8")
-        self.assertIn("new EmulatorHelper(currentProgram)", script)
-        self.assertIn("emulator.step(monitor)", script)
-        self.assertIn('emulator.readRegister("xenonVSCR")', script)
-        self.assertIn("emulator.readRegister(destination)", script)
-        self.assertIn("emulator.dispose();", script)
-        cases = re.findall(
-            r'new Pack\("(\w+)",\s*(\d+),\s*(\d+),\s*'
-            r'(0x[0-9a-fA-F]+L?),\s*(0x[0-9a-fA-F]+L?),\s*'
-            r'(0x[0-9a-fA-F]+L?),\s*(0x[0-9a-fA-F]+L?)\s*\)',
-            script)
-        self.assertEqual(
-            {record[0] for record in cases},
-            {"vpkshss128", "vpkshus128", "vpkswss128",
-             "vpkswus128", "vpkuhus128", "vpkuwus128"})
-
-        for name, in_width, out_width, *values in cases:
-            src_bits, dst_bits = int(in_width), int(out_width)
-            signed_input = not name.startswith("vpku")
-            signed_output = name.endswith("ss128")
-            smallest = -(1 << (dst_bits - 1)) if signed_output else 0
-            largest = ((1 << (dst_bits - 1)) - 1
-                       if signed_output else (1 << dst_bits) - 1)
-            source_mask = (1 << src_bits) - 1
-            destination_mask = (1 << dst_bits) - 1
-            positive, expected_positive, negative, expected_negative = (
-                int(text.rstrip("L"), 0) for text in values)
-            for encoded, expected in (
-                    (positive, expected_positive),
-                    (negative, expected_negative)):
-                source = encoded & source_mask
-                if signed_input and source & (1 << (src_bits - 1)):
-                    source -= 1 << src_bits
-                answer = max(smallest, min(largest, source))
-                self.assertEqual(
-                    answer & destination_mask, expected,
-                    (name, hex(encoded), hex(expected)))
-
-    def test_distinct_lane_ghidra_saturation_audit(self):
-        # The original homogeneous decoder fixture cannot exercise VA/VB
-        # independently. Preserve the proven emulator-private override.
-        script = (audit.ROOT.parent / "ghidra_scripts" /
-                  "AuditXenonNumericalPcode.java").read_text(
-                      encoding="utf-8")
-        self.assertIn("class AuditXenonNumericalPcode", script)
-        self.assertIn('if ("55".equals(columns[4]))', script)
-        self.assertIn('requireVectorRegister("vs33")', script)
-        self.assertIn('requireVectorRegister("vs34")', script)
-        self.assertIn('requireVectorRegister("vs35")', script)
-        self.assertIn("emulator.writeMemory(address, syntheticBytes)", script)
-        self.assertIn("emulator.writeRegister(va, laneVector(a, pack.inputBits))",
-                      script)
-        self.assertIn("emulator.writeRegister(vb, laneVector(b, pack.inputBits))",
-                      script)
-        self.assertIn("output[i] = a[i];", script)
-        self.assertIn("output[half + i] = b[i];", script)
-        self.assertIn("output[0] = pack.positiveResult;", script)
-        self.assertIn("output[1] = pack.negativeResult;", script)
-        self.assertIn("output[2 * half - 1] = pack.positiveResult;", script)
-        self.assertIn("long initialVSCR = 0x10000L;", script)
-        self.assertIn("long expectedVSCR = initialVSCR | (saturating ? 1 : 0);",
-                      script)
-        self.assertIn("for (boolean saturating : new boolean[] {false, true})",
-                      script)
-        self.assertIn("emulator.step(monitor)", script)
-        self.assertIn("emulator.readRegister(destination)", script)
-        self.assertIn("Map<Address, Long> fixtureWords", script)
-        self.assertIn("!fixtureWordMatches(address, fixtureWords.get(address))",
-                      script)
-        self.assertIn("!fixtureWordMatches(patternAddress, fixtureWords.get(patternAddress))",
-                      script)
 
     def test_fixture_generation(self):
         with tempfile.TemporaryDirectory() as folder:
