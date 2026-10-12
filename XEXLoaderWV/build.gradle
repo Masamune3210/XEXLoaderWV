@@ -375,18 +375,6 @@ tasks.register("prepareXenonCommon") {
         // XER.CA calculation and destination storage remain unchanged.
         // This uses the least significant word of the GPR, not a
         // truncated assignment to the 64-bit register itself.
-        String stockAddicRecord = ''':addic. D,A,SIMM\tis $(NOTVLE) & OP=13 & D & A & SIMM & SIMM_SIGN=0
-{
-\txer_ca = carry(A,SIMM);
-\tD = A + SIMM;
-\tcr0flags( D );
-}'''
-        String stockSubicRecord = ''':subic. D,A,tmp\t\tis $(NOTVLE) & OP=13 & D & A & SIMM & SIMM_SIGN=1 [ tmp = -SIMM; ]
-{
-\txer_ca=carry(A,SIMM);
-\tD = A + SIMM;
-\tcr0flags( D );
-}'''
         // Check exact original constructor bodies below, instead of
         // rewriting every cr0flags(D) occurrence in the generic ISA.
         String ppcAddicHead = ':addic. D,A,SIMM'
