@@ -961,3 +961,21 @@ The `addic.`/ `subic.` width issue is **numerically reproduced for the current X
 - `XEXLoaderWV/build.gradle` already had no `ghidra_scripts` dependency. `XEXLoaderWV/tools/audit_xenon_isa_coverage_v1.py` only **printed** an obsolete manual instruction naming deleted `AuditXenonIsaFixtureV1.java`; replaced that documentation string with an optional independent-fixture-validation note. It did **not** open a script; the change prevents future generated reports from advertising a deleted file.
 - **The entire `ghidra_scripts` directory can now be removed from the checkout without breaking the Gradle build's source-file lookups.** The optional live `AuditXenonAddicRecordWidthV1.java` numerical p-code test would be lost if deleted; it was never necessary for the SLEIGH compiler. Offline low32 arithmetic oracle tests, guarded stock-constructor replacement and `verifyXenonSleigh` Gradle dependency remain.
 - Verified remote HEAD before each write and programmatically inspected `build.gradle`, both Python files and the test suite for direct Java-script dependencies. **Actual `gradle buildExtension` and installed-Ghidra runtime tests have not yet been rerun locally**, so do not claim the compiled SLEIGH passes or hide unrelated failures. Future build failures should be investigated without reconstructing deleted scripts.
+
+## Xenon addic./subic. CR0 low32 fix: live Ghidra emulator verified (2026-10-11)
+
+- The user ran `AuditXenonAddicRecordWidthV1.java` in Ghidra on retail 17559, and reported **11/11 PASS**, script finished, `Program unchanged: no byte, type, function, signature, or analysis metadata changes.` This supersedes the earlier script-runtime-pending limitation specifically for the addic/subic CR0 test. The user did **not** supply the successful Gradle build log; don't assert a separately witnessed full extension build from this result alone.
+- Exact observed cases (full destination GPR value / CR0 nibble):
+  - `addic. 0xFFFFFFFF + 1`: `0x100000000 / 0x2` (EQ).
+  - `addic. 0x7FFFFFFF + 1`: `0x80000000 / 0x8` (LT).
+  - `addic. 0x100000000 + 0`: `0x100000000 / 0x2` (EQ).
+  - `addic. 0x180000000 + 0`: `0x180000000 / 0x8` (LT).
+  - `addic. 1 + 1`: `0x2 / 0x4` (GT).
+  - `subic. 0x100000000 - 1`: `0xFFFFFFFF / 0x8` (LT).
+  - `subic. 1 - 1`: `0x0 / 0x2` (EQ).
+  - `subic. 2 - 1`: `0x1 / 0x4` (GT).
+  - `subic. 0 - 1`: `0xFFFFFFFFFFFFFFFF / 0x8` (LT).
+  - Non-recording `addic 0xFFFFFFFF + 1`: `0x100000000 / 0xA` (prior CR0 preserved).
+  - Non-recording `subic 1 - 1`: `0x0 / 0xA` (prior CR0 preserved).
+- Result: live **numerical Ghidra p-code execution** validates signed low-32-bit CR0.LT/GT/EQ for these nine recording input cases, full-width destination arithmetic, and CR0 preservation in two non-recording cases. The script set `xer_so=0`; XER.CA/SO variations and physical Xenon execution remain **untested** by these 11 cases. Do not expand the verified scope to unrelated 64-bit arithmetic or atomic locking.
+- Repository hygiene: checked the active branch HEAD `7569c425376bb96dc8d472c945812619afd0a3de` before saving this handoff. **No Java scripts recreated, no code restored, no Ghidra metadata or SLEIGH code changes in this update**. Optional live audit can be deleted after successful verification; Gradle's required tests have been decoupled from the `ghidra_scripts` directory.
