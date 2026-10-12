@@ -232,9 +232,9 @@ def write_results(rows: list[dict], sleigh_path: Path, inventory_path: Path,
     lines.extend(["", "SLEIGH-only *128 names: " +
                   (", ".join(extra) if extra else "none"),
                   "Custom userops declared: " + ", ".join(custom_ops),
-                  "Ghidra validation: import the generated .bin as raw",
-                  "PowerPC big-endian with XENON-32addr and run",
-                  "ghidra_scripts/AuditXenonIsaFixtureV1.java using its TSV.",
+                  "Optional Ghidra validation: import the generated .bin as raw",
+                  "PowerPC big-endian with XENON-32addr, then inspect the",
+                  "fixture TSV and decoding with independent tooling.",
                   ""])
     (output / "xenon_isa_coverage_v1.md").write_text(
         "\n".join(lines), encoding="utf-8")
