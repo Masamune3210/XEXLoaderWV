@@ -2709,6 +2709,25 @@ public class ImportRenamer {
 			add(new Replacer(0x00000359, "DevAuthShouldAlwaysEnforce"));
 			add(new Replacer(0x0000035A, "XAudioGetUnderrunCount"));
 			add(new Replacer(0x0000035C, "XVoicedIsActiveProcess"));
+			add(new Replacer(0x0000035B, "DrvSetAudioLatencyCallback"));
+			add(new Replacer(0x00000365, "VdQueryVideoCapabilities"));
+			add(new Replacer(0x00000367, "VdGet3dVideoFormat"));
+			add(new Replacer(0x00000369, "VdSet3dVideoFormat"));
+			add(new Replacer(0x00000372, "UsbdGetNatalHub"));
+			add(new Replacer(0x00000373, "UsbdGetNatalHardwareVersion"));
+			add(new Replacer(0x00000374, "UsbdNatalHubRegisterNotificationCallback"));
+			add(new Replacer(0x00000376, "KeCallAndWaitForDpcRoutine"));
+			add(new Replacer(0x00000377, "TidDeviceRequest"));
+			add(new Replacer(0x00000385, "XInputdGetFailedConnectionOrBind"));
+			add(new Replacer(0x00000386, "XInputdSetFailedConnectionOrBindCallback"));
+			add(new Replacer(0x00000388, "XInputdSetMinMaxAuthDelay"));
+			add(new Replacer(0x0000038D, "MmResetLowestAvailablePages"));
+			add(new Replacer(0x00000397, "XeCryptAesCreateKeySchedule"));
+			add(new Replacer(0x0000039A, "XeCryptAesCbcEncrypt"));
+			add(new Replacer(0x0000039B, "XeCryptAesCbcDecrypt"));
+			add(new Replacer(0x0000039C, "XeCryptAesGcmInitialize"));
+			add(new Replacer(0x0000039D, "XeCryptAesGcmUpdate"));
+			add(new Replacer(0x0000039E, "XeCryptAesGcmFinalize"));
 		}
 	};
 	
