@@ -26,8 +26,6 @@ public class AuditXenonAddicRecordWidthV1 extends GhidraScript {
     private static final String SHA =
         "e1d1c87dbcbec01c71c5400cc129a462fa46738d267e29151a91c5354bdf6cb8";
     private static final long SITE = 0x80064204L;
-    private static final long WORD = 0xffffffffL;
-    private static final long MASK64 = -1L;
 
     private static class Case {
         final String label;
@@ -117,8 +115,10 @@ public class AuditXenonAddicRecordWidthV1 extends GhidraScript {
             .getInstructionAt(site);
         require(original != null &&
             "addic.".equals(original.getMnemonicString()) &&
-            "addic. r11,r11,1".equals(original.toString()),
-            "Expected original kernel addic. r11,r11,1 at 0x80064204");
+            java.util.Arrays.equals(original.getBytes(),
+                new byte[] {(byte)0x35, (byte)0x6b, 0, 1}),
+            "Expected original 0x356B0001 addic. r11,r11,1 " +
+            "at 0x80064204");
 
         // Cases independently calculate the signed low-word CR0 oracle.
         // Destination is deliberately checked as a *full* GPR result:
