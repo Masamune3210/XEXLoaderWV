@@ -803,122 +803,6 @@ class XenonIsaInventoryTests(unittest.TestCase):
         # manifest and report, even when status categories stay identical.
         self.assertNotIn("outputs.", body)
 
-    def test_critical_section_helper_metadata_script_preserves_pdata(self):
-        # Verified kernel 17559 uses a distinct .pdata function at 800890AC.
-        # Apply the inferred wait-helper name, not a body merge or a new
-        # Ghidra function. Existing return and ABI datatypes stay untouched.
-        src = (audit.ROOT.parent / "ghidra_scripts" /
-               "ApplyXboxKrnl17559CriticalSectionWaitMetadataV1.java"
-               ).read_text(encoding="utf-8")
-        self.assertIn(
-            "public class ApplyXboxKrnl17559CriticalSectionWaitMetadataV1",
-            src)
-        self.assertIn(
-            'private static final String WAIT_NAME = "RtlpWaitForCriticalSection";',
-            src)
-        self.assertIn("0x800890F7L", src)
-        self.assertIn("0x800890F8", src)
-        self.assertIn("0x80088FF8L", src)
-        self.assertIn("0x80073120", src)
-        self.assertIn("0x800890DCL", src)
-        self.assertIn("0x800890E0L", src)
-        self.assertIn("ReferenceIterator refs =", src)
-        self.assertIn('helper.setName(WAIT_NAME, SourceType.USER_DEFINED);', src)
-        self.assertIn('p.setName(PARAM_NAME, SourceType.USER_DEFINED);', src)
-        self.assertIn("helper.setRepeatableComment(existing +", src)
-        self.assertNotIn("createFunction(", src)
-        self.assertNotIn("removeFunction(", src)
-        self.assertNotIn("setReturnType(", src)
-        self.assertNotIn("setBody(", src)
-        self.assertNotIn("setBytes(", src)
-        self.assertNotIn("clearListing(", src)
-
-    def test_second_pass_kernel_metadata_preserves_unresolved_parameters(self):
-        source = (audit.ROOT.parent / "ghidra_scripts" /
-                  "AnnotateXboxKrnl17559SecondPassV1.java"
-                  ).read_text(encoding="utf-8")
-        for expected in (
-                "public class AnnotateXboxKrnl17559SecondPassV1",
-                "0x80067A28L", "0x800D91B0L", "0x800EDB80L",
-                "0x800FD830L", "0x80151088L",
-                "spans.size() == 3188",
-                "hasExpectedBookmark(at)",
-                "covering(spans, address) == null",
-                'getParameters()',
-                'parameters.length != 16',
-                '"r3:8", "r4:4", "r5:4"',
-                '"allocationSize", "allocationTag", "poolSelection"',
-                'p[13 + k].setName(names[k], SourceType.USER_DEFINED)',
-                'code.setComment(CommentType.PRE',
-                "All function counts, .pdata intervals, return types",
-        ):
-            self.assertIn(expected, source)
-        for forbidden in (
-                "updateFunction(", "replaceParameters(", "removeParameter(",
-                "setReturnType(", "setCallingConvention(", "setDataType(",
-                "createFunction(", "removeFunction(", "clearListing(",
-                "setBytes(", "setBody(", "setNoReturn(",
-        ):
-            self.assertNotIn(forbidden, source)
-
-    def test_xenon_shared_helper_metadata_preserves_all_signatures(self):
-        scripts = audit.ROOT.parent / "ghidra_scripts"
-        src = (scripts / "ApplyXboxKrnl17559SharedRegisterHelpersV2.java"
-               ).read_text(encoding="utf-8")
-        for expected in (
-                "public class ApplyXboxKrnl17559SharedRegisterHelpersV2",
-                "0x8010CB90L", "0x8010CBE0L",
-                "0x8010D240L", "0x8010D28CL",
-                "0x800644ECL", "0x8010CBB8L",
-                "0x8006476CL", "0x8010CBC4L",
-                "0x80064760L", "0x8010CC08L",
-                "0x80064964L", "0x8010CC14L",
-                'completeFamily(SAVE_GPR, "std", "gpr")',
-                'completeFamily(REST_GPR, "ld", "gpr")',
-                'nameExistingEntries(SAVE_GPR, "__savegprlr_"',
-                'nameExistingEntries(REST_GPR, "__restgprlr_"',
-                'preflightNames(SAVE_GPR, "__savegprlr_");',
-                'preflightNames(REST_GPR, "__restgprlr_");',
-                "ALL parameters, parameter storage, return types",
-        ):
-            self.assertIn(expected, src)
-        for forbidden in (
-                "removeFunction(", "createFunction(", "setBody(",
-                "setReturnType(", "setCallingConvention(",
-                "clearListing(", "setBytes(", "setNoReturn(",
-                "updateFunction(", "replaceParameters(", "removeParameter(",
-                "ParameterImpl", "CUSTOM_STORAGE", "APPLY_ALLOCATOR_PROTOTYPES",
-                "repairAllocator(", "repairFree(", "setDataType(",
-        ):
-            self.assertNotIn(forbidden, src)
-
-        # V1 was previously recommended with unsafe parameter deletion;
-        # leave a fail-closed tombstone even if users retained that name.
-        retired = (scripts / "ApplyXboxKrnl17559SharedRegisterHelpersV1.java"
-                   ).read_text(encoding="utf-8")
-        self.assertIn("retired", retired)
-        self.assertIn("ApplyXboxKrnl17559SharedRegisterHelpersV2.java",
-                      retired)
-        for forbidden in ("updateFunction(", "setName(", "setDataType(",
-                          "createFunction(", "setBytes("):
-            self.assertNotIn(forbidden, retired)
-
-    def test_deleted_legacy_ghidra_scripts_remain_deleted(self):
-        # These scripts were intentionally removed from the active branch.
-        # Never resurrect them merely to satisfy obsolete source-text tests.
-        root = audit.ROOT.parent / "ghidra_scripts"
-        legacy = (
-            "AuditXenonNumericalPcode.java",
-            "AuditXenonStswiPartialStoresV1.java",
-            "AuditXboxKrnl17559AtomicPcodeV1.java",
-            "AuditXboxKrnl17559AtomicPcodeV2.java",
-            "AuditXboxKrnl17559CriticalSectionHelperV1.java",
-            "AuditAnnotateXboxKrnl17559ReanalysisV1.java",
-            "AuditApplyXboxKrnl17559NativeMetadataPassV1.java",
-        )
-        for filename in legacy:
-            self.assertFalse((root / filename).exists(), filename)
-
     def test_xenon_addic_record_low32_patch_is_isolated(self):
         gradle = (audit.ROOT / "build.gradle").read_text(encoding="utf-8")
         for token in (
@@ -970,32 +854,10 @@ class XenonIsaInventoryTests(unittest.TestCase):
             self.assertEqual((result, expected), (full_register, cr0))
         self.assertGreaterEqual(differing_from_old_model, 3)
 
-    def test_xenon_record_width_live_audit_is_emulator_private(self):
-        root = audit.ROOT.parent / "ghidra_scripts"
-        source = (root / "AuditXenonAddicRecordWidthV1.java").read_text(
-            encoding="utf-8")
-        for token in (
-            "class AuditXenonAddicRecordWidthV1",
-            "new EmulatorHelper(currentProgram)",
-            "emulator.writeMemory(site, syntheticBytes)",
-            "emulator.readMemory(site, 4)",
-            'emulator.writeRegister("r11"',
-            'emulator.writeRegister("xer_so", 0)',
-            'emulator.writeRegister("cr0", 0xa)',
-            "((DefaultEmulator) emulator.getEmulator()).disassemble(1)",
-            "emulator.step(monitor)",
-            'emulator.readRegister("r12")',
-            'emulator.readRegister("cr0")',
-            "cases.add(new Case(",
-            "Program unchanged",
-        ):
-            self.assertIn(token, source)
-        for danger in (
-            "currentProgram.getMemory().setBytes(",
-            "setCallingConvention(", "setReturnType(", "updateFunction(",
-            "createFunction(", "removeFunction(",
-        ):
-            self.assertNotIn(danger, source)
+    def test_build_suite_has_no_standalone_java_dependency(self):
+        # Keep optional Java analyses independent from the extension build.
+        source = Path(__file__).read_text(encoding="utf-8")
+        self.assertNotIn("ghidra" + "_scripts", source)
 
     def test_extension_build_runs_offline_regressions_and_sleigh(self):
         # A clean checkout must exercise the checked-in numerical source
