@@ -367,6 +367,80 @@ tasks.register("prepareXenonCommon") {
             throw new GradleException("Xenon lwarx reservation patch failed")
         }
 
+        // Xenon operates with the 32-bit record-condition mode of a
+        // 64-bit-register PPC core. Stock ppc_instructions.sinc passes the
+        // entire 64-bit destination to cr0flags for addic. / subic.;
+        // at 0xFFFFFFFF + 1 that incorrectly makes CR0.GT rather than EQ.
+        // Fix ONLY CR0 evaluation: the existing full-width arithmetic,
+        // XER.CA calculation and destination storage remain unchanged.
+        // This uses the least significant word of the GPR, not a
+        // truncated assignment to the 64-bit register itself.
+        String stockAddicRecord = ''':addic. D,A,SIMM\tis $(NOTVLE) & OP=13 & D & A & SIMM & SIMM_SIGN=0
+{
+\txer_ca = carry(A,SIMM);
+\tD = A + SIMM;
+\tcr0flags( D );
+}'''
+        String stockSubicRecord = ''':subic. D,A,tmp\t\tis $(NOTVLE) & OP=13 & D & A & SIMM & SIMM_SIGN=1 [ tmp = -SIMM; ]
+{
+\txer_ca=carry(A,SIMM);
+\tD = A + SIMM;
+\tcr0flags( D );
+}'''
+        // Check exact original constructor bodies below, instead of
+        // rewriting every cr0flags(D) occurrence in the generic ISA.
+        String ppcAddicHead = ':addic. D,A,SIMM'
+        String ppcSubicHead = ':subic. D,A,tmp'
+        int addicStart = instructions.indexOf(ppcAddicHead)
+        int subicStart = instructions.indexOf(ppcSubicHead)
+        if (addicStart < 0 || subicStart < 0 ||
+                instructions.indexOf(ppcAddicHead,
+                    addicStart + ppcAddicHead.length()) >= 0 ||
+                instructions.indexOf(ppcSubicHead,
+                    subicStart + ppcSubicHead.length()) >= 0) {
+            throw new GradleException(
+                "Installed addic./subic. constructors missing or duplicated")
+        }
+        String addicBody = instructions.substring(
+            addicStart, instructions.indexOf("\n}", addicStart) + 2)
+        String subicBody = instructions.substring(
+            subicStart, instructions.indexOf("\n}", subicStart) + 2)
+        String addicOriginalBody = '''{
+\txer_ca = carry(A,SIMM);
+\tD = A + SIMM;
+\tcr0flags( D );
+}'''
+        String subicOriginalBody = '''{
+\txer_ca=carry(A,SIMM);
+\tD = A + SIMM;
+\tcr0flags( D );
+}'''
+        if (!addicBody.contains('OP=13') ||
+                !addicBody.contains('SIMM_SIGN=0') ||
+                !addicBody.endsWith(addicOriginalBody) ||
+                !subicBody.contains('OP=13') ||
+                !subicBody.contains('SIMM_SIGN=1') ||
+                !subicBody.endsWith(subicOriginalBody) ||
+                addicBody.indexOf(addicOriginalBody) !=
+                    addicBody.lastIndexOf(addicOriginalBody) ||
+                subicBody.indexOf(subicOriginalBody) !=
+                    subicBody.lastIndexOf(subicOriginalBody)) {
+            throw new GradleException(
+                "Installed PPC addic./subic. record constructor changed; " +
+                "refusing to alter Xenon CR0 semantics")
+        }
+        String newRecordBody = 'cr0flags( D:4 );'
+        instructions = instructions.replace(addicBody,
+            addicBody.replace('cr0flags( D );', newRecordBody))
+        instructions = instructions.replace(subicBody,
+            subicBody.replace('cr0flags( D );', newRecordBody))
+        if (!instructions.contains('cr0flags( D:4 );') ||
+                instructions.contains(addicBody) ||
+                instructions.contains(subicBody)) {
+            throw new GradleException(
+                "Xenon 32-bit addic./subic. CR0 patch failed")
+        }
+
         // The inherited stwcx. incorrectly writes an opaque value
         // unconditionally after checking RESERVE and sets CR0.EQ=1.
         // If RESERVE=0 it skips updating CR0 altogether. Replace only
