@@ -833,76 +833,6 @@ class XenonIsaInventoryTests(unittest.TestCase):
         self.assertNotIn("setBytes(", src)
         self.assertNotIn("clearListing(", src)
 
-    def test_reanalysis_metadata_audit_preserves_verified_pdata(self):
-        src = (audit.ROOT.parent / "ghidra_scripts" /
-               "AuditAnnotateXboxKrnl17559ReanalysisV1.java"
-               ).read_text(encoding="utf-8")
-        for required in (
-            "public class AuditAnnotateXboxKrnl17559ReanalysisV1",
-            'getExecutableSHA256()',
-            'getExecutableFormat()',
-            'getBookmarksIterator()',
-            'getFunctions(true)',
-            'getRepeatableComment()',
-            'findSpan(spans, at)',
-            'foundInside == 0',
-            'recognizedSharedEntry(at, s)',
-            'other nested entries needing review',
-            'spans.size() == 3188',
-            'getFunctionAt(addr)',
-            'f.setRepeatableComment(',
-        ):
-            self.assertIn(required, src)
-        for disallowed in (
-            "setNoReturn(", "setReturnType(", "setCallingConvention(",
-            "setBody(", "removeFunction(", "createFunction(",
-            "clearListing(", "setBytes(", "removeBookmark(",
-            "setDataType(", "setName(", "setPrimary(",
-        ):
-            self.assertNotIn(disallowed, src)
-        self.assertIn('APPLY_SAFE_METADATA = true', src)
-        self.assertIn('already++', src)
-        self.assertIn('No functions created/merged', src)
-
-    def test_third_kernel_snapshot_native_metadata_is_non_destructive(self):
-        source = (audit.ROOT.parent / "ghidra_scripts" /
-                  "AuditApplyXboxKrnl17559NativeMetadataPassV1.java"
-                  ).read_text(encoding="utf-8")
-        for token in (
-            "public class AuditApplyXboxKrnl17559NativeMetadataPassV1",
-            "private static final boolean APPLY_METADATA = false;",
-            'if (APPLY_METADATA) {',
-            "READ ONLY: metadata has already been saved",
-            "0x80040F78L", "0x80041048L", "0x80041118L",
-            "0x800418E8L", "0x80042628L", "0x80042644L",
-            "0x8007345CL", "0x80077FB0L", "0x80078280L",
-            "0x80078B18L", "0x80078BF0L", "0x800885CCL",
-            "0x8008915CL", "0x80089868L", "0x8010D210L",
-            "0x801A561CL", "0x801B0EE0L", "0x801B0EE8L",
-            'intervals.size() == 3188',
-            'getExecutableSHA256()', 'getAllDataTypes()',
-            'getParameterCount()', 'getReturnType().getName()',
-            'nativeComment.contains(WIDTH_FLAG)',
-            'BookmarkType.NOTE', 'getBookmarks(at)',
-            'getDefinedDataAt(address)', 'getRepeatableComment()',
-            '"DeviceQueuePrefix16", "ListEntry32"',
-            'List<String> missing = new ArrayList<>(STRUCT_NAMES);',
-            '"Names absent from Program datatype manager: "',
-            '"/" + STRUCT_NAMES.size()',
-            'function.setName(desired, SourceType.USER_DEFINED)',
-            'currentProgram.getSymbolTable()',
-            'DATA_MIN_LENGTHS',
-        ):
-            self.assertIn(token, source)
-        for forbidden in (
-            "updateFunction(", "replaceParameters(", "removeParameter(",
-            "setReturnType(", "setCallingConvention(", "setDataType(",
-            "createFunction(", "removeFunction(", "setBody(", "setBytes(",
-            "clearListing(", "setNoReturn(", "removeBookmark(",
-            "clearComments(", "setComment(",
-        ):
-            self.assertNotIn(forbidden, source)
-
     def test_second_pass_kernel_metadata_preserves_unresolved_parameters(self):
         source = (audit.ROOT.parent / "ghidra_scripts" /
                   "AnnotateXboxKrnl17559SecondPassV1.java"
@@ -983,6 +913,8 @@ class XenonIsaInventoryTests(unittest.TestCase):
             "AuditXboxKrnl17559AtomicPcodeV1.java",
             "AuditXboxKrnl17559AtomicPcodeV2.java",
             "AuditXboxKrnl17559CriticalSectionHelperV1.java",
+            "AuditAnnotateXboxKrnl17559ReanalysisV1.java",
+            "AuditApplyXboxKrnl17559NativeMetadataPassV1.java",
         )
         for filename in legacy:
             self.assertFalse((root / filename).exists(), filename)
