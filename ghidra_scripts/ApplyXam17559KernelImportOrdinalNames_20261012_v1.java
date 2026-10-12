@@ -164,8 +164,13 @@ public class ApplyXam17559KernelImportOrdinalNames_20261012_v1 extends GhidraScr
                     thunkCount++;
                 }
                 println("RENAMED ordinal " + rename.ordinal + " -> " + rename.newName +
+                    " externalLocation=" + rename.external.getExternalSpaceAddress() +
                     " slots=" + rename.slotSymbols.size() +
                     " thunks=" + rename.thunkSymbols.size());
+                for (Symbol slot : rename.slotSymbols)
+                    println("  SLOT " + slot.getAddress() + " -> __imp__" + rename.newName);
+                for (Symbol thunk : rename.thunkSymbols)
+                    println("  THUNK " + thunk.getAddress() + " -> " + rename.newName);
             }
             success = true;
         } finally {
