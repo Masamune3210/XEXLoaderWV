@@ -33,7 +33,7 @@ public class AuditXenonFprContextPropagation_20261017_v1 extends GhidraScript {
     private static String cell(String s) {
         return s.replace('\t',' ').replace('\n',' ').replace('\r',' ');
     }
-    private static Map<Address,List<Address>> reverseCalls(Map<Address,Node> nodes) {
+    private Map<Address,List<Address>> reverseCalls(Map<Address,Node> nodes) {
         Map<Address,List<Address>> result = new HashMap<>();
         ReferenceManager manager=currentProgram.getReferenceManager();
         for (Node dest:nodes.values()) {
