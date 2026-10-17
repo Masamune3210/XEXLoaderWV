@@ -11,7 +11,7 @@ import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.*;
 import ghidra.program.model.symbol.*;
 
-public class AuditXenonFprContextPropagation_20261017_v2 extends GhidraScript {
+public class AuditXenonFprContextPropagation_20261017_v3 extends GhidraScript {
     private static final Pattern FP_PARAM = Pattern.compile("f(?:[1-9]|1[0-3]):8");
     private static final Pattern FP_REG = Pattern.compile("f(?:[0-9]|[12][0-9]|3[01])");
     private static class Node {
@@ -20,7 +20,8 @@ public class AuditXenonFprContextPropagation_20261017_v2 extends GhidraScript {
         final Set<String> storedFp = new HashSet<>();
         int fpFormal, instructions, directNativeFp;
         boolean root;
-        Node(Function f) {function=f;address=f.getEntryPoint();}
+        final boolean thunk;
+        Node(Function f) {function=f;address=f.getEntryPoint();thunk=f.isThunk();}
         String name() {return function.getName();}
         String signatureSource() {return function.getSignatureSource().toString();}
     }
@@ -51,6 +52,16 @@ public class AuditXenonFprContextPropagation_20261017_v2 extends GhidraScript {
                         .add(owner.getEntryPoint());
             }
         }
+        // Function.getThunkedFunction(true) provides the canonical target even
+        // if Ghidra does not represent a thunk's branch as an ordinary flow ref.
+        for (Node n : nodes.values()) {
+            if (!n.thunk) continue;
+            Function target = n.function.getThunkedFunction(true);
+            if (target != null && nodes.containsKey(target.getEntryPoint())) {
+                result.computeIfAbsent(target.getEntryPoint(), k -> new ArrayList<>())
+                    .add(n.address);
+            }
+        }
         return result;
     }
     @Override public void run() throws Exception {
@@ -63,7 +74,7 @@ public class AuditXenonFprContextPropagation_20261017_v2 extends GhidraScript {
         while (it.hasNext()) {
             monitor.checkCancelled();
             Function f=it.next();
-            if (f.isExternal() || f.isThunk() || f.getBody().isEmpty()) continue;
+            if (f.isExternal() || f.getBody().isEmpty()) continue;
             Node n=new Node(f);
             for (Parameter p:f.getParameters()) {
                 String storage=p.getVariableStorage().toString();
@@ -82,9 +93,9 @@ public class AuditXenonFprContextPropagation_20261017_v2 extends GhidraScript {
                         n.storedFp.add(operand.trim());
                 }
             }
-            // Capturing nearly all FPRs is a strong machine-state-save
-            // signature, not proof that the input FPRs are ABI arguments.
-            n.root=n.storedFp.size()>=28;
+            // Include native thunks as graph connectors, but not as context
+            // savers or counted functions in the original census.
+            n.root=!n.thunk && n.storedFp.size()>=28;
             nodes.put(n.address,n);
         }
         Map<Address,List<Address>> reverse=reverseCalls(nodes);
@@ -106,8 +117,10 @@ public class AuditXenonFprContextPropagation_20261017_v2 extends GhidraScript {
             }
         }
         int[][] matrix=new int[2][2];
-        int directZero=0, all13=0;
+        int directZero=0, all13=0, thunkNodes=0, countedFunctions=0;
         for(Node n:nodes.values()){
+            if (n.thunk) {thunkNodes++;continue;}
+            countedFunctions++;
             boolean reaches=distance.containsKey(n.address);
             boolean has13=n.fpFormal==13;
             matrix[reaches?1:0][has13?1:0]++;
@@ -115,7 +128,7 @@ public class AuditXenonFprContextPropagation_20261017_v2 extends GhidraScript {
         }
         println("XENON_FPR_CONTEXT_AUDIT READ_ONLY program="+currentProgram.getName()+
             " executableSHA256="+currentProgram.getExecutableSHA256());
-        println("FUNCTIONS="+nodes.size()+" roots="+
+        println("FUNCTIONS="+countedFunctions+" thunkConnectors="+thunkNodes+" graphNodes="+nodes.size()+" roots="+
             nodes.values().stream().filter(n->n.root).count()+
             " FPR13="+all13+" FPR13_WITH_NO_NATIVE_FP="+directZero);
         println("MATRIX reachable_13="+matrix[1][1]+" reachable_not13="+matrix[1][0]+
@@ -125,6 +138,26 @@ public class AuditXenonFprContextPropagation_20261017_v2 extends GhidraScript {
             println("FPR_CONTEXT_ROOT "+n.address+" "+n.name()+
                 " fpStored="+n.storedFp.size()+" nativeInstructions="+n.instructions+
                 " formalFprSlots="+n.fpFormal);
+        // A known 17559 counterexample reaches 0x800EEEE0 through a native
+        // branch at 0x800F7000; record whether the link is a thunk or is
+        // missing from the current database. No firmware addresses are used
+        // to *identify* context savers or build the graph.
+        Address bridgeAddress=currentProgram.getAddressFactory()
+            .getDefaultAddressSpace().getAddress(0x800f7000L);
+        Node bridge=nodes.get(bridgeAddress);
+        Function actual=currentProgram.getFunctionManager().getFunctionAt(bridgeAddress);
+        println("THUNK_BRIDGE_800F7000 "+(actual==null?"NO_FUNCTION":
+            "name="+actual.getName()+" isThunk="+actual.isThunk()+
+            " target="+(actual.isThunk() && actual.getThunkedFunction(true)!=null
+                ? actual.getThunkedFunction(true).getEntryPoint() : "UNKNOWN"))+
+            " graphNode="+(bridge!=null)+" canReachContextSaver="+
+            distance.containsKey(bridgeAddress));
+        Node disconnected=nodes.get(currentProgram.getAddressFactory()
+            .getDefaultAddressSpace().getAddress(0x801351b0L));
+        if (disconnected != null) println("PREVIOUS_COUNTEREXAMPLE_801351B0 fpr13="+
+            disconnected.fpFormal+" canReachContextSaver="+
+            distance.containsKey(disconnected.address)+" distance="+
+            distance.getOrDefault(disconnected.address,-1));
         Node sample=nodes.get(currentProgram.getAddressFactory()
             .getDefaultAddressSpace().getAddress(0x80089eb0L));
         if(sample!=null && distance.containsKey(sample.address)) {
@@ -150,6 +183,7 @@ public class AuditXenonFprContextPropagation_20261017_v2 extends GhidraScript {
                 "\tunique_stored_fp_registers\tcontext_save_candidate"+
                 "\tcan_reach_context_saver\tminimum_calls_to_saver\tsignature_source");
             for(Node n:nodes.values()) {
+                if (n.thunk) continue;
                 p.println(n.address+"\t"+cell(n.name())+"\t"+n.fpFormal+"\t"+
                     n.directNativeFp+"\t"+n.storedFp.size()+"\t"+n.root+"\t"+
                     distance.containsKey(n.address)+"\t"+
