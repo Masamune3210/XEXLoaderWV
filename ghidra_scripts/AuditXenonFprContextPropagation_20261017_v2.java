@@ -11,7 +11,7 @@ import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.*;
 import ghidra.program.model.symbol.*;
 
-public class AuditXenonFprContextPropagation_20261017_v1 extends GhidraScript {
+public class AuditXenonFprContextPropagation_20261017_v2 extends GhidraScript {
     private static final Pattern FP_PARAM = Pattern.compile("f(?:[1-9]|1[0-3]):8");
     private static final Pattern FP_REG = Pattern.compile("f(?:[0-9]|[12][0-9]|3[01])");
     private static class Node {
@@ -33,7 +33,8 @@ public class AuditXenonFprContextPropagation_20261017_v1 extends GhidraScript {
     private static String cell(String s) {
         return s.replace('\t',' ').replace('\n',' ').replace('\r',' ');
     }
-    private Map<Address,List<Address>> reverseCalls(Map<Address,Node> nodes) {
+    private Map<Address,List<Address>> reverseCalls(Map<Address,Node> nodes)
+            throws ghidra.util.exception.CancelledException {
         Map<Address,List<Address>> result = new HashMap<>();
         ReferenceManager manager=currentProgram.getReferenceManager();
         for (Node dest:nodes.values()) {
