@@ -17,7 +17,7 @@ def classify(value, bits):
 
 def main():
     text = LANG.read_text(encoding="utf-8")
-    matches = re.findall(r"(?ms)^macro cr0flags\\(result \\) \\{\\n.*?^\\}", text)
+    matches = re.findall(r"(?ms)^macro cr0flags\(result \) \{\n.*?^\}", text)
     assert len(matches) == 1, "Expected exactly one generated cr0flags macro"
     macro = matches[0]
     for token in (
