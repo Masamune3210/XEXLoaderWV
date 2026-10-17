@@ -46,7 +46,7 @@ import ghidra.util.task.TaskMonitor;
  */
 public class XexLinkedImportSignatureAnalyzer extends AbstractAnalyzer {
     public XexLinkedImportSignatureAnalyzer() {
-        super("XEX: Sync verified linked import signatures",
+        super("XEX: Sync linked import signatures",
             "Propagate complete user-defined signatures from uniquely resolved linked " +
             "XEX dependencies; do not overwrite edited imports or import opaque registers.",
             AnalyzerType.BYTE_ANALYZER);
