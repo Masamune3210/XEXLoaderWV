@@ -278,6 +278,42 @@ tasks.register("prepareXenonCommon") {
         }
         common = common.replace(stockPartialStore, xenonPartialStore)
 
+        // This experimental Xenon language fixes MSR[SF]=0 implicit CR0
+        // comparisons. Do not truncate the stored GPR, alter XER.SO, or
+        // silently patch Ghidra's stock processor. The task-private Xenon
+        // SLEIGH build passed 8192 original-helper cases and 84 unit cases.
+        // Guard the complete upstream macro so unexpected Ghidra changes fail.
+        String stockCr0Flags = '''macro cr0flags(result ) {
+	# the first three bits of CR are set by signed comparison of the
+	# result to zero, and the fourth bit of CR is copied from the SO field
+	# of the XER
+	setCrBit(cr0, 0, (result s< 0)); # 0b100
+	setCrBit(cr0, 1, (result s> 0)); # 0b010
+	setCrBit(cr0, 2, (result == 0)); # 0b001
+	setCrBit(cr0, 3, (xer_so & 1));
+}'''
+        String xenonCr0Flags = '''macro cr0flags(result ) {
+	# Fixed Xenon SF=0: compare the low 32 result bits for implicit CR0.
+	# Preserve the complete 64-bit GPR result and XER.SO.
+	local crFullResult:$(REGISTER_SIZE) = zext(result);
+	local crResult32:4 = crFullResult:4;
+	# the first three bits of CR are set by signed comparison of the
+	# result to zero, and the fourth bit of CR is copied from the SO field
+	# of the XER
+	setCrBit(cr0, 0, (crResult32 s< 0)); # 0b100
+	setCrBit(cr0, 1, (crResult32 s> 0)); # 0b010
+	setCrBit(cr0, 2, (crResult32 == 0)); # 0b001
+	setCrBit(cr0, 3, (xer_so & 1));
+}'''
+        if (common.indexOf(stockCr0Flags) < 0 ||
+                common.indexOf(stockCr0Flags) !=
+                    common.lastIndexOf(stockCr0Flags) ||
+                common.contains(xenonCr0Flags)) {
+            throw new GradleException(
+                "Installed PPC cr0flags macro changed; refusing Xenon SF=0 patch")
+        }
+        common = common.replace(stockCr0Flags, xenonCr0Flags)
+
         // A store-conditional is not a regular memory store: hardware may
         // reject a reservation even when its flag was previously set.
         // Model the atomic commit and success result as ONE opaque operation.
@@ -582,8 +618,19 @@ tasks.register("testXenonIsaCoverage", Exec) {
     // not just one generated artifact's timestamp.
 }
 
+tasks.register("testXenonCr0Mode", Exec) {
+    group = "verification"
+    description = "Check generated Xenon SF=0 CR0 semantics and witness vectors"
+    dependsOn tasks.named("prepareXenonCommon")
+    workingDir projectDir
+    def onWindows = System.getProperty("os.name").toLowerCase(java.util.Locale.ROOT).contains("windows")
+    def pythonCommand = project.findProperty("XENON_PYTHON")?.toString() ?:
+        (onWindows ? "python" : "python3")
+    commandLine pythonCommand, "tools/test_xenon_cr0_mode_v1.py"
+}
+
 tasks.register("verifyXenonSleigh", Exec) {
-    dependsOn tasks.named("generateXenonIsaFixture"), tasks.named("testXenonIsaCoverage")
+    dependsOn tasks.named("generateXenonIsaFixture"), tasks.named("testXenonIsaCoverage"), tasks.named("testXenonCr0Mode")
     dependsOn tasks.named("prepareXenonLegacyAltivec"), tasks.named("prepareXenonIsa"), tasks.named("prepareXenonCommon")
     group = "verification"
     description = "Compile Xenon SLEIGH with the installed Ghidra compiler before extension packaging"
