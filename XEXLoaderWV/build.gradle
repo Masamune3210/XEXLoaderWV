@@ -629,8 +629,20 @@ tasks.register("testXenonCr0Mode", Exec) {
     commandLine pythonCommand, "tools/test_xenon_cr0_mode_v1.py"
 }
 
+// Ensure linked-XEX signature propagation guards remain intact for every build.
+// The Ghidra compiler/runtime API is validated separately by compiling the extension.
+tasks.register("testXexLinkedImports", Exec) {
+    group = "verification"
+    description = "Check linked import signature sync refuses opaque or edited contracts"
+    workingDir projectDir
+    def onWindows = System.getProperty("os.name").toLowerCase(java.util.Locale.ROOT).contains("windows")
+    def pythonCommand = project.findProperty("XENON_PYTHON")?.toString() ?:
+        (onWindows ? "python" : "python3")
+    commandLine pythonCommand, "tools/test_xex_linked_import_signature_analyzer_v1.py"
+}
+
 tasks.register("verifyXenonSleigh", Exec) {
-    dependsOn tasks.named("generateXenonIsaFixture"), tasks.named("testXenonIsaCoverage"), tasks.named("testXenonCr0Mode")
+    dependsOn tasks.named("generateXenonIsaFixture"), tasks.named("testXenonIsaCoverage"), tasks.named("testXenonCr0Mode"), tasks.named("testXexLinkedImports")
     dependsOn tasks.named("prepareXenonLegacyAltivec"), tasks.named("prepareXenonIsa"), tasks.named("prepareXenonCommon")
     group = "verification"
     description = "Compile Xenon SLEIGH with the installed Ghidra compiler before extension packaging"
