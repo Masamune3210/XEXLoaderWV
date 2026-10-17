@@ -10,7 +10,7 @@ To prevent moving Ghidra's spurious opaque FPR slots into XAM, functions with an
 
 ## Limitations
 
-- The Xenon compiler spec `xenon_64_32.cspec` was verified byte-for-byte identical to stock Ghidra `ppc_64_32.cspec` (aside from files themselves being copied). The 13 FPR slots are not yet proven to be an extension-specific compiler-spec defect. Preserve unresolved f1–f13 storage.
+- The Xenon compiler spec `xenon_64_32.cspec` matches the structure and parameter register ordering of the upstream Ghidra `ppc_64_32.cspec` inspected during this pass. The exact installed Ghidra 12.1.3 source was not separately byte-compared. The 13 FPR slots are not yet proven to be an extension-specific compiler-spec defect. Preserve unresolved f1–f13 storage.
 - The analyzer may only see a dependency if the linked library path exists **before the analysis pass**. If links were established after XAM was imported, run the named analyzer again as a One Shot analysis pass. It is not a live listener for link changes.
 - The strict default policy deliberately leaves ambiguous, partially typed and unverified kernel declarations unchanged. The original XAM report predicts **up to 36** USER_DEFINED fully typed imports, but existing complex datatype dependencies and other guards may reduce actual changes. It must not be advertised as repairing all 437 empty externals.
 - No Ghidra runtime validation or Gradle SLEIGH compilation was performed in the assistant environment. Rebuilding the extension and testing the analyzer in an XAM backup is required before relying on the change in the entire firmware corpus.
