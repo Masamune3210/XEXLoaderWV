@@ -192,10 +192,15 @@ public class ProbeXenonFprNtCloseSourcesSandbox_20261017_v5 extends GhidraScript
         }
 
         Function irql=f(IRQL);
-        require(irql!=null && irql.getParameterCount()==15
-            && fprPrefix(irql,13)
-            && param(irql.getParameter(13),"requestedIrql","ulonglong","r3:8")
-            && param(irql.getParameter(14),"pendingLevelsWord","ulonglong","r4:8"),
+        require(irql!=null, "missing IRQL dispatch function");
+        // Accept either original contaminated signature or the v4-corrected
+        // signature. Never destroy the previously verified GP parameter names.
+        int offset=fpr(irql)==13?13:0;
+        require((offset==13 && irql.getParameterCount()==15 && fprPrefix(irql,13))
+            || (offset==0 && fpr(irql)==0 && irql.getParameterCount()==2),
+            "IRQL signature differs from either known baseline");
+        require(param(irql.getParameter(offset),"requestedIrql","ulonglong","r3:8")
+            && param(irql.getParameter(offset+1),"pendingLevelsWord","ulonglong","r4:8"),
             "protected IRQL two GP parameters differ");
         log("VERIFIED_METADATA_PRESERVED irql requestedIrql@r3:8 and pendingLevelsWord@r4:8");
     }
