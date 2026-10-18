@@ -243,7 +243,7 @@ public class ProbeXenonFprApcCycleMetadataSandbox_20261017_v4 extends GhidraScri
         require(release!=null && release.getSignatureSource()==SourceType.USER_DEFINED
             && !release.isThunk() && release.getParameterCount()==15
             && fprPrefix(release,13),"KfReleaseSpinLock baseline differs");
-        require(param(release.getParameter(13),"spinLock","uint *","r3:4")
+        require(param(release.getParameter(13),"spinLock","uint *32","r3:4")
             && param(release.getParameter(14),"previousIrql","ulonglong","r4:8"),
             "KfReleaseSpinLock proven GP parameter metadata differs");
         require(nativeFp(release)==0 && calls(release,IRQL),
@@ -256,7 +256,7 @@ public class ProbeXenonFprApcCycleMetadataSandbox_20261017_v4 extends GhidraScri
         signature(RELEASE,"EXPERIMENT_BEFORE_SPINLOCK");
         for(int i=12;i>=0;i--)release.removeParameter(i);
         require(release.getParameterCount()==2 && fpr(release)==0
-            && param(release.getParameter(0),"spinLock","uint *","r3:4")
+            && param(release.getParameter(0),"spinLock","uint *32","r3:4")
             && param(release.getParameter(1),"previousIrql","ulonglong","r4:8")
             && release.getReturnType().getName().equals(retType)
             && release.getReturn().getVariableStorage().toString().equals(retStorage),
