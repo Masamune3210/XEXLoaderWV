@@ -52,6 +52,7 @@ This isolates a call-graph/parameter-recovery problem, not an established Xenon 
 
 ## Verification
 - v1 disposable-sandbox test: **PASS**, including scoped Parameter ID.
-- v2 chain test: **PARTIAL PASS** (5 functions corrected, next ANALYSIS caller unchanged; 289 pre-existing USER_DEFINED signatures preserved).\n- v3 read-only boundary audit: **NOT RUN** (script committed).
+- v2 chain test: **PARTIAL PASS** (5 functions corrected, next ANALYSIS caller unchanged; 289 pre-existing USER_DEFINED signatures preserved).
+- v3 read-only boundary audit: **NOT RUN** (script committed).
 - Production mutation: **NONE** from these experiments.
 - Extension rebuild: **NOT REQUIRED** for the present experiment.
