@@ -203,13 +203,26 @@ public class AnnotateXenonHv17559ReturnPaths_20261018_v3 extends GhidraScript {
     @Override public void run() throws Exception {
         verifyAll();  // All checks complete before first database edit.
         for (long[] t : FIXED_SRR0) {
+            // Materialize the entire byte-verified lis/addi/mtsrr0 construction
+            // instead of leaving two of the three instructions as raw bytes.
+            ensureNativeInstruction(t[0]);
+            ensureNativeInstruction(t[1]);
             long at=t[2];
             annotate(at,String.format("HvKernelTargetSRR0_%04X",at),
                 "Native lis/addi -> mtsrr0 sets SRR0=0x80075F90; downstream flow may branch to shared epilogue.");
         }
+        ensureNativeInstruction(0x1ad8);
+        ensureNativeInstruction(0x1adc);
         annotate(0x1ae0,"HvKernelTargetSRR0_1AE0",
             "Native lis/addi -> mtsrr0 sets SRR0=0x80078DB0.");
         for (long[] t : KNOWN_SRR1) {
+            // Decode verified immediate construction instructions, too.
+            if (t[0] == 0x1aec) {
+                ensureNativeInstruction(0x1ae4);
+                ensureNativeInstruction(0x1ae8);
+            } else {
+                ensureNativeInstruction(t[1]);
+            }
             long at=t[0];
             annotate(at,String.format("HvExplicitSF0SRR1_%04X",at),
                 String.format("Native immediate -> mtsrr1 sets SRR1=0x%08X (SF=0). Nearby rfid at 0x%04X; a branch may divert to another exit.",t[2],t[3]));
