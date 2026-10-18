@@ -322,7 +322,7 @@ public class Xenon17559FprBoundaryAnalyzer extends AbstractAnalyzer {
                 new String[0], new String[0], monitor);
 
             pinned += pinKnownBoundary(program, RELEASE, "undefined", "<UNASSIGNED>",
-                new String[] {"uint *", "ulonglong"},
+                new String[] {"uint *32", "ulonglong"},
                 new String[] {"r3:4", "r4:8"}, monitor);
             recover(program, APC, "undefined", "<UNASSIGNED>",
                 new String[0], new String[0], monitor);
