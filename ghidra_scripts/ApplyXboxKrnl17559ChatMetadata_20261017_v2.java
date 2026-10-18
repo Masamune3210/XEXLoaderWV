@@ -13,7 +13,7 @@ import ghidra.program.model.pcode.PcodeOp;
 import ghidra.program.model.pcode.Varnode;
 import ghidra.program.model.symbol.SourceType;
 
-public class ApplyXboxKrnl17559ChatMetadata_20261017_v1 extends GhidraScript {
+public class ApplyXboxKrnl17559ChatMetadata_20261017_v2 extends GhidraScript {
     // Set false to run every audit without applying anything.
     private static final boolean APPLY = true;
     private static final String KERNEL_SHA =
@@ -277,7 +277,7 @@ public class ApplyXboxKrnl17559ChatMetadata_20261017_v1 extends GhidraScript {
             f.hasCustomVariableStorage() &&
             f.getParameter(13).getVariableStorage().toString().equals("r3:4") &&
             f.getParameter(13).getDataType().getName().equals("int");
-        for(int i=0;int<13 && intact;i++) {
+        for(int i=0;i<13 && intact;i++) {
             Parameter p=f.getParameter(i);
             intact=("f"+(i+1)+":8").equals(p.getVariableStorage().toString()) &&
                 "undefined8".equals(p.getDataType().getName());
@@ -399,7 +399,7 @@ public class ApplyXboxKrnl17559ChatMetadata_20261017_v1 extends GhidraScript {
             " correct; signatures are audited only, NEVER reset");
     }
     @Override protected void run() throws Exception {
-        println("XBOXKRNL_17559_CHAT_METADATA_V1 apply="+APPLY);
+        println("XBOXKRNL_17559_CHAT_METADATA_V2 apply="+APPLY);
         if(!"xboxkrnl.exe".equalsIgnoreCase(currentProgram.getName()) ||
             !LANGUAGE.equals(currentProgram.getLanguageID().getIdAsString()) ||
             !KERNEL_SHA.equalsIgnoreCase(currentProgram.getExecutableSHA256())) {
