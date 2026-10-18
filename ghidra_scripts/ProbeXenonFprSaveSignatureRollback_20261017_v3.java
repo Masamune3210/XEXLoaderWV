@@ -131,6 +131,7 @@ public class ProbeXenonFprSaveSignatureRollback_20261017_v3 extends GhidraScript
         String beforeReturnStorage=saver.getReturn().getVariableStorage().toString();
         String[] beforeParams=paramSnapshot(saver);
         String expectedPtr=paramMeta(ptr);
+        String expectedPtrName=ptr.getName();
         String expectedPtrStorage=ptr.getVariableStorage().toString();
         String expectedPtrType=ptr.getDataType().getName();
         boolean expectedPtrAuto=ptr.isAutoParameter();
@@ -176,7 +177,7 @@ public class ProbeXenonFprSaveSignatureRollback_20261017_v3 extends GhidraScript
                 println("TEMP_VALIDATION paramCount="+saver.getParameterCount()+
                     " realArgPreserved="+argumentOkay+
                     " realArgNameChanged="+
-                    (remaining!=null && !ptr.getName().equals(remaining.getName()))+
+                    (remaining!=null && !expectedPtrName.equals(remaining.getName()))+
                     " returnTypePreserved="+returnTypeOkay+
                     " returnStoragePreserved="+returnStorageOkay);
                 if(saver.getParameterCount()!=1 || !argumentOkay ||
