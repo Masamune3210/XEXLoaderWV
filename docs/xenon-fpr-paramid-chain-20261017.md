@@ -73,3 +73,19 @@ This isolates a call-graph/parameter-recovery problem, not an established Xenon 
 - `0x80089eb0`: `NtClose` still carries 13 ghosts. Do not rewrite until upstream defects are addressed.
 
 **Current scripts:** v1/v2 were sandbox-mutating proof-of-concept only; v3 boundary audit is intentionally READ_ONLY. None of these proves the five cleaned signatures exist in production. Before treating this task as resolved, supply and run a guarded metadata-application script (or an extension repair plus a guarded metadata synchronization script) that applies **every verified discovery** and reports before/after results, including any additional metadata learned during later investigation.
+
+## v3 boundary audit result and v4 experiment (2026-10-17)
+- Received v3 read-only output from **post-v2** `xboxkrnl.exe.FPR_SANDBOX`. Native FP instructions: context saver 0x80075a38 has 33; wrapper 0x800759f8, dispatcher 0x800755d0, IRQL dispatch 0x80075504, KfReleaseSpinLock 0x8007018c, and NtClose 0x80089eb0 each have zero.
+- At `0x80075504`, the direct calls are `0x800755d0` (now zero phantom FPR parameters) and `0x80078118` KiDeliverCurrentThreadKernelApcsObserved (still 13 phantom FPR arguments).
+- `0x80078118` calls `KfReleaseSpinLock` `0x8007018c`; `0x8007018c` calls `0x80075504`. Thus `IRQL -> APC -> release -> IRQL` is a cyclic dependency. `KfReleaseSpinLock` has 302 distinct callers, causing wide contamination.
+- NtClose 0x80089eb0 also calls phantom-contaminated `0x8008bd90`, `0x80089df0`, and `KfReleaseSpinLock`; fixing only one cycle may not clear NtClose.
+- `xenon_64_32.cspec` in testing legitimately declares float input-register entries f1-f13. Do **not** remove them globally. The likely extension fix should recognize native floating-point context-saving/exception routines and keep those implicit register values from being inferred as formal function arguments. This is a hypothesis to test; no extension defect is claimed conclusively yet.
+- Prepared and committed `ghidra_scripts/ProbeXenonFprApcCycleMetadataSandbox_20261017_v4.java`. Run on disposable FPR_SANDBOX, ideally the existing **post-v2** copy.
+  - It checks exact SHA/language and saver's native fingerprint.
+  - It **applies or verifies** the five earlier experimentally recovered signatures at 0x80075a38, 0x800759f8, 0x800778a8, 0x80077b38, and 0x800755d0, preserving existing returns, GP carriers, and user-defined metadata.
+  - It verifies `0x80075504` has the earlier identified `requestedIrql`/`pendingLevelsWord` at r3/r4.
+  - It requires that the full three-node call cycle is present.
+  - **Sandbox experiment only:** removes exactly the 13 FPR ghost formals from the existing `USER_DEFINED` KfReleaseSpinLock signature (after checking native zero-FP, known call, and both GP parameters), preserving known `spinLock:uint *` and `previousIrql:ulonglong` and the return type. Runs scoped Parameter ID three passes on APC, IRQL and NtClose, emits call/metadata logs and full decompiled C to a report.
+  - Other USER_DEFINED signatures are snapshotted and verified unchanged.
+  - Do not transfer these experimental cycle corrections to production. Await output and cross-check for independent parameter sources and genuine FP calls.
+- Extension source inspection: `XEXLoaderWV/data/languages/xenon_64_32.cspec` contains standard floating-point argument pentries and cannot safely be stripped. Inspect the extension's loader or analyzer pipeline for an automated, conservative context-saver recognition mechanism after validating v4.
