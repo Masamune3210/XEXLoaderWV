@@ -56,3 +56,20 @@ This isolates a call-graph/parameter-recovery problem, not an established Xenon 
 - v3 read-only boundary audit: **NOT RUN** (script committed).
 - Production mutation: **NONE** from these experiments.
 - Extension rebuild: **NOT REQUIRED** for the present experiment.
+
+## Required continuation policy (user instruction, 2026-10-17)
+**Extension-first fix:** Once the root cause of the 13 ghost FPR arguments is established, inspect and fix the underlying `XEXLoaderWV` / Xenon processor extension's analysis, calling-convention, p-code, or parameter-modeling behavior **if an extension-side fix is technically possible**. Do not treat a one-off Ghidra database script as the final solution when the defect can be fixed at source. Validate any extension fix in a fresh sandbox against the kernel and preserved/known legitimate floating-point behavior. If root cause is actually Ghidra core or a database artifact, document why an extension fix is not appropriate and retain a minimal safe repair path.
+
+**No manual metadata assumption:** The user has **not** manually applied function signatures, renames, types, labels or declarations quoted in conversation; they reasonably assumed that previously provided scripts applied them. Never state that metadata is in production without logs proving a script applied it. All **future applicable Ghidra scripts** must carry and, where safe, **apply** all verified relevant discoveries (with dependencies in order), not merely print metadata for manual entry. When a script is deliberately read-only, label it `READ_ONLY` and pair it with a separate guarded, runnable metadata applier; an audit alone never counts as metadata application. Preserve existing valid types and user-defined metadata; never overwrite unsupported signatures, infer changes beyond evidence, or globally strip FPR parameters.
+
+**Verified in disposable sandbox only, still outstanding in production**:
+- `0x80075a38`: `undefined __stdcall FUN_80075a38(int param_1)`; genuine arg at `r3:4`; 13 FPR ghosts removed in sandbox.
+- `0x800759f8`: `undefined __stdcall FUN_800759f8(int param_1)`; recovered by scoped Parameter ID.
+- `0x800778a8`: `undefined __stdcall FUN_800778a8(int param_1)`; recovered by scoped Parameter ID.
+- `0x80077b38`: `undefined __stdcall FUN_80077b38(int param_1)`; recovered by scoped Parameter ID.
+- `0x800755d0`: `uint __stdcall KiDispatchDpcsAndPendingThreadObserved(void)`; preserved existing return type.
+- `0x80075504`: remains unresolved with 13 FPR ghosts; `ulonglong requestedIrql` and `ulonglong pendingLevelsWord` are retained known fields. Do not blindly replace signature.
+- `0x8007018c`: `KfReleaseSpinLock` is `USER_DEFINED` with two known general-purpose parameters and 13 FPR ghosts. Do not overwrite intact metadata or edit signature without independent validation.
+- `0x80089eb0`: `NtClose` still carries 13 ghosts. Do not rewrite until upstream defects are addressed.
+
+**Current scripts:** v1/v2 were sandbox-mutating proof-of-concept only; v3 boundary audit is intentionally READ_ONLY. None of these proves the five cleaned signatures exist in production. Before treating this task as resolved, supply and run a guarded metadata-application script (or an extension repair plus a guarded metadata synchronization script) that applies **every verified discovery** and reports before/after results, including any additional metadata learned during later investigation.
