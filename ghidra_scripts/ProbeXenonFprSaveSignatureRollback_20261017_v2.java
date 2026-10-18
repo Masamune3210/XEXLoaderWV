@@ -3,13 +3,14 @@
 // Test changes only the analyzer's stored signature in memory, not instructions.
 //@category Xbox360.Analysis
 import java.security.MessageDigest;
+import java.util.Arrays;
 import ghidra.app.script.GhidraScript;
 import ghidra.app.decompiler.*;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.*;
 import ghidra.program.model.symbol.SourceType;
 
-public class ProbeXenonFprSaveSignatureRollback_20261017_v1 extends GhidraScript {
+public class ProbeXenonFprSaveSignatureRollback_20261017_v2 extends GhidraScript {
     private static final long SAVER=0x80075a38L, WRAPPER=0x800759f8L;
     private static final String EXECUTABLE_SHA=
         "e1d1c87dbcbec01c71c5400cc129a462fa46738d267e29151a91c5354bdf6cb8";
@@ -44,6 +45,29 @@ public class ProbeXenonFprSaveSignatureRollback_20261017_v1 extends GhidraScript
             .replace('\n',' ').replaceAll("\\s+"," ").trim();
     }
 
+    private String metadata(Function function) {
+        if(function==null)return "MISSING_FUNCTION";
+        return "entry="+function.getEntryPoint()+" name="+function.getName()+
+            " isThunk="+function.isThunk()+" parameters="+function.getParameterCount()+
+            " autoParameters="+function.getAutoParameterCount()+
+            " customStorage="+function.hasCustomVariableStorage()+
+            " signatureSource="+function.getSignatureSource()+
+            " return="+function.getReturnType().getName()+
+            " returnStorage="+function.getReturn().getVariableStorage()+
+            " convention="+function.getCallingConventionName()+
+            " prototype="+function.getPrototypeString(true,true);
+    }
+    private String paramMeta(Parameter p) {
+        return "name="+p.getName()+" datatype="+p.getDataType().getName()+
+            " storage="+p.getVariableStorage()+" source="+p.getSource()+
+            " auto="+p.isAutoParameter();
+    }
+    private String[] paramSnapshot(Function f) {
+        Parameter[] p=f.getParameters();
+        String[] answer=new String[p.length];
+        for(int i=0;i<p.length;i++)answer[i]=paramMeta(p[i]);
+        return answer;
+    }
     @Override protected void run() throws Exception {
         if(!"xboxkrnl.exe".equalsIgnoreCase(currentProgram.getName()) ||
             !EXECUTABLE_SHA.equalsIgnoreCase(currentProgram.getExecutableSHA256()) ||
@@ -54,9 +78,15 @@ public class ProbeXenonFprSaveSignatureRollback_20261017_v1 extends GhidraScript
         }
         Function saver=currentProgram.getFunctionManager().getFunctionAt(a(SAVER));
         Function wrapper=currentProgram.getFunctionManager().getFunctionAt(a(WRAPPER));
-        if(saver==null || wrapper==null || saver.isThunk() || wrapper.isThunk() ||
-            saver.getParameterCount()!=14 || saver.hasCustomVariableStorage()) {
-            println("REFUSE: expected 14-parameter native saver and its native wrapper.");
+        println("SAVER_METADATA "+metadata(saver));
+        println("WRAPPER_METADATA "+metadata(wrapper));
+        if(saver!=null) {
+            Parameter[] params=saver.getParameters();
+            for(int i=0;i<params.length;i++)
+                println("SAVER_PARAMETER index="+i+" "+paramMeta(params[i]));
+        }
+        if(saver==null || wrapper==null || saver.isThunk() || wrapper.isThunk()) {
+            println("REFUSE: saver/wrapper entry missing or is a thunk. No changes.");
             return;
         }
         byte[] nativeBytes=new byte[SAVER_BYTES];
@@ -65,20 +95,34 @@ public class ProbeXenonFprSaveSignatureRollback_20261017_v1 extends GhidraScript
             println("REFUSE: saver native SHA mismatch");
             return;
         }
-        for(int i=0;i<13;i++){
+        if(saver.getParameterCount()!=14) {
+            println("REFUSE: saver currently has "+saver.getParameterCount()+
+                " parameters, not the 14 in the archived export. No prototype edits.");
+            return;
+        }
+        for(int i=0;i<13;i++) {
             Parameter p=saver.getParameter(i);
-            if(!("f"+(i+1)+":8").equals(p.getVariableStorage().toString()) ||
-                !p.getDataType().getName().startsWith("undefined")){
-                println("REFUSE: FP param storage/type drift index="+i);
+            String expected="f"+(i+1)+":8";
+            if(!expected.equals(p.getVariableStorage().toString()) ||
+                !p.getDataType().getName().startsWith("undefined") ||
+                p.isAutoParameter()) {
+                println("REFUSE: FPR param mismatch index="+i+" expectedStorage="+
+                    expected+" actual="+paramMeta(p));
                 return;
             }
         }
         Parameter ptr=saver.getParameter(13);
         if(!"r3:4".equals(ptr.getVariableStorage().toString())) {
-            println("REFUSE: original r3:4 context-pointer carrier changed.");
+            println("REFUSE: preserved context-pointer r3:4 has drifted: "+
+                paramMeta(ptr));
             return;
         }
         String beforeSignature=saver.getPrototypeString(true,true);
+        boolean beforeCustom=saver.hasCustomVariableStorage();
+        String beforeReturn=saver.getReturnType().getName();
+        String beforeReturnStorage=saver.getReturn().getVariableStorage().toString();
+        String[] beforeParams=paramSnapshot(saver);
+        String expectedPtr=paramMeta(ptr);
         DecompInterface decoder=new DecompInterface();
         try {
             if(!decoder.openProgram(currentProgram))
@@ -91,16 +135,25 @@ public class ProbeXenonFprSaveSignatureRollback_20261017_v1 extends GhidraScript
             String duringSignature="";
             String changedCall="";
             try {
-                saver.setCustomVariableStorage(true);
-                // Remove *only* the machine-state f1..f13 formals, from
-                // highest index downwards. Preserve original r3:4 parameter,
-                // its datatype, source name, and the unknown return.
+                if(!saver.hasCustomVariableStorage())
+                    saver.setCustomVariableStorage(true);
+                // Check that switching from dynamic storage to custom storage
+                // did not already rearrange the real context-pointer carrier.
+                if(saver.getParameterCount()!=14 ||
+                    !expectedPtr.equals(paramMeta(saver.getParameter(13))))
+                    throw new IllegalStateException("Storage-mode switch changed the saved "+
+                        "r3 context parameter; abort and roll back");
+                // Remove *only* the machine-state f1..f13 formals from
+                // highest ordinal downwards, keeping the r3:4 carrier.
                 for(int i=12;i>=0;i--) saver.removeParameter(i);
                 saver.setSignatureSource(SourceType.USER_DEFINED);
                 if(saver.getParameterCount()!=1 ||
-                    !"r3:4".equals(
-                        saver.getParameter(0).getVariableStorage().toString()))
-                    throw new IllegalStateException("Temporary r3 storage changed");
+                    !expectedPtr.equals(paramMeta(saver.getParameter(0))) ||
+                    !beforeReturn.equals(saver.getReturnType().getName()) ||
+                    !beforeReturnStorage.equals(
+                        saver.getReturn().getVariableStorage().toString()))
+                    throw new IllegalStateException(
+                        "Temporary probe altered real argument or return; rollback");
                 duringSignature=saver.getPrototypeString(true,true);
                 String modified=code(decoder,wrapper,"PROBE");
                 changedCall=callContext(modified,saver.getName());
@@ -116,12 +169,18 @@ public class ProbeXenonFprSaveSignatureRollback_20261017_v1 extends GhidraScript
             }
             Function restored=currentProgram.getFunctionManager().getFunctionAt(a(SAVER));
             if(restored==null || restored.getParameterCount()!=14 ||
-                restored.hasCustomVariableStorage() ||
-                !beforeSignature.equals(restored.getPrototypeString(true,true))) {
-                println("WARNING: Check the Ghidra Undo/transaction state; "+
-                    "original prototype could not be independently verified");
+                restored.hasCustomVariableStorage()!=beforeCustom ||
+                !beforeSignature.equals(restored.getPrototypeString(true,true)) ||
+                !beforeReturn.equals(restored.getReturnType().getName()) ||
+                !beforeReturnStorage.equals(
+                    restored.getReturn().getVariableStorage().toString()) ||
+                !Arrays.equals(beforeParams,paramSnapshot(restored))) {
+                println("WARNING_ROLLBACK_METADATA_MISMATCH "+
+                    "Compare program state or restore a backup before analysis");
+                println("RESTORED_METADATA "+metadata(restored));
             }
-            else println("ROLLBACK_VERIFIED original 14-parameter signature restored");
+            else println("ROLLBACK_VERIFIED full original prototype, "+
+                "return and parameter storage restored");
             println("DONE no extension build; no intended persistent database changes");
         }
         finally {decoder.dispose();}
