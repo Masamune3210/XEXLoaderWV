@@ -98,6 +98,42 @@ under `ghidra_scripts/` should be run. This preserves historical results
 without presenting deleted filenames as supported entrypoints.
 
 
+### Xenon HV17559 `hrfid` return-flow correction (October 2026)
+
+The retail 17559 HV contains a native `hrfid` at raw offset `0x994`.
+The previously installed Xenon language represented this as an opaque
+`CALLOTHER` with an incorrect `FALL_THROUGH` flow type. Its hardware
+return target is HSRR0 (SPR 314, existing 64-bit `spr13a`), not `0x998`.
+The code at `0x998` remains independently reached by the native branch
+`0xC30: 4BFFFD68` and must not be deleted.
+
+On `testing`, `prepareXenonIsa` now generates the narrowly changed constructor
+`{ hrfidOp(); return[spr13a]; }`, preserving the opaque HSRR1/MSR effects.
+It checks the *exact original constructor* in Ghidra's stock ISA and fails
+closed if that source has changed. The extra
+`tools/test_xenon_hrfid_flow_v1.py` regression is a required dependency
+of `verifyXenonSleigh`, which runs on `gradle buildExtension`.
+
+**Verification:** A task-private SLEIGH compile and actual p-code test of
+both versions passed using the original HV instruction bytes
+`4C000224 802D002C`. The private baseline was identical to the previously
+installed language, and all installed extension file hashes were preserved
+by the test. The integrated Gradle rebuild and database reload have **not**
+yet been verified. This corrects **control flow only**, not full HSRR1/MSR
+hardware modeling, CR0 semantics, or the native C++ decompiler.
+
+Build and install the updated extension using the existing Ghidra 12.1.3
+workflow. Preserve/export the current HV Ghidra program before switching
+processor files; existing analyzed Ghidra programs do not necessarily
+recalculate stored references and function boundaries automatically.
+After restarting Ghidra with the rebuilt language, the read-only
+`360decompwork/ghidra_scripts/VerifyXenonHrfid17559InstalledFlow_20261022_v1.java`
+audits actual `0x994` p-code, the preserved branch into `0x998`, and
+current function ownership. It writes under
+`G:\\Users\\Johnny\\Downloads\\2` and **does not modify the program**.
+Do not clear/reimport the existing hypervisor program merely to fix a
+fallthrough edge.
+
 ## Xbox 360 retail 17559 kernel memory-image PE import
 
 **IMPORTANT: The raw 17559 kernel split from the firmware is an already-mapped
