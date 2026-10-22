@@ -178,6 +178,50 @@ tasks.register("prepareXenonIsa") {
                 "refusing unverified Xenon flow substitution")
         }
         src = src.replace(hrfidOld, hrfidFixed)
+
+        // Xenon implements the PowerPC Book III v2.02 tlbiel RB,L encoding:
+        // bit 10 is an immediate large-page flag (L), not a register.
+        // Newer ISA 3.0 reuses that field for RS/PID/RIC and Ghidra's
+        // later-ISA constructors currently decode the real HV17559 word
+        // 0x7C201A24 as "tlbiel r3,r1,0,0,0", hiding L=1.
+        // Remove ONLY the three ISA 3.0 tlbiel forms in our generated
+        // Xenon variant; leave the inherited v2.02 L=0 form in the
+        // generated xenon_ppc_instructions.sinc and add an explicit L=1.
+        String newerTlbielPrefix = ':tlbiel RB_OR_ZERO,RS_OR_ZERO,'
+        def laterTlbielSelectors = [
+            'BITS_16_20=0 & XOP_1_10=274',
+            'BITS_18_19=2 & BIT_17 & BIT_16 & XOP_1_10=274',
+            '(BITS_18_19=0 | BITS_18_19=1) & BIT_18 & BIT_17 & BIT_16=1 & XOP_1_10=274'
+        ]
+        for (String selector : laterTlbielSelectors) {
+            int at = src.indexOf(newerTlbielPrefix)
+            int end = at < 0 ? -1 : src.indexOf("\n}", at)
+            String body = end < 0 ? "" : src.substring(at, end + 2)
+            if (at < 0 || end <= at ||
+                    !body.contains('OP=31 & RS_OR_ZERO & RB_OR_ZERO') ||
+                    !body.contains(selector) ||
+                    !body.contains('TLBInvalidateEntryLocal(RB_OR_ZERO,RS_OR_ZERO,') ||
+                    body.indexOf('}') != body.lastIndexOf('}')) {
+                throw new GradleException("Unexpected Power ISA 3.0 tlbiel " +
+                    "layout: refusing unsafe Xenon-only legacy decoder change")
+            }
+            src = src.substring(0, at) + src.substring(end + 2)
+        }
+        if (src.contains(newerTlbielPrefix)) {
+            throw new GradleException("Unexpected extra ISA 3.0 tlbiel constructor")
+        }
+        String xenonLegacyTlbielL1 =
+            ':tlbiel RB_OR_ZERO,"1" is $(NOTVLE) & OP=31 & ' +
+            'BITS_21_25=1 & BITS_16_20=0 & RB_OR_ZERO & ' +
+            'XOP_1_10=274 & BIT_0=0 { TLBInvalidateEntryLocal(RB_OR_ZERO,1:1); }'
+        if (src.contains(xenonLegacyTlbielL1) ||
+                !src.contains('define pcodeop TLBInvalidateEntryLocal;') &&
+                !xenonStockInstructions.getText("UTF-8").contains(
+                    'define pcodeop TLBInvalidateEntryLocal;')) {
+            throw new GradleException("Missing inherited local TLB userop or duplicate L=1")
+        }
+        src += '\n# Xenon PowerPC 2.02: bit 10 L=1 selects large-page local TLB invalidation.\n' +
+            xenonLegacyTlbielL1 + '\n'
         if (!src.contains(dcbzNew) || src.contains("define pcodeop stvepxOp;") ||
                 src.contains("define pcodeop stvepxlOp;")) {
             throw new GradleException("Xenon ISA collision filtering failed")
@@ -388,6 +432,23 @@ tasks.register("prepareXenonCommon") {
         // on the three already-established reservation assignments only
         // in the generated Xenon language, failing closed on source drift.
         String instructions = xenonStockInstructions.getText("UTF-8")
+        // Keep the old L=0 instruction but expose the page-size bit to
+        // the same userop as our new L=1 encoding. Exact source guard
+        // prevents accidental Ghidra-upgrade rewrites.
+        String legacyTlbielL0 =
+            ':tlbiel RB_OR_ZERO is $(NOTVLE) & OP=31 & RB_OR_ZERO & BITS_21_25=0 & BITS_16_20=0 & XOP_1_10=274 & BIT_0=0 { \n' +
+            '\tTLBInvalidateEntryLocal(RB_OR_ZERO);\n}'
+        String xenonTlbielL0 = legacyTlbielL0.replace(
+            'TLBInvalidateEntryLocal(RB_OR_ZERO);',
+            'TLBInvalidateEntryLocal(RB_OR_ZERO,0:1);')
+        if (instructions.indexOf(legacyTlbielL0) < 0 ||
+                instructions.indexOf(legacyTlbielL0) !=
+                    instructions.lastIndexOf(legacyTlbielL0) ||
+                instructions.contains(xenonTlbielL0)) {
+            throw new GradleException("Stock legacy tlbiel L=0 constructor changed")
+        }
+        instructions = instructions.replace(legacyTlbielL0,xenonTlbielL0)
+
         String lwarxHead = ':lwarx D,RA_OR_ZERO,B'
         int lwarxStart = instructions.indexOf(lwarxHead)
         int lwarxEnd = instructions.indexOf("\n}", lwarxStart)
