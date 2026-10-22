@@ -98,6 +98,39 @@ under `ghidra_scripts/` should be run. This preserves historical results
 without presenting deleted filenames as supported entrypoints.
 
 
+### Xenon legacy `tlbiel RB,L` page-size decoding (October 2026)
+
+The original HV17559 instruction at raw `0x3B4` is `7C201A24`.
+PowerPC Book III v2.02 decodes this as **`tlbiel r3,1`**:
+`RB=r3` and a **one-bit immediate `L=1`** selecting large-page
+local TLB invalidation. The existing Xenon Ghidra language incorrectly
+used newer POWER ISA 3.0 forms, showing `tlbiel r3,r1,0,0,0`
+and supplying `r1` as a false processor-ID operand.
+
+The `prepareXenonIsa` generator now removes exactly three newer
+`tlbiel` constructors from the Xenon-only copy and generates the
+explicit `L=1` constructor. The `prepareXenonCommon` generator
+retains the original `L=0` form but supplies a constant `0` to
+the existing `TLBInvalidateEntryLocal` userop; the `L=1` constructor
+supplies a constant `1`. The TLB invalidation itself remains an
+opaque user operation, **not an implementation of guest MMU effects**.
+Stock Ghidra files and other PPC language variants are untouched.
+
+`testXenonLegacyTlbiel` now runs during
+`gradle buildExtension`, verifying the original `0x7C201A24`
+bit fields, both constructor forms and removal of the ISA 3.0
+collision. A separate **read-only** Ghidra runtime audit lives at
+`360decompwork/ghidra_scripts/VerifyXenon17559TlbielLegacy_20261022_v1.java`.
+It checks the actually loaded installed language's decoded instruction
+and p-code and writes the result under the user's redirected Downloads/2.
+
+**Verification:** source rewriting was cross-checked against archived
+Ghidra 12.1.3 native SLEIGH sources, and the original instruction bits
+against PowerPC 2.02 Book III, p. 54. Integrated Gradle compilation
+and Ghidra runtime validation for this new `tlbiel` change remain
+**pending**. The previously verified `hrfid` return-flow correction
+is separate and retained.
+
 ### Xenon HV17559 `hrfid` return-flow correction (October 2026)
 
 The retail 17559 HV contains a native `hrfid` at raw offset `0x994`.
