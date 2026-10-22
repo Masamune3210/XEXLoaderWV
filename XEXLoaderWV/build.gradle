@@ -705,6 +705,17 @@ tasks.register("testXenonCr0Mode", Exec) {
 
 // Ensure linked-XEX signature propagation guards remain intact for every build.
 // The Ghidra compiler/runtime API is validated separately by compiling the extension.
+tasks.register("testXenonLegacyTlbiel", Exec) {
+    group = "verification"
+    description = "Guard original Xenon 2.02 tlbiel RB,L, including HV17559 L=1"
+    dependsOn tasks.named("prepareXenonIsa"), tasks.named("prepareXenonCommon")
+    workingDir projectDir
+    def onWindows = System.getProperty("os.name").toLowerCase(java.util.Locale.ROOT).contains("windows")
+    def pythonCommand = project.findProperty("XENON_PYTHON")?.toString() ?:
+        (onWindows ? "python" : "python3")
+    commandLine pythonCommand, "tools/test_xenon_tlbiel_legacy_v1.py"
+}
+
 tasks.register("testXenonHrfidFlow", Exec) {
     group = "verification"
     description = "Guard Xenon-specific hrfid return flow via 64-bit HSRR0"
@@ -727,7 +738,7 @@ tasks.register("testXexLinkedImports", Exec) {
 }
 
 tasks.register("verifyXenonSleigh", Exec) {
-    dependsOn tasks.named("generateXenonIsaFixture"), tasks.named("testXenonIsaCoverage"), tasks.named("testXenonCr0Mode"), tasks.named("testXenonHrfidFlow"), tasks.named("testXexLinkedImports")
+    dependsOn tasks.named("generateXenonIsaFixture"), tasks.named("testXenonIsaCoverage"), tasks.named("testXenonCr0Mode"), tasks.named("testXenonHrfidFlow"), tasks.named("testXenonLegacyTlbiel"), tasks.named("testXexLinkedImports")
     dependsOn tasks.named("prepareXenonLegacyAltivec"), tasks.named("prepareXenonIsa"), tasks.named("prepareXenonCommon")
     group = "verification"
     description = "Compile Xenon SLEIGH with the installed Ghidra compiler before extension packaging"
