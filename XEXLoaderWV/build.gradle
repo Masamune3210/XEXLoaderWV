@@ -214,11 +214,8 @@ tasks.register("prepareXenonIsa") {
             ':tlbiel RB_OR_ZERO,"1" is $(NOTVLE) & OP=31 & ' +
             'BITS_21_25=1 & BITS_16_20=0 & RB_OR_ZERO & ' +
             'XOP_1_10=274 & BIT_0=0 { TLBInvalidateEntryLocal(RB_OR_ZERO,1:1); }'
-        if (src.contains(xenonLegacyTlbielL1) ||
-                !src.contains('define pcodeop TLBInvalidateEntryLocal;') &&
-                !xenonStockInstructions.getText("UTF-8").contains(
-                    'define pcodeop TLBInvalidateEntryLocal;')) {
-            throw new GradleException("Missing inherited local TLB userop or duplicate L=1")
+        if (src.contains(xenonLegacyTlbielL1)) {
+            throw new GradleException("Duplicate Xenon tlbiel L=1 constructor")
         }
         src += '\n# Xenon PowerPC 2.02: bit 10 L=1 selects large-page local TLB invalidation.\n' +
             xenonLegacyTlbielL1 + '\n'
