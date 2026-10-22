@@ -162,6 +162,22 @@ tasks.register("prepareXenonIsa") {
             // Remove ONLY the exact A2 constructor and its unused pcodeop.
             src = src.substring(0, declaration) + src.substring(end + 1)
         }
+        // Keep hardware hrfid side effects opaque, but model the control
+        // transfer through architectural HSRR0 (SPR 314 / spr13a).
+        // An opaque CALLOTHER without a RETURN makes Ghidra falsely infer
+        // fallthrough into bytes that have a separate legitimate branch
+        // predecessor in the Xbox 360 HV17559 image.
+        // Verified against original 0x994: 4C000224, with private baseline
+        // and patched SleighCompile/p-code tests (2026-10-22 v8, PASS).
+        String hrfidOld = ':hrfid  is $(NOTVLE) & OP=19 & XOP_1_10=274  & BITS_11_25=0 & BIT_0=0  { hrfidOp(); }'
+        String hrfidFixed = ':hrfid  is $(NOTVLE) & OP=19 & XOP_1_10=274  & BITS_11_25=0 & BIT_0=0  { hrfidOp(); return[spr13a]; }'
+        if (src.indexOf(hrfidOld) < 0 ||
+                src.indexOf(hrfidOld) != src.lastIndexOf(hrfidOld) ||
+                src.contains(hrfidFixed)) {
+            throw new GradleException("Installed PPC ISA hrfid layout changed; " +
+                "refusing unverified Xenon flow substitution")
+        }
+        src = src.replace(hrfidOld, hrfidFixed)
         if (!src.contains(dcbzNew) || src.contains("define pcodeop stvepxOp;") ||
                 src.contains("define pcodeop stvepxlOp;")) {
             throw new GradleException("Xenon ISA collision filtering failed")
