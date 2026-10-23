@@ -25,6 +25,7 @@ import ghidra.program.model.data.Pointer;
 import ghidra.program.model.data.TypeDef;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.FunctionSignature;
+import ghidra.program.model.listing.Parameter;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.ExternalLocation;
 import ghidra.program.model.symbol.ExternalLocationIterator;
@@ -43,6 +44,9 @@ import ghidra.util.task.TaskMonitor;
  * from a uniquely identified linked function into an untouched default external.
  * Missing dependencies are copied from the linked provider only if no conflicting
  * type exists, and each signature + datatype installation is transactional.
+ * Also synchronizes a missing calling convention on an already typed external
+ * when its source's return/parameter types, varargs, and parameter storage
+ * exactly match; the linked provider may have an IMPORTED prototype.
  * It does not use firmware versions, hardcoded ordinal maps, or guessed ABIs.
  *
  * To revisit XEX programs linked AFTER initial analysis, run this analyzer as a
@@ -52,7 +56,8 @@ public class XexLinkedImportSignatureAnalyzer extends AbstractAnalyzer {
     public XexLinkedImportSignatureAnalyzer() {
         super("XEX: Sync linked import signatures",
             "Propagate complete user-defined signatures from uniquely resolved linked " +
-            "XEX dependencies; do not overwrite edited imports or import opaque registers.",
+            "XEX dependencies and reconcile known calling conventions on matching " +
+            "import prototypes; do not overwrite edited signatures or infer registers.",
             AnalyzerType.BYTE_ANALYZER);
         setDefaultEnablement(true);
         setSupportsOneTimeAnalysis();
@@ -160,6 +165,62 @@ public class XexLinkedImportSignatureAnalyzer extends AbstractAnalyzer {
             f.getSignatureSource() != SourceType.USER_DEFINED;
     }
 
+    // Imported CRT declarations can already have a fully matching prototype
+    // yet retain Ghidra's unknown calling convention. Both Programs use the
+    // SAME ABI (checked by compatible()), so this metadata belongs to the
+    // imported external too. Never replace an existing known convention or
+    // any USER_DEFINED consumer declaration.
+    private static boolean needsCallingConvention(Function imported) {
+        return imported != null &&
+            imported.getParameterCount() > 0 &&
+            !imported.hasCustomVariableStorage() &&
+            imported.getSignatureSource() != SourceType.USER_DEFINED &&
+            "unknown".equals(imported.getCallingConventionName());
+    }
+
+    private static boolean equivalentApartFromConvention(
+            Function imported, Function source) {
+        if (source == null || source.hasCustomVariableStorage() ||
+            (source.getSignatureSource() != SourceType.USER_DEFINED &&
+             source.getSignatureSource() != SourceType.IMPORTED))
+            return false;
+        String convention = source.getCallingConventionName();
+        if (convention == null || convention.isBlank() ||
+            "unknown".equals(convention)) return false;
+        if (imported.getParameterCount() != source.getParameterCount() ||
+            imported.hasVarArgs() != source.hasVarArgs() ||
+            !imported.getReturnType().isEquivalent(source.getReturnType()))
+            return false;
+        if (imported.getReturnType().getName().startsWith("undefined"))
+            return false;
+        for (int i = 0; i < imported.getParameterCount(); i++) {
+            Parameter a = imported.getParameter(i);
+            Parameter b = source.getParameter(i);
+            if (!a.getDataType().isEquivalent(b.getDataType()) ||
+                a.getDataType().getName().startsWith("undefined") ||
+                !a.getVariableStorage().equals(b.getVariableStorage()))
+                return false;
+        }
+        return true;
+    }
+
+    private static boolean sameContract(Function imported, Function source,
+            String expectedConvention) {
+        if (!expectedConvention.equals(imported.getCallingConventionName()) ||
+            imported.getParameterCount() != source.getParameterCount() ||
+            imported.hasVarArgs() != source.hasVarArgs() ||
+            !imported.getReturnType().isEquivalent(source.getReturnType()))
+            return false;
+        for (int i = 0; i < imported.getParameterCount(); i++) {
+            if (!imported.getParameter(i).getDataType().isEquivalent(
+                    source.getParameter(i).getDataType()) ||
+                !imported.getParameter(i).getVariableStorage().equals(
+                    source.getParameter(i).getVariableStorage()))
+                return false;
+        }
+        return true;
+    }
+
     private static Function matchingFunction(Program provider, ExternalLocation importLocation) {
         String name = importLocation.getLabel();
         Address linkedAddress = importLocation.getAddress();
@@ -188,7 +249,7 @@ public class XexLinkedImportSignatureAnalyzer extends AbstractAnalyzer {
         ProjectData projectData = importing.getDomainFile().getParent().getProjectData();
         ExternalManager externalManager = importing.getExternalManager();
         int applied = 0, skipped = 0, missing = 0, libraries = 0;
-        int typesInstalled = 0, failed = 0;
+        int typesInstalled = 0, failed = 0, conventionsFixed = 0;
         for (String library : externalManager.getExternalLibraryNames()) {
             monitor.checkCancelled();
             String path = externalManager.getExternalLibraryPath(library);
@@ -217,6 +278,35 @@ public class XexLinkedImportSignatureAnalyzer extends AbstractAnalyzer {
                     if (!location.isFunction()) continue;
                     Function imported = location.getFunction();
                     if (!untouchedExternal(imported)) {
+                        if (needsCallingConvention(imported)) {
+                            Function conventionSource = matchingFunction(provider, location);
+                            if (equivalentApartFromConvention(imported, conventionSource) &&
+                                importing.getCompilerSpec().getCallingConvention(
+                                    conventionSource.getCallingConventionName()) != null) {
+                                int transaction = importing.startTransaction(
+                                    "XEX linked calling convention: " + library +
+                                    "::" + location.getLabel());
+                                boolean committed = false;
+                                try {
+                                    String convention = conventionSource.getCallingConventionName();
+                                    imported.setCallingConvention(convention);
+                                    if (!sameContract(imported, conventionSource, convention))
+                                        throw new IllegalStateException(
+                                            "Calling convention changed existing parameter ABI");
+                                    committed = true;
+                                    conventionsFixed++;
+                                }
+                                catch (Exception failure) {
+                                    failed++;
+                                    log.appendMsg("XEX convention sync refused " + library +
+                                        "::" + location.getLabel() + ": " + failure.getMessage());
+                                }
+                                finally {
+                                    importing.endTransaction(transaction, committed);
+                                }
+                                if (committed) continue;
+                            }
+                        }
                         skipped++;
                         continue;
                     }
@@ -287,8 +377,9 @@ public class XexLinkedImportSignatureAnalyzer extends AbstractAnalyzer {
         log.appendMsg("XEX linked-signature sync: linkedLibraries=" + libraries +
             " applied=" + applied + " skipped=" + skipped +
             " unmatched=" + missing + " typesInstalled=" + typesInstalled +
-            " failed=" + failed +
-            " (complete USER_DEFINED signatures only; no native bytes changed)");
+            " conventionsFixed=" + conventionsFixed + " failed=" + failed +
+            " (complete USER_DEFINED signatures and equivalent ABI conventions;"
+            + " no native bytes changed)");
         return true;
     }
 }
