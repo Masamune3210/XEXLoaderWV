@@ -42,7 +42,7 @@ class TestLinkedImportPolicy(unittest.TestCase):
     def test_datatype_deps_preflight(self):
         self.assertIn("Set<DataType> required = new LinkedHashSet<>();", SRC)
         self.assertIn("complete(source, importing.getDataTypeManager(), required)", SRC)
-        self.assertIn("getComponents()", SRC)
+        self.assertIn("getDefinedComponents()", SRC)
         self.assertIn("((TypeDef) type).getBaseDataType()", SRC)
         self.assertIn("local.isEquivalent(type)", SRC)
         self.assertIn("missing.add(type)", SRC)
