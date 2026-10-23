@@ -39,5 +39,32 @@ class TestLinkedImportPolicy(unittest.TestCase):
         self.assertIn("setSupportsOneTimeAnalysis()", SRC)
         self.assertIn("untouchedExternal(imported)", SRC)
 
+    def test_datatype_deps_preflight(self):
+        self.assertIn("Set<DataType> required = new LinkedHashSet<>();", SRC)
+        self.assertIn("complete(source, importing.getDataTypeManager(), required)", SRC)
+        self.assertIn("getComponents()", SRC)
+        self.assertIn("((TypeDef) type).getBaseDataType()", SRC)
+        self.assertIn("local.isEquivalent(type)", SRC)
+        self.assertIn("missing.add(type)", SRC)
+
+    def test_conflict_protection_and_exact_type_install(self):
+        self.assertIn("DataTypeConflictHandler.KEEP_HANDLER", SRC)
+        self.assertIn("if (!existing.isEquivalent(source))", SRC)
+        self.assertIn("if (copy == null || !copy.isEquivalent(source))", SRC)
+        self.assertIn("target.addDataType(", SRC)
+
+    def test_atomic_signature_with_datatypes(self):
+        self.assertIn("int transaction = importing.startTransaction(", SRC)
+        self.assertIn("importing.endTransaction(transaction, committed)", SRC)
+        self.assertIn("installDependencies(required,", SRC)
+        self.assertIn("ApplyFunctionSignatureCmd command", SRC)
+        self.assertIn("committed = true;", SRC)
+
+    def test_do_not_overwrite_edited_signatures_or_infer_registers(self):
+        self.assertIn("!untouchedExternal(imported)", SRC)
+        self.assertIn("f.getSignatureSource() != SourceType.USER_DEFINED", SRC)
+        self.assertIn("f.hasCustomVariableStorage()", SRC)
+        self.assertIn("FunctionRenameOption.NO_CHANGE", SRC)
+
 if __name__ == "__main__":
     unittest.main()
