@@ -66,5 +66,26 @@ class TestLinkedImportPolicy(unittest.TestCase):
         self.assertIn("f.hasCustomVariableStorage()", SRC)
         self.assertIn("FunctionRenameOption.NO_CHANGE", SRC)
 
+    def test_convention_inheritance_requires_same_abi(self):
+        self.assertIn("equivalentApartFromConvention(imported, conventionSource)", SRC)
+        self.assertIn("getCompilerSpec().getCallingConvention(", SRC)
+        self.assertIn('"unknown".equals(imported.getCallingConventionName())', SRC)
+        self.assertIn("imported.getParameterCount() > 0", SRC)
+        self.assertIn("imported.hasVarArgs() != source.hasVarArgs()", SRC)
+        self.assertIn("getVariableStorage().equals(", SRC)
+        self.assertIn("getReturnType().isEquivalent(source.getReturnType())", SRC)
+
+    def test_convention_inheritance_allows_imported_provider(self):
+        self.assertIn("source.getSignatureSource() != SourceType.IMPORTED", SRC)
+        self.assertIn("imported.getSignatureSource() != SourceType.USER_DEFINED", SRC)
+
+    def test_convention_inheritance_atomic_and_preserves_types(self):
+        self.assertIn("imported.setCallingConvention(convention);", SRC)
+        self.assertIn("sameContract(imported, conventionSource, convention)", SRC)
+        self.assertIn("importing.endTransaction(transaction, committed)", SRC)
+        self.assertIn("conventionsFixed++", SRC)
+        self.assertIn('" conventionsFixed=" + conventionsFixed', SRC)
+        self.assertIn("if (committed) continue;", SRC)
+
 if __name__ == "__main__":
     unittest.main()
