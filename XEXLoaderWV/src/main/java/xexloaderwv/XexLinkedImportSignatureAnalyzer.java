@@ -1,6 +1,7 @@
 package xexloaderwv;
 
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 import ghidra.app.cmd.function.ApplyFunctionSignatureCmd;
@@ -15,6 +16,7 @@ import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.data.Array;
 import ghidra.program.model.data.Composite;
+import ghidra.program.model.data.DataTypeComponent;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeConflictHandler;
 import ghidra.program.model.data.DataTypeManager;
@@ -39,6 +41,8 @@ import ghidra.util.task.TaskMonitor;
  * Ghidra external-program linking provides navigation, not automatic function
  * signature import. This analyzer only copies complete USER_DEFINED signatures
  * from a uniquely identified linked function into an untouched default external.
+ * Missing dependencies are copied from the linked provider only if no conflicting
+ * type exists, and each signature + datatype installation is transactional.
  * It does not use firmware versions, hardcoded ordinal maps, or guessed ABIs.
  *
  * To revisit XEX programs linked AFTER initial analysis, run this analyzer as a
@@ -69,38 +73,84 @@ public class XexLinkedImportSignatureAnalyzer extends AbstractAnalyzer {
             importing.getDefaultPointerSize() == provider.getDefaultPointerSize();
     }
 
-    // A conservative portability check. Complex types must ALREADY exist in
-    // the importing program with an equivalent definition, so linking cannot
-    // silently install conflicting structures or typedefs.
-    private static boolean portable(DataType type, DataTypeManager target, Set<DataType> seen) {
-        if (type == null || !seen.add(type)) return type != null;
+    // Validate every type before changing the importing Program. Collect
+    // missing dependency definitions in dependency-first order. Never accept
+    // unresolved signature types, incompatible existing types, or a hidden
+    // nested conflict inside a provider composite.
+    private static boolean portable(DataType type, DataTypeManager target,
+            Set<DataType> seen, Set<DataType> missing) {
+        if (type == null) return false;
+        if (!seen.add(type)) return true;
         String name = type.getName();
         if (name.startsWith("undefined") || "pointer".equals(name) ||
             "default".equals(name)) return false;
         if (type instanceof Pointer) {
             DataType base = ((Pointer) type).getDataType();
-            return base != null && portable(base, target, seen);
+            return base != null && portable(base, target, seen, missing);
         }
         if (type instanceof Array) {
-            return portable(((Array) type).getDataType(), target, seen);
+            return portable(((Array) type).getDataType(), target, seen, missing);
+        }
+        if (type instanceof TypeDef) {
+            if (!portable(((TypeDef) type).getBaseDataType(), target, seen, missing))
+                return false;
+        }
+        if (type instanceof Composite) {
+            for (DataTypeComponent component : ((Composite) type).getComponents()) {
+                DataType member = component.getDataType();
+                // Existing provider structure padding/unknown fields are
+                // preserved exactly; their presence does not imply that an
+                // unknown FUNCTION parameter can be propagated.
+                if (member == null || member.getName().startsWith("undefined") ||
+                    "default".equals(member.getName())) continue;
+                if (!portable(member, target, seen, missing)) return false;
+            }
         }
         if (type instanceof TypeDef || type instanceof Composite ||
             type instanceof ghidra.program.model.data.Enum) {
             DataType local = target.getDataType(type.getCategoryPath(), type.getName());
-            return local != null && local.isEquivalent(type);
+            if (local != null) return local.isEquivalent(type);
+            missing.add(type);
         }
         return true;
     }
 
-    private static boolean complete(Function f, DataTypeManager target) {
+    private static boolean complete(Function f, DataTypeManager target,
+            Set<DataType> missing) {
         if (f.getSignatureSource() != SourceType.USER_DEFINED ||
             f.hasCustomVariableStorage()) return false;
         FunctionSignature signature = f.getSignature(true);
-        if (!portable(signature.getReturnType(), target, new HashSet<>())) return false;
+        if (!portable(signature.getReturnType(), target,
+                new HashSet<>(), missing)) return false;
         for (ParameterDefinition arg : signature.getArguments()) {
-            if (!portable(arg.getDataType(), target, new HashSet<>())) return false;
+            if (!portable(arg.getDataType(), target,
+                    new HashSet<>(), missing)) return false;
         }
         return true;
+    }
+
+    private static int installDependencies(Set<DataType> missing,
+            DataTypeManager target) throws Exception {
+        int installed = 0;
+        for (DataType source : missing) {
+            // Preflight was before any mutations. Recheck here in case
+            // Ghidra installed a dependency recursively during an earlier add.
+            DataType existing = target.getDataType(
+                source.getCategoryPath(), source.getName());
+            if (existing != null) {
+                if (!existing.isEquivalent(source))
+                    throw new IllegalStateException(
+                        "Conflicting imported datatype " + source.getPathName());
+                continue;
+            }
+            DataType copy = target.addDataType(
+                source, DataTypeConflictHandler.KEEP_HANDLER);
+            if (copy == null || !copy.isEquivalent(source))
+                throw new IllegalStateException(
+                    "Failed to import equivalent datatype " + source.getPathName());
+            installed++;
+        }
+        return installed;
     }
 
     private static boolean untouchedExternal(Function f) {
@@ -138,6 +188,7 @@ public class XexLinkedImportSignatureAnalyzer extends AbstractAnalyzer {
         ProjectData projectData = importing.getDomainFile().getParent().getProjectData();
         ExternalManager externalManager = importing.getExternalManager();
         int applied = 0, skipped = 0, missing = 0, libraries = 0;
+        int typesInstalled = 0, failed = 0;
         for (String library : externalManager.getExternalLibraryNames()) {
             monitor.checkCancelled();
             String path = externalManager.getExternalLibraryPath(library);
@@ -174,25 +225,51 @@ public class XexLinkedImportSignatureAnalyzer extends AbstractAnalyzer {
                         missing++;
                         continue;
                     }
-                    if (!complete(source, importing.getDataTypeManager())) {
+                    Set<DataType> required = new LinkedHashSet<>();
+                    if (!complete(source, importing.getDataTypeManager(), required)) {
                         skipped++;
                         continue;
                     }
-                    // This command preserves the imported symbol name and
-                    // its existing calling convention; foreign types are
-                    // resolved against the importing program's manager.
-                    ApplyFunctionSignatureCmd command = new ApplyFunctionSignatureCmd(
-                        imported.getEntryPoint(), source.getSignature(true),
-                        SourceType.IMPORTED, true, false,
-                        DataTypeConflictHandler.KEEP_HANDLER,
-                        FunctionRenameOption.NO_CHANGE);
-                    if (command.applyTo(importing, monitor)) {
-                        applied++;
+                    // The XEX image is untouched. Type dependencies and the
+                    // external signature form a single atomic metadata update:
+                    // a failed signature application must not leave orphaned
+                    // types behind in the importing Program.
+                    int transaction = importing.startTransaction(
+                        "XEX linked signature: " + library + "::" + location.getLabel());
+                    boolean committed = false;
+                    try {
+                        int addedTypes = installDependencies(required,
+                            importing.getDataTypeManager());
+                        // No ordinal/name rewriting. Foreign signature types
+                        // resolve against the consumer's now-complete type set.
+                        ApplyFunctionSignatureCmd command = new ApplyFunctionSignatureCmd(
+                            imported.getEntryPoint(), source.getSignature(true),
+                            SourceType.IMPORTED, true, false,
+                            DataTypeConflictHandler.KEEP_HANDLER,
+                            FunctionRenameOption.NO_CHANGE);
+                        if (command.applyTo(importing, monitor)) {
+                            committed = true;
+                            applied++;
+                            typesInstalled += addedTypes;
+                        }
+                        else {
+                            skipped++;
+                            failed++;
+                            log.appendMsg("XEX signature sync refused " + library +
+                                "::" + location.getLabel() + " " + command.getStatusMsg());
+                        }
                     }
-                    else {
+                    catch (CancelledException cancelled) {
+                        throw cancelled;
+                    }
+                    catch (Exception failure) {
                         skipped++;
+                        failed++;
                         log.appendMsg("XEX signature sync refused " + library +
-                            "::" + location.getLabel() + " " + command.getStatusMsg());
+                            "::" + location.getLabel() + ": " + failure.getMessage());
+                    }
+                    finally {
+                        importing.endTransaction(transaction, committed);
                     }
                 }
             }
@@ -209,7 +286,8 @@ public class XexLinkedImportSignatureAnalyzer extends AbstractAnalyzer {
         }
         log.appendMsg("XEX linked-signature sync: linkedLibraries=" + libraries +
             " applied=" + applied + " skipped=" + skipped +
-            " unmatched=" + missing +
+            " unmatched=" + missing + " typesInstalled=" + typesInstalled +
+            " failed=" + failed +
             " (complete USER_DEFINED signatures only; no native bytes changed)");
         return true;
     }
