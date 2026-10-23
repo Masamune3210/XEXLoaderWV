@@ -96,7 +96,7 @@ public class XexLinkedImportSignatureAnalyzer extends AbstractAnalyzer {
                 return false;
         }
         if (type instanceof Composite) {
-            for (DataTypeComponent component : ((Composite) type).getComponents()) {
+            for (DataTypeComponent component : ((Composite) type).getDefinedComponents()) {
                 DataType member = component.getDataType();
                 // Existing provider structure padding/unknown fields are
                 // preserved exactly; their presence does not imply that an
