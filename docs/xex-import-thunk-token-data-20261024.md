@@ -1,36 +1,41 @@
-# XEX import thunk relocation token typing (2026-10-24)
+# XEX import thunk metadata handling (2026-10-24)
 
-Branch: `note-working/xex-import-thunk-token-data-20261024` (based on `testing`).
+Branch: note-working/xex-import-thunk-token-data-20261024; based on testing.
+Source: XEXLoaderWV/src/main/java/xexloaderwv/XEXHeader.java.
+Example: xboxkrnl.exe::XAudioGetDuckerHoldTime at 0x81A73D14, ordinal 0x0357.
 
-## Reason
-The current XEX loader already identifies the 16-byte native import stubs and creates Ghidra external thunk relationships, but leaves their first eight bytes undefined. The pattern `0100OOOO 0200OOOO 7D6903A6 4E800420` is **two linker/loader relocation token words** followed by actual PPC `mtctr r11; bctr`, not four instructions. Ghidra currently displays the token words as `??` and may try disassembling the metadata as PowerPC code. Example: `xboxkrnl.exe::XAudioGetDuckerHoldTime` at `0x81A73D14`, ordinal `0x0357`.
+## Verified layout
 
-## Existing decisions
-- Preserve the source XEX and imported Program bytes; do not force fake executable `lis/ori` relocation stubs by default.
-- Preserve the native thunk function **at the original 16-byte entrypoint**, its external function relationship, the existing imported slot labels/references, and `.pdata` protections. Never move the thunk to `+8` because calls target the original entrypoint, which the runtime linker patches.
-- Explicit, disabled-by-default experimental veneer option remains separate.
-- Type relocation metadata so ordinary code discovery will not invent instructions over it; only the trailing two words are real instructions in the unpatched image.
+XEX native import thunk, total 16 bytes:
+- +0x00: 0100OOOO, loader upper-address relocation token (NOT PPC)
+- +0x04: 0200OOOO, loader lower-address relocation token (NOT PPC)
+- +0x08: 7D6903A6, executable PPC mtctr r11
+- +0x0C: 4E800420, executable PPC bctr
 
-## Current state
-- Located root implementation `XEXLoaderWV/src/main/java/xexloaderwv/XEXHeader.java::ProcessImportLibraries` and `IsCanonicalImportThunk` on `testing`; canonical check already verifies both tokens match the ordinal and the exact PPC tail.
-- The previously used `fix/import-thunk-modeling-20261009` branch is not currently present remotely; `testing` contains the established import-linking implementation and `docs/import-thunk-modeling-20261009.md` handoff.
-- Changes and verification to be recorded below on implementation. No prior data declarations, signatures or existing Ghidra database mutations assumed.
+OOOO is the import ordinal. The runtime linker replaces the two tokens with code loading the resolved target address into r11. Guest callers branch to the ORIGINAL start, not +8. Existing import handling already creates genuine native Ghidra thunk functions linked to the external export, with correct original entrypoints and import slots. Preserve those relationships and original bytes.
 
-## Next
-Implement loader-side typed tokens and safe tail disassembly without destroying thunk linkage, check source/build constraints, then user-test by newly importing a canonical XEX. Existing Ghidra Programs will not retroactively acquire new annotations without a migration script or reimport.
+## Critical prior regression (do not repeat)
 
-## Changes implemented (2026-10-24)
-- **Loader commit `c9622f7c`** modifies `XEXHeader.java::ProcessImportLibraries` on this branch. The recognized canonical import thunk remains a native `FunctionManager.createThunkFunction` at its ORIGINAL `0x10`-byte entrypoint, with its original external target and import-slot references intact. Once the thunk is created, and only with default veneers-disabled behavior, it defines an `/XEX/ImportThunkRelocationTokens8` structure over the first eight original bytes: `+0x00 uint32 upperAddressToken`, `+0x04 uint32 lowerAddressToken`. The type is shared across canonical thunks, preserves byte values (`0100OOOO`, `0200OOOO`), and prevents disassembly over relocations. It then disassembles **only** the original actual PPC tail at `+8` (`mtctr r11; bctr`), with code-analysis scheduling disabled, and adds a plate comment explaining runtime linker patching. It does not rewrite source XEX or mapped Program bytes. If a raw thunk is not canonical, current conservative unsupported handling remains.
-- The deliberately opt-in **experimental** analysis-veneer mode still creates its fake `lis/ori` words for users who explicitly enable it; the default is metadata typing with original bytes.
-- **Existing Ghidra databases do not re-execute import logic merely because the extension was rebuilt**. A guarded in-place repair script was also committed to **`Masamune3210/360decompwork`**, path `ghidra_scripts/TypeExistingXexImportThunkTokens_20261024_v1.java`, commit `ac2ac2f8`. It scans preexisting external native thunk functions and applies the same structure only to exact byte-verified canonical descriptors when token bytes are currently undefined. It preserves function entrypoints and linkage, does not clear conflicting existing defined code/data, and decodes the real PPC tail. It emits counts and address samples.
-- Source-level validation: checked canonical-thunk guard, creation order (native thunk before typed data), no default mapped byte rewrite, data type size, instruction tail `+8`, external link use, and optional-veneer separation. All eight focused checks passed. This is **not** a Ghidra runtime test or successful Gradle compile.
+Prior work in docs/import-thunk-modeling-20261009.md tested declaring the two token words as DWord DATA at the same address as a Ghidra native thunk function. This produced 339 live Bad Instruction bookmarks, including 310 conflicting-data errors in 17559 XAM. Ghidra attempts disassembly at thunk function entrypoints/branch targets even if the entrypoint has been typed as data. Consequently, creating an 8-byte structure on the thunk entrypoint is NOT an acceptable fix. Earlier use of fake lis/ori mapped-memory veneers may mislead decompilation, so that mode remains experimental and disabled by default.
 
-## Remaining verification
-1. **Run Gradle extension build** for this branch in the user's configured Ghidra environment (Ghidra build environment not present here). Fix any API compile issues rather than assuming build passes.
-2. On a **freshly imported** XEX containing the known `XAudioGetDuckerHoldTime` ordinal `0x0357` at `0x81A73D14`, confirm the original entry is a genuine external thunk and the first 8 bytes show `ImportThunkRelocationTokens8` as **data** (not instructions or `??`). Verify `0x81A73D1C` and `0x81A73D20` disassemble as `mtctr r11; bctr` and all 16 bytes remain untouched.
-3. Alternatively, run the committed **existing database repair script** against the current Ghidra program, avoiding reimport. Check it preserves caller xrefs and the thunk function signature and that the analyzer doesn't redisassemble relocation tokens. If prior analysis already defined code/data over tokens, the script purposely skips that case and prints a conflict count; evaluate before modifying those definitions.
-4. Probe an XEX with noncanonical import records to confirm conservative non-code fallback; no generic data/token guessing beyond the verified 16-byte import descriptor format.
+## Current source change
 
-## Scope boundaries
-- This branch does not alter Ghidra's Xenon SLEIGH instruction decoding or the kernel PE disassembler: the issue is XEX import-loader metadata representation.
-- No other emulator/XEX functionality or `testing` branch commits were changed.
+- Experimental commit c9622f7c briefly reintroduced the known-bad typed-data strategy. It was superseded by corrective commit 02657422 before user testing. Current branch does NOT define data over the token words.
+- The loader retains canonical 16-byte pattern verification and the Ghidra external thunk function at the unchanged original address.
+- With analysis veneers disabled (default), it adds a plate comment and EOL comments describing both relocation tokens as NON-executable metadata. It then disassembles ONLY the actual +8/+12 PPC tail, with further code analysis disabled. The first eight bytes remain untouched and undefined to avoid the prior typed-data conflict.
+- The explicitly enabled experimental veneer mode is unchanged. It modifies only mapped Ghidra analysis memory, never the original XEX file.
+- No data types, Ghidra function signatures, caller references, or external thunk links are changed.
+
+## Existing Program support
+
+The already loaded Program will not rerun the changed loader. Masamune3210/360decompwork now has ghidra_scripts/AnnotateExistingXexImportThunks_20261024_v2.java (commit 6fd883f1) to annotate byte-exact canonical linked thunks without reimporting, preserving all bytes and function links and skipping existing data/code conflicts. The unsafe earlier TypeExistingXexImportThunkTokens_20261024_v1.java was removed (commit d003c982).
+
+## Verification and remaining limitation
+
+Source-level invariants checked: unchanged canonical guard, external thunk entrypoint, original bytes, no data created at token bytes, comments, tail-only disassembly, separate experimental mode. NO live Ghidra extension build or test was possible in the current environment.
+
+IMPORTANT: these annotations do NOT prevent other Ghidra automatic analyzers from attempting disassembly at thunk entrypoints. Thus they are a safe representation improvement, not a confirmed solution to recurrent Bad Instruction bookmarks. Genuine suppression with raw-byte fidelity and native thunk links requires further import-aware analyzer/disassembler handling and runtime verification, not the previously failed typed-data method.
+
+Next verification: build against Ghidra 12.1.3, fresh-import an XEX containing 0x81A73D14, confirm byte-exact 01000357 02000357 7D6903A6 4E800420, original external thunk and import caller xrefs, first two words non-code/undefined with explanatory comments, and PPC mtctr/bctr decoded at +8/+12. Re-run auto-analysis and inspect LIVE bookmark counts. The retrofit script can be tested on the existing saved XAM Program without reimport. Do not claim suppression unless shown by runtime.
+
+Unrelated Xenia wait analysis and Xenon ISA numerical testing are out of scope.
