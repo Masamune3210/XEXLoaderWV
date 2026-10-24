@@ -15,13 +15,8 @@ import ghidra.app.util.bin.BinaryReader;
 import ghidra.app.util.bin.ByteArrayProvider;
 import ghidra.app.util.importer.MessageLog;
 import ghidra.program.model.address.Address;
-import ghidra.program.model.data.CategoryPath;
-import ghidra.program.model.data.DataType;
-import ghidra.program.model.data.DataTypeConflictHandler;
 import ghidra.program.model.data.DataUtilities;
-import ghidra.program.model.data.DWordDataType;
 import ghidra.program.model.data.Structure;
-import ghidra.program.model.data.StructureDataType;
 import ghidra.program.model.data.DataUtilities.ClearDataMode;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.MemoryBlock;
@@ -319,11 +314,10 @@ public class XEXHeader {
 				// Imported Xbox 360 thunks are *linker inputs*. At runtime the
 				// kernel replaces the two descriptor words with PPC instructions
 				// loading the target address into r11 (Xenia models this too).
-				// A function whose first byte is typed data causes Ghidra's
-				// disassembler to generate persistent "conflicting data" errors.
-				// For analysis we use a zero-valued relocation placeholder; the
-				// genuine external function relationship supplies the destination.
-				// The source XEX and peImage remain unmodified.
+				// Earlier typed-data/function-entry import modeling caused Ghidra
+				// auto-analysis to report hundreds of conflicting-data errors.
+				// Keep real XEX bytes by default and preserve a genuine thunk
+				// relationship.  The opt-in veneer mode below is separate.
 				ghidra.program.model.address.AddressSet body =
 					new ghidra.program.model.address.AddressSet(entry, entry.add(15));
 				ghidra.program.model.listing.Function thunk =
@@ -334,14 +328,13 @@ public class XEXHeader {
 					continue;
 				}
 				if (!useImportAnalysisVeneers) {
-					// These are NOT instructions until the Xbox 360 runtime loader
-					// patches them.  0100OOOO and 0200OOOO are relocation token
-					// words (OOOO = import ordinal).  Type them as data so auto-
-					// analysis cannot invent PowerPC instructions at the thunk
-					// entrypoint.  Keep the actual function and external target at
-					// the original entrypoint: guest calls branch to this address.
-					// The last two words ARE PPC: mtctr r11 ; bctr.
-					DefineImportThunkTokens(program, entry, library, imp, image);
+					// Keep the entrypoint a genuine external thunk and the raw
+					// relocation words untouched.  Do not type them as data:
+					// prior Ghidra auto-analysis of those typed words generated
+					// hundreds of "conflicting data" errors at function entries.
+					AnnotateImportThunkTokens(program, entry, library, imp, image);
+					// 7D6903A6 4E800420 are actual PPC instructions.  Start
+					// disassembly ONLY at +8; never at the two token words.
 					DisassembleCommand tailDisassembly =
 						new DisassembleCommand(entry.add(8), null, true);
 					tailDisassembly.enableCodeAnalysis(false);
@@ -384,39 +377,20 @@ public class XEXHeader {
 	}
 
 	/**
-	 * XEX import records contain two loader relocation tokens followed by the
-	 * actual PPC tail (mtctr r11; bctr).  A native Ghidra thunk function must
-	 * still start at the first token because this is the address callers branch
-	 * to after the Xbox kernel patches the two words into code at load time.
+	 * These XEX import words are loader/linker relocation records, not PPC.
+	 * Ghidra still requires native thunk functions at the original call
+	 * address to retain correct external links.  The previous experiment
+	 * declaring the first words as DWord data inside such a function produced
+	 * hundreds of real conflicting-data auto-analysis bookmarks: Ghidra still
+	 * attempts to disassemble function entrypoints and branch destinations.
 	 *
-	 * Define the tokens *after* creating the native thunk: Ghidra does not
-	 * allow creation of a function whose entrypoint already contains defined
-	 * data, but a function body is allowed to contain data.  By making those
-	 * eight bytes defined data, the disassembler won't mistake them for PPC.
-	 * The source XEX and mapped Program bytes remain entirely unchanged.
+	 * Preserve both token words as undefined (never disassemble them here),
+	 * while explicitly documenting their native meaning and disassembling
+	 * only the real PPC mtctr/bctr tail.  Never patch image bytes by default.
 	 */
-	private void DefineImportThunkTokens(Program program, Address entry,
+	private void AnnotateImportThunkTokens(Program program, Address entry,
 			String library, ImportFunction imp, BinaryReader image) throws Exception
 	{
-		CategoryPath category = new CategoryPath("/XEX");
-		String typeName = "ImportThunkRelocationTokens8";
-		DataType tokenType = program.getDataTypeManager().getDataType(category, typeName);
-		if (tokenType == null) {
-			StructureDataType tokens = new StructureDataType(category, typeName, 0);
-			tokens.add(DWordDataType.dataType, 4, "upperAddressToken",
-				"0x0100OOOO: linker token for the high-half address load");
-			tokens.add(DWordDataType.dataType, 4, "lowerAddressToken",
-				"0x0200OOOO: linker token for the low-half address load");
-			tokenType = program.getDataTypeManager().addDataType(
-				tokens, DataTypeConflictHandler.DEFAULT_HANDLER);
-		}
-		if (tokenType.getLength() != 8)
-			throw new java.io.IOException("XEX import token datatype has unexpected length: " +
-				tokenType.getLength());
-
-		// Listing.createData does not clear or replace the existing thunk,
-		// external references, labels or any bytes in the mapped Program.
-		program.getListing().createData(entry, tokenType);
 		long off = Integer.toUnsignedLong(imp.thunk) -
 			Integer.toUnsignedLong(imageBaseAddress);
 		int firstToken = image.readInt(off);
@@ -425,12 +399,23 @@ public class XEXHeader {
 			ghidra.program.model.listing.CommentType.PLATE,
 			String.format(
 				"XEX import thunk: %s ordinal 0x%04X\\n" +
-				"Linker relocation tokens: %08X %08X (DATA, not PPC)\\n" +
-				"At runtime these words are replaced with instructions loading " +
-				"the resolved target into r11.\\n" +
-				"The unpatched executable tail at +8 is mtctr r11; bctr.\\n" +
-				"Original XEX and mapped Program bytes are preserved.",
+				"Linker relocation tokens: %08X %08X (NOT executable PPC)\\n" +
+				"The runtime XEX linker replaces both tokens with instructions " +
+				"loading the resolved address into r11.\\n" +
+				"Only the original +8 tail (mtctr r11; bctr) is executable " +
+				"in the unpatched image.\\n" +
+				"Tokens deliberately remain undefined: declaring data at a " +
+				"function entry causes Ghidra conflicting-data auto-analysis.\\n" +
+				"Original thunk address, external link and all bytes are preserved.",
 				library, imp.ordinal, firstToken, secondToken));
+		program.getListing().setComment(entry,
+			ghidra.program.model.listing.CommentType.EOL,
+			String.format("XEX import high-word relocation token %08X (not code)",
+				firstToken));
+		program.getListing().setComment(entry.add(4),
+			ghidra.program.model.listing.CommentType.EOL,
+			String.format("XEX import low-word relocation token %08X (not code)",
+				secondToken));
 	}
 
 	private boolean IsCanonicalImportThunk(BinaryReader image, ImportFunction imp) throws Exception
