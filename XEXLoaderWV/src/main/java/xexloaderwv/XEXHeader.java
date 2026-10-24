@@ -229,6 +229,7 @@ public class XEXHeader {
 		int thunks = 0;
 		int dataOnly = 0;
 		int unsupported = 0;
+		ArrayList<String> verifiedRelocationEntries = new ArrayList<>();
 		for (ImportLibrary lib : importLibs)
 		{
 			monitor.checkCancelled();
@@ -345,6 +346,10 @@ public class XEXHeader {
 							"import thunk " + entry + "; original bytes preserved");
 					}
 				}
+				// Persist entrypoints in the Ghidra Program, not just this load
+				// session. The Xenon disassembler revalidates all 16 original bytes
+				// before excluding the two relocation words in EVERY analysis run.
+				verifiedRelocationEntries.add(Integer.toUnsignedString(imp.thunk, 16));
 				if (useImportAnalysisVeneers) {
 					// lis r11, 0 ; ori r11, r11, 0
 					// mtctr r11 ; bctr remain the ORIGINAL image instructions.
@@ -371,6 +376,12 @@ public class XEXHeader {
 				thunks++;
 			}
 		}
+		// Other analysers can seed disassembly at native thunk entrypoints.
+		// Persist the validated entries so the custom Xenon Disassembler masks
+		// +0..+7 even after the database is saved/reopened and reanalysed.
+		program.getOptions(XenonImportAwareDisassembler.XEX_THUNK_OPTIONS)
+			.setString(XenonImportAwareDisassembler.XEX_THUNK_ENTRIES,
+				String.join(",", verifiedRelocationEntries));
 		Msg.info(this, "XEX Loader: Linked " + references + " external import slots, " +
 			thunks + " native thunk functions, " + dataOnly +
 			" unclassified data-only imports, " + unsupported + " unsupported entries");
