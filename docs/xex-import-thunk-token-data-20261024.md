@@ -18,24 +18,37 @@ OOOO is the import ordinal. The runtime linker replaces the two tokens with code
 
 Prior work in docs/import-thunk-modeling-20261009.md tested declaring the two token words as DWord DATA at the same address as a Ghidra native thunk function. This produced 339 live Bad Instruction bookmarks, including 310 conflicting-data errors in 17559 XAM. Ghidra attempts disassembly at thunk function entrypoints/branch targets even if the entrypoint has been typed as data. Consequently, creating an 8-byte structure on the thunk entrypoint is NOT an acceptable fix. Earlier use of fake lis/ori mapped-memory veneers may mislead decompilation, so that mode remains experimental and disabled by default.
 
-## Current source change
+## Current design: persistent Xenon disassembly exclusion
 
-- Experimental commit c9622f7c briefly reintroduced the known-bad typed-data strategy. It was superseded by corrective commit 02657422 before user testing. Current branch does NOT define data over the token words.
-- The loader retains canonical 16-byte pattern verification and the Ghidra external thunk function at the unchanged original address.
-- With analysis veneers disabled (default), it adds a plate comment and EOL comments describing both relocation tokens as NON-executable metadata. It then disassembles ONLY the actual +8/+12 PPC tail, with further code analysis disabled. The first eight bytes remain untouched and undefined to avoid the prior typed-data conflict.
-- The explicitly enabled experimental veneer mode is unchanged. It modifies only mapped Ghidra analysis memory, never the original XEX file.
-- No data types, Ghidra function signatures, caller references, or external thunk links are changed.
+**The annotation-only change was inadequate**, as confirmed by the user's live screenshot at 0x81A72334: an existing linked native thunk retains `??` bytes and Ghidra creates a Bad Instruction bookmark when its analyzers run again. Prior attempts to declare those bytes as data at a function entry yielded 310 conflicting-data bookmarks; a zero-address fake executable veneer is not faithful to the prelink XEX.
 
-## Existing Program support
+The new implementation addresses this at **Ghidra's Disassembler entrypoint**, not by commenting, hiding bookmarks, replacing bytes, or relabeling false code:
 
-The already loaded Program will not rerun the changed loader. Masamune3210/360decompwork now has ghidra_scripts/AnnotateExistingXexImportThunks_20261024_v2.java (commit 6fd883f1) to annotate byte-exact canonical linked thunks without reimporting, preserving all bytes and function links and skipping existing data/code conflicts. The unsafe earlier TypeExistingXexImportThunkTokens_20261024_v1.java was removed (commit d003c982).
+- Added `XEXLoaderWV/src/main/java/xexloaderwv/XenonImportAwareDisassembler.java`; registered `customDisassemblerClass=xexloaderwv.XenonImportAwareDisassembler` in `XEXLoaderWV/data/languages/xenon_64.pspec` (commits `9ec2e9bd`, `408eb05a`).
+- `ProcessImportLibraries` now records successfully linked canonical stub entrypoint addresses in persistent Program options `XEX Import Thunks / Pre-link Relocation Token Entrypoints`. This is stored **in the Ghidra database** and survives reopening and rerunning analysis (commit `ee4aefdc`).
+- Each freshly instantiated Xenon disassembler rereads that option, validates **all original 16 bytes** per entry (`0100OOOO 0200OOOO 7D6903A6 4E800420`, matching ordinal), and protects **only +0..+7**. If the bytes were genuinely patched into executable instructions, the exclusion no longer applies.
+- Both the scalar and AddressSet disassemble entrypoints remove verified tokens from their disassembly **seed addresses**. They also subtract all token ranges from the allowed **follow-flow address set** before delegating to Ghidra's generic Disassembler. This matters because normal analyzers may independently enqueue incoming `bl` targets despite existing thunk labels or comments. The excluded range aborts flow before instruction decoding; the real +8/+12 PPC instructions remain eligible.
+- There is no global disabling of bad-instruction reporting and no special treatment of non-import addresses; without the XEX Program option the custom disassembler simply delegates to Ghidra's original implementation. The external thunk function stays at the actual original call target.
+- The loader continues to annotate relocation tokens and decode the actual PPC tail only, preserving original file and Program bytes and the existing native external link (the source code corrected the known-bad typed data experiment in commit `02657422`). Explicit experimental fake-veneer mode remains disabled by default.
 
-## Verification and remaining limitation
+**Existing Ghidra Program:** new script `Masamune3210/360decompwork/ghidra_scripts/ProtectExistingXexImportThunks_20261024_v3.java` (latest script fix commit `44878271`) recognizes byte-exact already-linked native thunks, appends comments if missing, decodes only the actual tail, and persists the same Program option. It does not reimport, patch bytes, clear earlier bad bookmarks, or alter function definitions. The older annotation-only v2 and unsafe token-as-data v1 scripts were removed from the script repository; use v3 only. **Install the new Xenon language/extension and reopen the Ghidra Program before rerunning analyzers**, otherwise the property exists but the default disassembler still runs.
 
-Source-level invariants checked: unchanged canonical guard, external thunk entrypoint, original bytes, no data created at token bytes, comments, tail-only disassembly, separate experimental mode. NO live Ghidra extension build or test was possible in the current environment.
+## Source/API investigation
 
-IMPORTANT: these annotations do NOT prevent other Ghidra automatic analyzers from attempting disassembly at thunk entrypoints. Thus they are a safe representation improvement, not a confirmed solution to recurrent Bad Instruction bookmarks. Genuine suppression with raw-byte fidelity and native thunk links requires further import-aware analyzer/disassembler handling and runtime verification, not the previously failed typed-data method.
+Verified against the Ghidra source implementation and public API:
+- `Disassembler.getDisassembler(...)` loads the `customDisassemblerClass` processor property from the language and constructs the matching subclass with a supported constructor. The subclass provides **all three reflection constructor forms** and overrides the two four-argument `disassemble` entrypoints.
+- The base `Disassembler` checks `restrictedAddressSet` before parsing instruction prototypes during follow-flow, and its AddressSet overload dispatches each selected start through the scalar overload. Excluding both seeds and flow destinations is therefore required.
+- `AddressSet.delete(AddressSetView)` removes exactly the verified token ranges; `Program.getOptions(...).getString/setString` persists markers per Program, not per analysis run.
+- Separately marking token blocks non-executable would not solve this reliably: Ghidra's generic disassembler can still produce a **different memory restriction error bookmark** when an analyzer seeds the non-executable address. We did **not** choose that approach.
 
-Next verification: build against Ghidra 12.1.3, fresh-import an XEX containing 0x81A73D14, confirm byte-exact 01000357 02000357 7D6903A6 4E800420, original external thunk and import caller xrefs, first two words non-code/undefined with explanatory comments, and PPC mtctr/bctr decoded at +8/+12. Re-run auto-analysis and inspect LIVE bookmark counts. The retrofit script can be tested on the existing saved XAM Program without reimport. Do not claim suppression unless shown by runtime.
+## Verification state and risks
 
-Unrelated Xenia wait analysis and Xenon ISA numerical testing are out of scope.
+Source hooks, address classification and Ghidra API contracts have been inspected; **extension build and repeated live Ghidra auto-analysis are not yet verified**. This is the first fix in this branch that actually intercepts future disassembly attempts; the screenshot predates this interception. User's chosen language must be `PowerPC:BE:64:XENON-32addr`: the processor-specific hook does **not** affect stock `A2ALT` fallback; the v3 script prints whether the active language advertises the custom class.
+
+Required validation:
+1. Build/reinstall the updated XEXLoaderWV extension, restart Ghidra and open the existing XEX database (no new import required). Run `ProtectExistingXexImportThunks_20261024_v3.java`; confirm **guarded token ranges > 0** and `Import-aware Xenon disassembler configured: true`.
+2. In Listing, inspect `0x81A72334` and `0x81A73D14` if present. First eight bytes should remain byte-exact and undefined with annotations; the native external thunk and call references must remain. Only `mtctr r11; bctr` at +8/+12 should decode.
+3. Clear **only existing** import-token Bad Instruction bookmarks to distinguish historical diagnostics from new runs, rerun Auto Analyze **twice**, then verify **zero new token parse/conflicting-data error bookmarks**. Keep normal Bad Instruction reporting enabled to catch other legitimate faults.
+4. Check a non-import code path and original kernel PE program still disassemble normally, and that native thunk relationships remain intact. Test imported XEX with a different ordinal layout.
+
+If any build/API/runtime issue arises, fix on this topic branch. Do not merge or claim this requirement is proven until the rerun confirms it. Keep `testing` branch free of speculative source commits. 
