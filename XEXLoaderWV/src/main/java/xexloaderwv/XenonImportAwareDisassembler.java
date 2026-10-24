@@ -1,7 +1,5 @@
 package xexloaderwv;
 
-import java.util.Locale;
-
 import ghidra.program.disassemble.Disassembler;
 import ghidra.program.disassemble.DisassemblerMessageListener;
 import ghidra.program.model.address.Address;
