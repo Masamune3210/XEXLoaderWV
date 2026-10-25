@@ -436,8 +436,10 @@ public class XEXHeader {
 			return false;
 		int token1 = image.readInt(off);
 		int token2 = image.readInt(off + 4);
-		return (token1 >>> 16) == 0x0100 && (token1 & 0xFFFF) == imp.ordinal &&
-			(token2 >>> 16) == 0x0200 && (token2 & 0xFFFF) == imp.ordinal &&
+		// Bits16..23 identify the import library, not a reserved zero byte.
+		// Both records must identify the same library and ordinal.
+		return (token1 >>> 24) == 0x01 && (token1 & 0xFFFF) == imp.ordinal &&
+			(token2 >>> 24) == 0x02 && (token1 & 0x00FFFFFF) == (token2 & 0x00FFFFFF) &&
 			image.readInt(off + 8) == 0x7D6903A6 &&
 			image.readInt(off + 12) == 0x4E800420 &&
 			MakeAddress(Integer.toUnsignedLong(imp.thunk) + 15) != null;
