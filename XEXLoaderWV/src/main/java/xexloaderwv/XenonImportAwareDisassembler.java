@@ -101,8 +101,9 @@ public class XenonImportAwareDisassembler extends Disassembler {
     }
 
     private static boolean isCanonicalTokenPair(byte[] b) {
-        if (b[0] != 0x01 || b[1] != 0x00 ||
-                b[4] != 0x02 || b[5] != 0x00 ||
+        // The second byte is the library index. DASH imports both XAM (0)
+        // and xboxkrnl (1); only matching library/ordinal pairs are canonical.
+        if (b[0] != 0x01 || b[4] != 0x02 || b[1] != b[5] ||
                 b[2] != b[6] || b[3] != b[7]) {
             return false;
         }
