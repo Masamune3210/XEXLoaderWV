@@ -3,6 +3,8 @@
 <processor_spec>
   <properties>
     <property key="addressesDoNotAppearDirectlyInCode" value="true"/>
+    <!-- Protect XEX pre-link import relocation words during every analysis pass. -->
+    <property key="customDisassemblerClass" value="xexloaderwv.XenonImportAwareDisassembler"/>
     <property key="emulateInstructionStateModifierClass" value="ghidra.program.emulation.PPCEmulateInstructionStateModifier"/>
     <property key="useropLibs" value="ppc"/>
     <property key="assemblyRating:PowerPC:BE:64:A2-32addr" value="PLATINUM"/>
