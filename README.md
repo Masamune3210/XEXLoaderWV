@@ -368,3 +368,22 @@ the exact opcode words against the verified 17559 image.
 **Historical implementation status:** this predates the later 86-family
 fixture and 3,414-case numerical audit. The remaining opaque operations
 and verification boundaries are described in the current section above.
+
+
+### Classic Xenon LVSL masks
+
+The Xenon-only generated classic `lvsl` constructor now produces the 16
+big-endian mask bytes `(EA & 15) + [0..15]`. Its RA=0 operand supplies zero;
+RB=0 still reads physical r0. The previous inherited stock constructor called
+an unimplemented userop and incorrectly read r0 for RA=0. Stock PowerPC language
+files, existing userop indices, LVSR and VMX128 constructors are preserved.
+
+After `gradle buildExtension` and installing the rebuilt extension, run
+`TestXenonLvslMasks.java <output-directory>` from `ghidra_scripts` on a Xenon
+Program. It exercises 2,048 numerical cases with an independent byte-array
+oracle, all alignments, randomized full64 GPR carriers, overlapping operands,
+and unchanged LVSR/VMX128 controls. On the supplied DASH Program it also checks
+its stored opcode at92866aac, giving 2,049 checks. Fixtures are rolled back.
+The old model failed1,281 checks and passed768 controls; the corrected model
+passes all2,049. This corrects the instruction semantics; it does not resolve
+the separate Ghidra unique-varnode-hash failure in DASH function92866540.
