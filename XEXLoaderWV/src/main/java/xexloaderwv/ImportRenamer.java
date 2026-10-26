@@ -2145,7 +2145,7 @@ public class ImportRenamer {
 			add(new Replacer(0x00000125, "RtlEnterCriticalSection"));
 			add(new Replacer(0x00000126, "RtlFillMemoryUlong"));
 			add(new Replacer(0x00000127, "RtlFreeAnsiString"));
-			add(new Replacer(0x00000128, "RtlFreeAnsiString"));
+			add(new Replacer(0x00000128, "RtlFreeUnicodeString"));
 			add(new Replacer(0x00000129, "RtlGetCallersAddress"));
 			add(new Replacer(0x0000012A, "RtlGetStackLimits"));
 			add(new Replacer(0x0000012B, "RtlImageXexHeaderField"));
@@ -2710,6 +2710,7 @@ public class ImportRenamer {
 			add(new Replacer(0x0000035A, "XAudioGetUnderrunCount"));
 			add(new Replacer(0x0000035C, "XVoicedIsActiveProcess"));
 			add(new Replacer(0x0000035B, "DrvSetAudioLatencyCallback"));
+			add(new Replacer(0x00000363, "XeKeysGetTruncatedSecondaryConsoleId"));
 			add(new Replacer(0x00000365, "VdQueryVideoCapabilities"));
 			add(new Replacer(0x00000367, "VdGet3dVideoFormat"));
 			add(new Replacer(0x00000369, "VdSet3dVideoFormat"));
@@ -2718,6 +2719,7 @@ public class ImportRenamer {
 			add(new Replacer(0x00000374, "UsbdNatalHubRegisterNotificationCallback"));
 			add(new Replacer(0x00000376, "KeCallAndWaitForDpcRoutine"));
 			add(new Replacer(0x00000377, "TidDeviceRequest"));
+			add(new Replacer(0x00000379, "VdSetStudioRGBMode"));
 			add(new Replacer(0x00000385, "XInputdGetFailedConnectionOrBind"));
 			add(new Replacer(0x00000386, "XInputdSetFailedConnectionOrBindCallback"));
 			add(new Replacer(0x00000388, "XInputdSetMinMaxAuthDelay"));

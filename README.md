@@ -387,3 +387,19 @@ its stored opcode at92866aac, giving 2,049 checks. Fixtures are rolled back.
 The old model failed1,281 checks and passed768 controls; the corrected model
 passes all2,049. This corrects the instruction semantics; it does not resolve
 the separate Ghidra unique-varnode-hash failure in DASH function92866540.
+
+### Kernel import name corrections
+
+The kernel ordinal catalog now distinguishes `RtlFreeAnsiString`295 from
+`RtlFreeUnicodeString`296, even though the retail kernel aliases their code
+address. It also names867 `XeKeysGetTruncatedSecondaryConsoleId` and889
+`VdSetStudioRGBMode`. These names agree in the independently pinned Xenia and
+Xenia Canary export tables and, for867/889, the supplied kernel annotations.
+Other modules' ordinal namespaces and unknown-ordinal fallback are unchanged.
+
+Run `python3 tools/test_kernel_import_names_v1.py` from the nested `XEXLoaderWV`
+project with a JDK available. The test compiles and executes the actual Java
+lookup, covering the corrected names, module spelling/extension normalization,
+XAM namespace controls and unknown-module/ordinal fallbacks. The previous table
+fails9 of14 checks; the corrected table passes14. Full extension packaging also
+passes. This is a Java catalog fix; the compiled Xenon language is unchanged.
