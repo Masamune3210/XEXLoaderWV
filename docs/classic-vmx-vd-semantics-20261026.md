@@ -1,0 +1,7 @@
+# Classic VMX semantics needed by VdRetrainEDRAM
+
+The saved 17559 kernel uses classic `vand`, `vsrw` and `vcmpequw.` in its lane scan and memory comparison. The Xenon language inherits opaque stock AltiVec implementations. In particular, `vcmpequw.` has no CR6 assignment, so `mfocrf` consumes stale flags and the decompiler uses a prior scalar comparison. Native execution probes reach unsupported vectorLogicalAnd/ShiftRightWord/CompareEqualToUnsignedWord userops.
+
+Implement concrete semantics for classic `vand`, `vsrw`, `vcmpequw` and `vcmpequw.` in the independent Xenon language only. AND is exact128-bit bitwise AND. VSRW shifts each unsigned32-bit lane right by the corresponding lowfive shift bits. Equality produces FFFFFFFF/0 perword. Onlythe record form writes CR6: alltrue8, nonematch2, mixed0; CR6 reserved bits clear and other CR fields remain untouched. Source/destination aliases must use original operand values.
+
+Keep stock Ghidra sources, instruction encodings, decode patterns, userop declarations/IDs, other languages and existing kernel bytes/types/locals/argument slots unchanged. Preserve the current language ID. The user authorized extension fixes when needed, native execution without agents and checkpoint pushes. First reproduce the missing behavior, compile/package against Ghidra12.1.3, test exact instructions in a private Ghidra install and verify rollback of temporary fixture blocks. Onlythen update the cloud toolchain and continue the Vd native suites/decompilation. No physical hardware correctness is inferred from software tests.

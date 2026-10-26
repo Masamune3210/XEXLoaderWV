@@ -26,6 +26,7 @@ define register offset=0x5000 size=4 [ xenonVSCR ];
 # Xenon predates POWER ISA 2.07 / 3.0: avoid overlapping later opcodes.
 # Gradle derives this variant-local copy from the installed Ghidra source.
 @include "xenon_altivec_pre207.sinc"
+@include "xenon_classic_vector_v1.sinc"
 @include "xenon_vector_v1.sinc"
 # Supplementary VX128 instructions (native where verified; otherwise opaque).
 @include "xenon_vector_remaining_v1.sinc"
