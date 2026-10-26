@@ -1,0 +1,82 @@
+# Classic VMX operations used by VdRetrainEDRAM. The matching opaque
+# constructors are removed only from the generated Xenon AltiVec include;
+# stock Ghidra and userop declaration order remain unchanged.
+
+:vand vrD,vrA,vrB is OP=4 & vrD & vrA & vrB & XOP_0_10=1028
+{
+    vrD = vrA & vrB;
+}
+
+:vsrw vrD,vrA,vrB is OP=4 & vrD & vrA & vrB & XOP_0_10=644
+{
+    source0:4 = vrA(0);
+    shift0:4 = vrB(0) & 31;
+    result0:4 = source0 >> shift0;
+    wide0:16 = zext(result0);
+    source1:4 = vrA(4);
+    shift1:4 = vrB(4) & 31;
+    result1:4 = source1 >> shift1;
+    wide1:16 = zext(result1) << 32;
+    source2:4 = vrA(8);
+    shift2:4 = vrB(8) & 31;
+    result2:4 = source2 >> shift2;
+    wide2:16 = zext(result2) << 64;
+    source3:4 = vrA(12);
+    shift3:4 = vrB(12) & 31;
+    result3:4 = source3 >> shift3;
+    wide3:16 = zext(result3) << 96;
+    vrD = wide0 | wide1 | wide2 | wide3;
+}
+
+:vcmpequw vrD,vrA,vrB is OP=4 & vrD & vrA & vrB & BIT_10=0 & XOP_0_9=134
+{
+    sourceA0:4 = vrA(0);
+    sourceB0:4 = vrB(0);
+    equal0:1 = sourceA0 == sourceB0;
+    mask0:4 = 0:4 - zext(equal0);
+    wide0:16 = zext(mask0);
+    sourceA1:4 = vrA(4);
+    sourceB1:4 = vrB(4);
+    equal1:1 = sourceA1 == sourceB1;
+    mask1:4 = 0:4 - zext(equal1);
+    wide1:16 = zext(mask1) << 32;
+    sourceA2:4 = vrA(8);
+    sourceB2:4 = vrB(8);
+    equal2:1 = sourceA2 == sourceB2;
+    mask2:4 = 0:4 - zext(equal2);
+    wide2:16 = zext(mask2) << 64;
+    sourceA3:4 = vrA(12);
+    sourceB3:4 = vrB(12);
+    equal3:1 = sourceA3 == sourceB3;
+    mask3:4 = 0:4 - zext(equal3);
+    wide3:16 = zext(mask3) << 96;
+    vrD = wide0 | wide1 | wide2 | wide3;
+}
+
+:vcmpequw. vrD,vrA,vrB is OP=4 & vrD & vrA & vrB & BIT_10=1 & XOP_0_9=134
+{
+    sourceA0:4 = vrA(0);
+    sourceB0:4 = vrB(0);
+    equal0:1 = sourceA0 == sourceB0;
+    mask0:4 = 0:4 - zext(equal0);
+    wide0:16 = zext(mask0);
+    sourceA1:4 = vrA(4);
+    sourceB1:4 = vrB(4);
+    equal1:1 = sourceA1 == sourceB1;
+    mask1:4 = 0:4 - zext(equal1);
+    wide1:16 = zext(mask1) << 32;
+    sourceA2:4 = vrA(8);
+    sourceB2:4 = vrB(8);
+    equal2:1 = sourceA2 == sourceB2;
+    mask2:4 = 0:4 - zext(equal2);
+    wide2:16 = zext(mask2) << 64;
+    sourceA3:4 = vrA(12);
+    sourceB3:4 = vrB(12);
+    equal3:1 = sourceA3 == sourceB3;
+    mask3:4 = 0:4 - zext(equal3);
+    wide3:16 = zext(mask3) << 96;
+    vrD = wide0 | wide1 | wide2 | wide3;
+    allEqual:1 = equal0 & equal1 & equal2 & equal3;
+    noneEqual:1 = !(equal0 | equal1 | equal2 | equal3);
+    cr6 = (allEqual << 3) | (noneEqual << 1);
+}
