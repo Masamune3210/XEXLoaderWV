@@ -5,6 +5,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.ArrayDeque;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.Collection;
 import java.util.List;
 
@@ -20,6 +23,8 @@ import ghidra.app.util.importer.MessageLog;
 import ghidra.app.util.opinion.AbstractLibrarySupportLoader;
 import ghidra.app.util.opinion.LoadSpec;
 import ghidra.app.util.opinion.Loader.ImporterSettings;
+import ghidra.framework.model.DomainFile;
+import ghidra.framework.model.DomainFolder;
 import ghidra.framework.model.DomainObject;
 import ghidra.program.model.lang.LanguageCompilerSpecPair;
 import ghidra.program.model.lang.LanguageID;
@@ -300,6 +305,67 @@ public class XEXLoaderWVLoader extends AbstractLibrarySupportLoader {
 			}
 		}
 		return ChangeBaseFileFormat(buffROM);
+	}
+
+
+	/**
+	 * Ghidra's existing-library lookup only checks a single project folder.
+	 * Preserve that lookup first, then search subfolders across the project so
+	 * game XEX files can resolve firmware imported into a separate folder.
+	 *
+	 * Respect the existing-library switch and any explicitly selected search
+	 * folder. Never pick arbitrarily between multiple matching programs.
+	 */
+	@Override
+	protected DomainFile findLibraryInProject(String library, DomainFolder folder,
+			List<LibrarySearchPath> searchPaths, ImporterSettings settings)
+			throws CancelledException {
+		DomainFile direct = super.findLibraryInProject(library, folder, searchPaths, settings);
+		if (direct != null || !isLinkExistingLibraries(settings) ||
+			settings.project() == null ||
+			!getStringOption(settings.options(), LINK_SEARCH_FOLDER_OPTION_NAME, "").isBlank()) {
+			return direct;
+		}
+
+		DomainFolder root = settings.project().getProjectData().getRootFolder();
+		if (root == null) {
+			return null;
+		}
+
+		ArrayDeque<DomainFolder> pending = new ArrayDeque<>();
+		Set<String> visited = new HashSet<>();
+		pending.push(root);
+		DomainFile match = null;
+		while (!pending.isEmpty()) {
+			settings.monitor().checkCancelled();
+			DomainFolder current = pending.pop();
+			if (!visited.add(current.getPathname())) {
+				continue;
+			}
+			for (DomainFile candidate : current.getFiles()) {
+				settings.monitor().checkCancelled();
+				Class<?> type = candidate.getDomainObjectClass();
+				if (type == null || !Program.class.isAssignableFrom(type) ||
+					getLibraryNameComparator().compare(candidate.getName(), library) != 0) {
+					continue;
+				}
+				if (match != null) {
+					settings.log().appendMsg("XEX project-wide library lookup: ambiguous [" +
+						library + "] between [" + match.getPathname() + "] and [" +
+						candidate.getPathname() + "]; not linking automatically");
+					return null;
+				}
+				match = candidate;
+			}
+			for (DomainFolder child : current.getFolders()) {
+				pending.push(child);
+			}
+		}
+		if (match != null) {
+			settings.log().appendMsg("XEX project-wide library lookup: [" + library +
+				"] -> [" + match.getPathname() + "]");
+		}
+		return match;
 	}
 
 	@Override
