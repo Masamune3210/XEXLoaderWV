@@ -309,29 +309,69 @@ public class XEXLoaderWVLoader extends AbstractLibrarySupportLoader {
 
 
 	/**
-	 * Ghidra's existing-library lookup only checks a single project folder.
-	 * Preserve that lookup first, then search subfolders across the project so
-	 * game XEX files can resolve firmware imported into a separate folder.
+	 * Ghidra prints the folder returned by getLinkSearchFolder(), not the
+	 * DomainFile returned by findLibraryInProject(). When every imported library
+	 * has one unique provider in the same project folder, supply that actual
+	 * folder so the stock "Found ... in ..." message is truthful.
 	 *
-	 * Respect the existing-library switch and any explicitly selected search
-	 * folder. Never pick arbitrarily between multiple matching programs.
+	 * For imports spread across folders, use project root as the search scope;
+	 * the recursive lookup below logs each exact provider path.
 	 */
 	@Override
-	protected DomainFile findLibraryInProject(String library, DomainFolder folder,
-			List<LibrarySearchPath> searchPaths, ImporterSettings settings)
-			throws CancelledException {
-		DomainFile direct = super.findLibraryInProject(library, folder, searchPaths, settings);
-		if (direct != null || !isLinkExistingLibraries(settings) ||
-			settings.project() == null ||
+	protected DomainFolder getLinkSearchFolder(Program program, ImporterSettings settings) {
+		DomainFolder standard = super.getLinkSearchFolder(program, settings);
+		if (!isLinkExistingLibraries(settings) || settings.project() == null ||
+			settings.mirrorFsLayout() ||
 			!getStringOption(settings.options(), LINK_SEARCH_FOLDER_OPTION_NAME, "").isBlank()) {
-			return direct;
+			return standard;
 		}
+		DomainFolder root = settings.project().getProjectData().getRootFolder();
+		if (root == null) {
+			return standard;
+		}
+		DomainFolder commonParent = null;
+		boolean hasLibraries = false;
+		for (String library : program.getExternalManager().getExternalLibraryNames()) {
+			if (ghidra.program.model.listing.Library.UNKNOWN.equals(library) ||
+				getLibraryNameComparator().compare(library, program.getName()) == 0) {
+				continue;
+			}
+			hasLibraries = true;
+			try {
+				DomainFile provider = findUniqueProjectLibrary(library, settings, false);
+				if (provider == null) {
+					// Preserve normal same-folder priority if another project
+					// folder contains a provider with an identical name.
+					if (standard != null &&
+						super.findLibraryInProject(library, standard, List.of(), settings) != null) {
+						return standard;
+					}
+					return root;
+				}
+				DomainFolder parent = provider.getParent();
+				if (commonParent != null && !commonParent.getPathname().equals(parent.getPathname())) {
+					return root;
+				}
+				commonParent = parent;
+			}
+			catch (CancelledException cancelled) {
+				// This hook cannot throw; the base loader checks cancellation.
+				return standard;
+			}
+		}
+		return hasLibraries && commonParent != null ? commonParent : standard;
+	}
 
+	/**
+	 * Find a unique matching Program anywhere in the project. Only actual
+	 * Program files are eligible and ambiguous names remain unresolved.
+	 */
+	private DomainFile findUniqueProjectLibrary(String library, ImporterSettings settings,
+			boolean report) throws CancelledException {
 		DomainFolder root = settings.project().getProjectData().getRootFolder();
 		if (root == null) {
 			return null;
 		}
-
 		ArrayDeque<DomainFolder> pending = new ArrayDeque<>();
 		Set<String> visited = new HashSet<>();
 		pending.push(root);
@@ -350,9 +390,11 @@ public class XEXLoaderWVLoader extends AbstractLibrarySupportLoader {
 					continue;
 				}
 				if (match != null) {
-					settings.log().appendMsg("XEX project-wide library lookup: ambiguous [" +
-						library + "] between [" + match.getPathname() + "] and [" +
-						candidate.getPathname() + "]; not linking automatically");
+					if (report) {
+						settings.log().appendMsg("XEX project-wide library lookup: ambiguous [" +
+							library + "] between [" + match.getPathname() + "] and [" +
+							candidate.getPathname() + "]; not linking automatically");
+					}
 					return null;
 				}
 				match = candidate;
@@ -361,11 +403,31 @@ public class XEXLoaderWVLoader extends AbstractLibrarySupportLoader {
 				pending.push(child);
 			}
 		}
-		if (match != null) {
+		if (match != null && report) {
 			settings.log().appendMsg("XEX project-wide library lookup: [" + library +
 				"] -> [" + match.getPathname() + "]");
 		}
 		return match;
+	}
+
+	/**
+	 * Ghidra's base lookup is intentionally shallow. A null folder means
+	 * "do not search" and must not accidentally trigger our recursive lookup.
+	 */
+	@Override
+	protected DomainFile findLibraryInProject(String library, DomainFolder folder,
+			List<LibrarySearchPath> searchPaths, ImporterSettings settings)
+			throws CancelledException {
+		if (folder == null) {
+			return null;
+		}
+		DomainFile direct = super.findLibraryInProject(library, folder, searchPaths, settings);
+		if (direct != null || !isLinkExistingLibraries(settings) ||
+			settings.project() == null ||
+			!getStringOption(settings.options(), LINK_SEARCH_FOLDER_OPTION_NAME, "").isBlank()) {
+			return direct;
+		}
+		return findUniqueProjectLibrary(library, settings, true);
 	}
 
 	@Override
