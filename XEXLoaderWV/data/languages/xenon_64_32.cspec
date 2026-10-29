@@ -127,4 +127,307 @@
     </pcode>
   </callfixup>
 
+
+  <!-- PowerPC compiler-generated out-of-line GPR/LR save helpers.
+       A linker may merge r14..r31 entry points into one shared routine.
+       These callfixups inline the precise stores and preserve r3/r4/... .
+       XenonSaveGprLrAnalyzer assigns them only after checking instructions. -->
+  <callfixup name="XenonSaveGprLr14">
+    <pcode><body><![CDATA[
+      local xe_save_sp:4 = r1(0);
+      *:8 (xe_save_sp - 0x98) = r14;
+      *:8 (xe_save_sp - 0x90) = r15;
+      *:8 (xe_save_sp - 0x88) = r16;
+      *:8 (xe_save_sp - 0x80) = r17;
+      *:8 (xe_save_sp - 0x78) = r18;
+      *:8 (xe_save_sp - 0x70) = r19;
+      *:8 (xe_save_sp - 0x68) = r20;
+      *:8 (xe_save_sp - 0x60) = r21;
+      *:8 (xe_save_sp - 0x58) = r22;
+      *:8 (xe_save_sp - 0x50) = r23;
+      *:8 (xe_save_sp - 0x48) = r24;
+      *:8 (xe_save_sp - 0x40) = r25;
+      *:8 (xe_save_sp - 0x38) = r26;
+      *:8 (xe_save_sp - 0x30) = r27;
+      *:8 (xe_save_sp - 0x28) = r28;
+      *:8 (xe_save_sp - 0x20) = r29;
+      *:8 (xe_save_sp - 0x18) = r30;
+      *:8 (xe_save_sp - 0x10) = r31;
+      *:8 (xe_save_sp - 0x8) = r12;
+      LR = inst_dest + 4;
+    ]]></body></pcode>
+  </callfixup>
+  <callfixup name="XenonSaveGprLr15">
+    <pcode><body><![CDATA[
+      local xe_save_sp:4 = r1(0);
+      *:8 (xe_save_sp - 0x90) = r15;
+      *:8 (xe_save_sp - 0x88) = r16;
+      *:8 (xe_save_sp - 0x80) = r17;
+      *:8 (xe_save_sp - 0x78) = r18;
+      *:8 (xe_save_sp - 0x70) = r19;
+      *:8 (xe_save_sp - 0x68) = r20;
+      *:8 (xe_save_sp - 0x60) = r21;
+      *:8 (xe_save_sp - 0x58) = r22;
+      *:8 (xe_save_sp - 0x50) = r23;
+      *:8 (xe_save_sp - 0x48) = r24;
+      *:8 (xe_save_sp - 0x40) = r25;
+      *:8 (xe_save_sp - 0x38) = r26;
+      *:8 (xe_save_sp - 0x30) = r27;
+      *:8 (xe_save_sp - 0x28) = r28;
+      *:8 (xe_save_sp - 0x20) = r29;
+      *:8 (xe_save_sp - 0x18) = r30;
+      *:8 (xe_save_sp - 0x10) = r31;
+      *:8 (xe_save_sp - 0x8) = r12;
+      LR = inst_dest + 4;
+    ]]></body></pcode>
+  </callfixup>
+  <callfixup name="XenonSaveGprLr16">
+    <pcode><body><![CDATA[
+      local xe_save_sp:4 = r1(0);
+      *:8 (xe_save_sp - 0x88) = r16;
+      *:8 (xe_save_sp - 0x80) = r17;
+      *:8 (xe_save_sp - 0x78) = r18;
+      *:8 (xe_save_sp - 0x70) = r19;
+      *:8 (xe_save_sp - 0x68) = r20;
+      *:8 (xe_save_sp - 0x60) = r21;
+      *:8 (xe_save_sp - 0x58) = r22;
+      *:8 (xe_save_sp - 0x50) = r23;
+      *:8 (xe_save_sp - 0x48) = r24;
+      *:8 (xe_save_sp - 0x40) = r25;
+      *:8 (xe_save_sp - 0x38) = r26;
+      *:8 (xe_save_sp - 0x30) = r27;
+      *:8 (xe_save_sp - 0x28) = r28;
+      *:8 (xe_save_sp - 0x20) = r29;
+      *:8 (xe_save_sp - 0x18) = r30;
+      *:8 (xe_save_sp - 0x10) = r31;
+      *:8 (xe_save_sp - 0x8) = r12;
+      LR = inst_dest + 4;
+    ]]></body></pcode>
+  </callfixup>
+  <callfixup name="XenonSaveGprLr17">
+    <pcode><body><![CDATA[
+      local xe_save_sp:4 = r1(0);
+      *:8 (xe_save_sp - 0x80) = r17;
+      *:8 (xe_save_sp - 0x78) = r18;
+      *:8 (xe_save_sp - 0x70) = r19;
+      *:8 (xe_save_sp - 0x68) = r20;
+      *:8 (xe_save_sp - 0x60) = r21;
+      *:8 (xe_save_sp - 0x58) = r22;
+      *:8 (xe_save_sp - 0x50) = r23;
+      *:8 (xe_save_sp - 0x48) = r24;
+      *:8 (xe_save_sp - 0x40) = r25;
+      *:8 (xe_save_sp - 0x38) = r26;
+      *:8 (xe_save_sp - 0x30) = r27;
+      *:8 (xe_save_sp - 0x28) = r28;
+      *:8 (xe_save_sp - 0x20) = r29;
+      *:8 (xe_save_sp - 0x18) = r30;
+      *:8 (xe_save_sp - 0x10) = r31;
+      *:8 (xe_save_sp - 0x8) = r12;
+      LR = inst_dest + 4;
+    ]]></body></pcode>
+  </callfixup>
+  <callfixup name="XenonSaveGprLr18">
+    <pcode><body><![CDATA[
+      local xe_save_sp:4 = r1(0);
+      *:8 (xe_save_sp - 0x78) = r18;
+      *:8 (xe_save_sp - 0x70) = r19;
+      *:8 (xe_save_sp - 0x68) = r20;
+      *:8 (xe_save_sp - 0x60) = r21;
+      *:8 (xe_save_sp - 0x58) = r22;
+      *:8 (xe_save_sp - 0x50) = r23;
+      *:8 (xe_save_sp - 0x48) = r24;
+      *:8 (xe_save_sp - 0x40) = r25;
+      *:8 (xe_save_sp - 0x38) = r26;
+      *:8 (xe_save_sp - 0x30) = r27;
+      *:8 (xe_save_sp - 0x28) = r28;
+      *:8 (xe_save_sp - 0x20) = r29;
+      *:8 (xe_save_sp - 0x18) = r30;
+      *:8 (xe_save_sp - 0x10) = r31;
+      *:8 (xe_save_sp - 0x8) = r12;
+      LR = inst_dest + 4;
+    ]]></body></pcode>
+  </callfixup>
+  <callfixup name="XenonSaveGprLr19">
+    <pcode><body><![CDATA[
+      local xe_save_sp:4 = r1(0);
+      *:8 (xe_save_sp - 0x70) = r19;
+      *:8 (xe_save_sp - 0x68) = r20;
+      *:8 (xe_save_sp - 0x60) = r21;
+      *:8 (xe_save_sp - 0x58) = r22;
+      *:8 (xe_save_sp - 0x50) = r23;
+      *:8 (xe_save_sp - 0x48) = r24;
+      *:8 (xe_save_sp - 0x40) = r25;
+      *:8 (xe_save_sp - 0x38) = r26;
+      *:8 (xe_save_sp - 0x30) = r27;
+      *:8 (xe_save_sp - 0x28) = r28;
+      *:8 (xe_save_sp - 0x20) = r29;
+      *:8 (xe_save_sp - 0x18) = r30;
+      *:8 (xe_save_sp - 0x10) = r31;
+      *:8 (xe_save_sp - 0x8) = r12;
+      LR = inst_dest + 4;
+    ]]></body></pcode>
+  </callfixup>
+  <callfixup name="XenonSaveGprLr20">
+    <pcode><body><![CDATA[
+      local xe_save_sp:4 = r1(0);
+      *:8 (xe_save_sp - 0x68) = r20;
+      *:8 (xe_save_sp - 0x60) = r21;
+      *:8 (xe_save_sp - 0x58) = r22;
+      *:8 (xe_save_sp - 0x50) = r23;
+      *:8 (xe_save_sp - 0x48) = r24;
+      *:8 (xe_save_sp - 0x40) = r25;
+      *:8 (xe_save_sp - 0x38) = r26;
+      *:8 (xe_save_sp - 0x30) = r27;
+      *:8 (xe_save_sp - 0x28) = r28;
+      *:8 (xe_save_sp - 0x20) = r29;
+      *:8 (xe_save_sp - 0x18) = r30;
+      *:8 (xe_save_sp - 0x10) = r31;
+      *:8 (xe_save_sp - 0x8) = r12;
+      LR = inst_dest + 4;
+    ]]></body></pcode>
+  </callfixup>
+  <callfixup name="XenonSaveGprLr21">
+    <pcode><body><![CDATA[
+      local xe_save_sp:4 = r1(0);
+      *:8 (xe_save_sp - 0x60) = r21;
+      *:8 (xe_save_sp - 0x58) = r22;
+      *:8 (xe_save_sp - 0x50) = r23;
+      *:8 (xe_save_sp - 0x48) = r24;
+      *:8 (xe_save_sp - 0x40) = r25;
+      *:8 (xe_save_sp - 0x38) = r26;
+      *:8 (xe_save_sp - 0x30) = r27;
+      *:8 (xe_save_sp - 0x28) = r28;
+      *:8 (xe_save_sp - 0x20) = r29;
+      *:8 (xe_save_sp - 0x18) = r30;
+      *:8 (xe_save_sp - 0x10) = r31;
+      *:8 (xe_save_sp - 0x8) = r12;
+      LR = inst_dest + 4;
+    ]]></body></pcode>
+  </callfixup>
+  <callfixup name="XenonSaveGprLr22">
+    <pcode><body><![CDATA[
+      local xe_save_sp:4 = r1(0);
+      *:8 (xe_save_sp - 0x58) = r22;
+      *:8 (xe_save_sp - 0x50) = r23;
+      *:8 (xe_save_sp - 0x48) = r24;
+      *:8 (xe_save_sp - 0x40) = r25;
+      *:8 (xe_save_sp - 0x38) = r26;
+      *:8 (xe_save_sp - 0x30) = r27;
+      *:8 (xe_save_sp - 0x28) = r28;
+      *:8 (xe_save_sp - 0x20) = r29;
+      *:8 (xe_save_sp - 0x18) = r30;
+      *:8 (xe_save_sp - 0x10) = r31;
+      *:8 (xe_save_sp - 0x8) = r12;
+      LR = inst_dest + 4;
+    ]]></body></pcode>
+  </callfixup>
+  <callfixup name="XenonSaveGprLr23">
+    <pcode><body><![CDATA[
+      local xe_save_sp:4 = r1(0);
+      *:8 (xe_save_sp - 0x50) = r23;
+      *:8 (xe_save_sp - 0x48) = r24;
+      *:8 (xe_save_sp - 0x40) = r25;
+      *:8 (xe_save_sp - 0x38) = r26;
+      *:8 (xe_save_sp - 0x30) = r27;
+      *:8 (xe_save_sp - 0x28) = r28;
+      *:8 (xe_save_sp - 0x20) = r29;
+      *:8 (xe_save_sp - 0x18) = r30;
+      *:8 (xe_save_sp - 0x10) = r31;
+      *:8 (xe_save_sp - 0x8) = r12;
+      LR = inst_dest + 4;
+    ]]></body></pcode>
+  </callfixup>
+  <callfixup name="XenonSaveGprLr24">
+    <pcode><body><![CDATA[
+      local xe_save_sp:4 = r1(0);
+      *:8 (xe_save_sp - 0x48) = r24;
+      *:8 (xe_save_sp - 0x40) = r25;
+      *:8 (xe_save_sp - 0x38) = r26;
+      *:8 (xe_save_sp - 0x30) = r27;
+      *:8 (xe_save_sp - 0x28) = r28;
+      *:8 (xe_save_sp - 0x20) = r29;
+      *:8 (xe_save_sp - 0x18) = r30;
+      *:8 (xe_save_sp - 0x10) = r31;
+      *:8 (xe_save_sp - 0x8) = r12;
+      LR = inst_dest + 4;
+    ]]></body></pcode>
+  </callfixup>
+  <callfixup name="XenonSaveGprLr25">
+    <pcode><body><![CDATA[
+      local xe_save_sp:4 = r1(0);
+      *:8 (xe_save_sp - 0x40) = r25;
+      *:8 (xe_save_sp - 0x38) = r26;
+      *:8 (xe_save_sp - 0x30) = r27;
+      *:8 (xe_save_sp - 0x28) = r28;
+      *:8 (xe_save_sp - 0x20) = r29;
+      *:8 (xe_save_sp - 0x18) = r30;
+      *:8 (xe_save_sp - 0x10) = r31;
+      *:8 (xe_save_sp - 0x8) = r12;
+      LR = inst_dest + 4;
+    ]]></body></pcode>
+  </callfixup>
+  <callfixup name="XenonSaveGprLr26">
+    <pcode><body><![CDATA[
+      local xe_save_sp:4 = r1(0);
+      *:8 (xe_save_sp - 0x38) = r26;
+      *:8 (xe_save_sp - 0x30) = r27;
+      *:8 (xe_save_sp - 0x28) = r28;
+      *:8 (xe_save_sp - 0x20) = r29;
+      *:8 (xe_save_sp - 0x18) = r30;
+      *:8 (xe_save_sp - 0x10) = r31;
+      *:8 (xe_save_sp - 0x8) = r12;
+      LR = inst_dest + 4;
+    ]]></body></pcode>
+  </callfixup>
+  <callfixup name="XenonSaveGprLr27">
+    <pcode><body><![CDATA[
+      local xe_save_sp:4 = r1(0);
+      *:8 (xe_save_sp - 0x30) = r27;
+      *:8 (xe_save_sp - 0x28) = r28;
+      *:8 (xe_save_sp - 0x20) = r29;
+      *:8 (xe_save_sp - 0x18) = r30;
+      *:8 (xe_save_sp - 0x10) = r31;
+      *:8 (xe_save_sp - 0x8) = r12;
+      LR = inst_dest + 4;
+    ]]></body></pcode>
+  </callfixup>
+  <callfixup name="XenonSaveGprLr28">
+    <pcode><body><![CDATA[
+      local xe_save_sp:4 = r1(0);
+      *:8 (xe_save_sp - 0x28) = r28;
+      *:8 (xe_save_sp - 0x20) = r29;
+      *:8 (xe_save_sp - 0x18) = r30;
+      *:8 (xe_save_sp - 0x10) = r31;
+      *:8 (xe_save_sp - 0x8) = r12;
+      LR = inst_dest + 4;
+    ]]></body></pcode>
+  </callfixup>
+  <callfixup name="XenonSaveGprLr29">
+    <pcode><body><![CDATA[
+      local xe_save_sp:4 = r1(0);
+      *:8 (xe_save_sp - 0x20) = r29;
+      *:8 (xe_save_sp - 0x18) = r30;
+      *:8 (xe_save_sp - 0x10) = r31;
+      *:8 (xe_save_sp - 0x8) = r12;
+      LR = inst_dest + 4;
+    ]]></body></pcode>
+  </callfixup>
+  <callfixup name="XenonSaveGprLr30">
+    <pcode><body><![CDATA[
+      local xe_save_sp:4 = r1(0);
+      *:8 (xe_save_sp - 0x18) = r30;
+      *:8 (xe_save_sp - 0x10) = r31;
+      *:8 (xe_save_sp - 0x8) = r12;
+      LR = inst_dest + 4;
+    ]]></body></pcode>
+  </callfixup>
+  <callfixup name="XenonSaveGprLr31">
+    <pcode><body><![CDATA[
+      local xe_save_sp:4 = r1(0);
+      *:8 (xe_save_sp - 0x10) = r31;
+      *:8 (xe_save_sp - 0x8) = r12;
+      LR = inst_dest + 4;
+    ]]></body></pcode>
+  </callfixup>
+
 </compiler_spec>
