@@ -78,11 +78,13 @@ public final class XenonSaveGprLrAnalyzer extends AbstractAnalyzer {
                     }
                     cursor += 4;
                 }
+                // The final BLR can be undecoded even when the entry
+                // instruction is recognized code. The exact entire helper
+                // sequence is checked in memory; no listing/function-body
+                // ownership is required for its last instruction.
                 if (matches &&
                     memory.getInt(entry.add(cursor)) == SAVE_R12 &&
-                    memory.getInt(entry.add(cursor + 4)) == BLR &&
-                    program.getListing().getInstructionAt(
-                        entry.add(cursor + 4)) != null) {
+                    memory.getInt(entry.add(cursor + 4)) == BLR) {
                     return first;
                 }
             } catch (Exception unreadable) {
