@@ -9,17 +9,24 @@ import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.lang.InjectPayload;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.FunctionIterator;
+import ghidra.program.model.listing.Instruction;
+import ghidra.program.model.listing.InstructionIterator;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.Memory;
 import ghidra.util.task.TaskMonitor;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
- * Models the compiler's out-of-line PowerPC GPR/LR save prologue.
+ * Recognize out-of-line Xenon GPR/LR save helpers and attach call-fixups.
  *
- * A call to one of these helpers is not an ordinary C ABI function call:
- * r3-r10 are untouched, so treating r3 as a return value corrupts dataflow.
- * Only exact, full instruction sequences are eligible; no address or symbol
- * names are assumed. The call-fixup p-code is defined in Xenon's .cspec.
+ * These helpers have overlapping entry points: a save-r22 function can enter
+ * halfway through the save-r14 sequence, and its last instructions can be
+ * owned by another Ghidra function. Recognize the bytes IN MEMORY rather
+ * than demanding that every instruction belong to the function body.
+ *
+ * The injected P-code is in xenon_64_32.cspec. It leaves r3 (and all other
+ * unsaved registers) untouched, unlike an ordinary ABI function call.
  */
 public final class XenonSaveGprLrAnalyzer extends AbstractAnalyzer {
     private static final String LANGUAGE = "PowerPC:BE:64:XENON-32addr";
@@ -29,8 +36,9 @@ public final class XenonSaveGprLrAnalyzer extends AbstractAnalyzer {
 
     public XenonSaveGprLrAnalyzer() {
         super("Xenon GPR/LR Save Helpers",
-            "Identify compiler-generated GPR/LR save routines and use " +
-            "call-fixups so the decompiler retains live input registers.",
+            "Identify compiler-generated GPR/LR save entry points, including " +
+            "entry points within overlapping helper bodies, and attach " +
+            "register-preserving call-fixups.",
             AnalyzerType.FUNCTION_ANALYZER);
         setDefaultEnablement(true);
         setSupportsOneTimeAnalysis(true);
@@ -43,19 +51,18 @@ public final class XenonSaveGprLrAnalyzer extends AbstractAnalyzer {
     }
 
     /**
-     * A standard helper stores rFIRST..r31 into negative offsets from r1,
-     * followed by std r12,-8(r1); blr. Offset is always
-     * 8 * (register - 31) - 0x10, independently of the entry address.
+     * The compiler emits std rFIRST,-offset(r1) ... std r31,-16(r1),
+     * std r12,-8(r1), blr. Verify the ENTIRE suffix from a candidate entry.
+     * Do not require the suffix to be in the same Ghidra function body.
      *
-     * The retail HV 17559 provides all 18 overlapping entries (r14-r31)
-     * at raw offsets 0xA7D0..0xA814. Those offsets are evidence only; this
-     * matcher applies to equivalent code anywhere in any Xenon program.
+     * Retail HV 17559 contains the r14-r31 entries at raw offsets
+     * 0xA7D0..0xA814. Addresses are not used to recognize other images.
      */
-    private static int detectFirstSavedRegister(Program program, Function fn) {
-        if (fn.isExternal() || fn.isThunk()) {
+    private static int detectFirstSavedRegister(Program program, Address entry) {
+        if (entry == null || !entry.isMemoryAddress() ||
+            program.getListing().getInstructionAt(entry) == null) {
             return -1;
         }
-        Address entry = fn.getEntryPoint();
         Memory memory = program.getMemory();
         for (int first = 14; first <= 31; ++first) {
             try {
@@ -73,60 +80,118 @@ public final class XenonSaveGprLrAnalyzer extends AbstractAnalyzer {
                 }
                 if (matches &&
                     memory.getInt(entry.add(cursor)) == SAVE_R12 &&
-                    memory.getInt(entry.add(cursor + 4)) == BLR) {
-                    // Only use a recognized instruction stream, not bytes
-                    // coincidentally embedded in data or another function.
-                    Address end = entry.add(cursor + 4);
-                    if (program.getListing().getInstructionAt(entry) != null &&
-                        program.getListing().getInstructionAt(end) != null &&
-                        fn.getBody().contains(end)) {
-                        return first;
-                    }
+                    memory.getInt(entry.add(cursor + 4)) == BLR &&
+                    program.getListing().getInstructionAt(
+                        entry.add(cursor + 4)) != null) {
+                    return first;
                 }
-            } catch (Exception invalidMemoryOrAddress) {
-                // A truncated function cannot match a complete helper.
+            } catch (Exception unreadable) {
+                // Candidate does not have a complete executable suffix.
             }
         }
         return -1;
     }
 
+    private static final class Counts {
+        int recognized;
+        int applied;
+        int alreadyApplied;
+        int conflicts;
+        int missingFunctions;
+    }
+
+    private static void attach(Program program, Address entry,
+                               Set<Address> visited, Counts counts,
+                               MessageLog log) {
+        if (entry == null || !visited.add(entry)) {
+            return;
+        }
+        int first = detectFirstSavedRegister(program, entry);
+        if (first < 0) {
+            return;
+        }
+        counts.recognized++;
+        Function function = program.getFunctionManager().getFunctionAt(entry);
+        if (function == null) {
+            counts.missingFunctions++;
+            log.appendMsg("Xenon GPR/LR Save Helpers",
+                "Verified entry at " + entry + " is not a Ghidra " +
+                "function entry; cannot attach a function call-fixup.");
+            return;
+        }
+        String fixup = FIXUP_PREFIX + first;
+        String existing = function.getCallFixup();
+        if (fixup.equals(existing)) {
+            counts.alreadyApplied++;
+            return;
+        }
+        if (existing != null && !existing.isEmpty()) {
+            counts.conflicts++;
+            log.appendMsg("Xenon GPR/LR Save Helpers",
+                "Preserving existing call-fixup " + existing +
+                " at " + entry);
+            return;
+        }
+        if (program.getCompilerSpec().getPcodeInjectLibrary().getPayload(
+                InjectPayload.CALLFIXUP_TYPE, fixup) == null) {
+            counts.conflicts++;
+            log.appendMsg("Xenon GPR/LR Save Helpers",
+                "Missing compiler-spec fixup " + fixup +
+                " for " + entry);
+            return;
+        }
+        try {
+            function.setCallFixup(fixup);
+            counts.applied++;
+            log.appendMsg("Xenon GPR/LR Save Helpers",
+                "Installed " + fixup + " at " + entry);
+        } catch (Exception failure) {
+            counts.conflicts++;
+            log.appendMsg("Xenon GPR/LR Save Helpers",
+                "Failed to attach " + fixup + " at " + entry +
+                ": " + failure.getMessage());
+        }
+    }
+
     @Override
     public boolean added(Program program, AddressSetView set,
                          TaskMonitor monitor, MessageLog log) {
-        int applied = 0;
-        FunctionIterator functions = program.getFunctionManager().getFunctions(set, true);
+        Set<Address> visited = new HashSet<>();
+        Counts counts = new Counts();
+
+        // 1. Existing function entries, whether or not all their instructions
+        //    are claimed by their Ghidra function bodies.
+        FunctionIterator functions =
+            program.getFunctionManager().getFunctions(set, true);
         while (functions.hasNext()) {
-            if (monitor.isCancelled()) {
-                return false;
-            }
+            if (monitor.isCancelled()) return false;
             Function function = functions.next();
-            int first = detectFirstSavedRegister(program, function);
-            if (first < 0) {
-                continue;
+            if (!function.isExternal()) {
+                attach(program, function.getEntryPoint(), visited, counts, log);
             }
-            String requestedFixup = FIXUP_PREFIX + first;
-            String existing = function.getCallFixup();
-            if (requestedFixup.equals(existing)) {
-                continue;
-            }
-            // Never overwrite a manually installed or independently supplied
-            // call-fixup. Only auto-annotate an unclaimed helper.
-            if (existing != null && !existing.isEmpty()) {
-                continue;
-            }
-            if (program.getCompilerSpec().getPcodeInjectLibrary().getPayload(
-                    InjectPayload.CALLFIXUP_TYPE, requestedFixup) == null) {
-                log.appendMsg("Xenon GPR/LR Save Helpers",
-                    "Missing compiler-spec fixup " + requestedFixup);
-                return false;
-            }
-            function.setCallFixup(requestedFixup);
-            applied++;
         }
-        if (applied > 0) {
-            log.appendMsg("Xenon GPR/LR Save Helpers",
-                "Applied " + applied + " verified GPR/LR save call-fixups.");
+
+        // 2. Direct call targets within the analyzed range. This also finds
+        //    entries when analysis is rerun on callers, or when an entry lies
+        //    in the middle of a shared helper's larger function body.
+        InstructionIterator instructions =
+            program.getListing().getInstructions(set, true);
+        while (instructions.hasNext()) {
+            if (monitor.isCancelled()) return false;
+            Instruction instruction = instructions.next();
+            if (!instruction.getFlowType().isCall()) {
+                continue;
+            }
+            for (Address target : instruction.getFlows()) {
+                attach(program, target, visited, counts, log);
+            }
         }
+
+        log.appendMsg("Xenon GPR/LR Save Helpers",
+            "Recognized " + counts.recognized + " helper entries; applied " +
+            counts.applied + ", previously applied " + counts.alreadyApplied +
+            ", no function entry " + counts.missingFunctions +
+            ", conflicts " + counts.conflicts + ".");
         return true;
     }
 }
