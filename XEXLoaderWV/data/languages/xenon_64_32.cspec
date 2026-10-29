@@ -154,7 +154,7 @@
       *:8 (xe_save_sp - 0x18) = r30;
       *:8 (xe_save_sp - 0x10) = r31;
       *:8 (xe_save_sp - 0x8) = r12;
-      LR = zext(inst_next);
+      LR = inst_next;
     ]]></body></pcode>
   </callfixup>
   <callfixup name="XenonSaveGprLr15">
@@ -178,7 +178,7 @@
       *:8 (xe_save_sp - 0x18) = r30;
       *:8 (xe_save_sp - 0x10) = r31;
       *:8 (xe_save_sp - 0x8) = r12;
-      LR = zext(inst_next);
+      LR = inst_next;
     ]]></body></pcode>
   </callfixup>
   <callfixup name="XenonSaveGprLr16">
@@ -201,7 +201,7 @@
       *:8 (xe_save_sp - 0x18) = r30;
       *:8 (xe_save_sp - 0x10) = r31;
       *:8 (xe_save_sp - 0x8) = r12;
-      LR = zext(inst_next);
+      LR = inst_next;
     ]]></body></pcode>
   </callfixup>
   <callfixup name="XenonSaveGprLr17">
@@ -223,7 +223,7 @@
       *:8 (xe_save_sp - 0x18) = r30;
       *:8 (xe_save_sp - 0x10) = r31;
       *:8 (xe_save_sp - 0x8) = r12;
-      LR = zext(inst_next);
+      LR = inst_next;
     ]]></body></pcode>
   </callfixup>
   <callfixup name="XenonSaveGprLr18">
@@ -244,7 +244,7 @@
       *:8 (xe_save_sp - 0x18) = r30;
       *:8 (xe_save_sp - 0x10) = r31;
       *:8 (xe_save_sp - 0x8) = r12;
-      LR = zext(inst_next);
+      LR = inst_next;
     ]]></body></pcode>
   </callfixup>
   <callfixup name="XenonSaveGprLr19">
@@ -264,7 +264,7 @@
       *:8 (xe_save_sp - 0x18) = r30;
       *:8 (xe_save_sp - 0x10) = r31;
       *:8 (xe_save_sp - 0x8) = r12;
-      LR = zext(inst_next);
+      LR = inst_next;
     ]]></body></pcode>
   </callfixup>
   <callfixup name="XenonSaveGprLr20">
@@ -283,7 +283,7 @@
       *:8 (xe_save_sp - 0x18) = r30;
       *:8 (xe_save_sp - 0x10) = r31;
       *:8 (xe_save_sp - 0x8) = r12;
-      LR = zext(inst_next);
+      LR = inst_next;
     ]]></body></pcode>
   </callfixup>
   <callfixup name="XenonSaveGprLr21">
@@ -301,7 +301,7 @@
       *:8 (xe_save_sp - 0x18) = r30;
       *:8 (xe_save_sp - 0x10) = r31;
       *:8 (xe_save_sp - 0x8) = r12;
-      LR = zext(inst_next);
+      LR = inst_next;
     ]]></body></pcode>
   </callfixup>
   <callfixup name="XenonSaveGprLr22">
@@ -318,7 +318,7 @@
       *:8 (xe_save_sp - 0x18) = r30;
       *:8 (xe_save_sp - 0x10) = r31;
       *:8 (xe_save_sp - 0x8) = r12;
-      LR = zext(inst_next);
+      LR = inst_next;
     ]]></body></pcode>
   </callfixup>
   <callfixup name="XenonSaveGprLr23">
@@ -334,7 +334,7 @@
       *:8 (xe_save_sp - 0x18) = r30;
       *:8 (xe_save_sp - 0x10) = r31;
       *:8 (xe_save_sp - 0x8) = r12;
-      LR = zext(inst_next);
+      LR = inst_next;
     ]]></body></pcode>
   </callfixup>
   <callfixup name="XenonSaveGprLr24">
@@ -349,7 +349,7 @@
       *:8 (xe_save_sp - 0x18) = r30;
       *:8 (xe_save_sp - 0x10) = r31;
       *:8 (xe_save_sp - 0x8) = r12;
-      LR = zext(inst_next);
+      LR = inst_next;
     ]]></body></pcode>
   </callfixup>
   <callfixup name="XenonSaveGprLr25">
@@ -363,7 +363,7 @@
       *:8 (xe_save_sp - 0x18) = r30;
       *:8 (xe_save_sp - 0x10) = r31;
       *:8 (xe_save_sp - 0x8) = r12;
-      LR = zext(inst_next);
+      LR = inst_next;
     ]]></body></pcode>
   </callfixup>
   <callfixup name="XenonSaveGprLr26">
@@ -376,7 +376,7 @@
       *:8 (xe_save_sp - 0x18) = r30;
       *:8 (xe_save_sp - 0x10) = r31;
       *:8 (xe_save_sp - 0x8) = r12;
-      LR = zext(inst_next);
+      LR = inst_next;
     ]]></body></pcode>
   </callfixup>
   <callfixup name="XenonSaveGprLr27">
@@ -388,7 +388,7 @@
       *:8 (xe_save_sp - 0x18) = r30;
       *:8 (xe_save_sp - 0x10) = r31;
       *:8 (xe_save_sp - 0x8) = r12;
-      LR = zext(inst_next);
+      LR = inst_next;
     ]]></body></pcode>
   </callfixup>
   <callfixup name="XenonSaveGprLr28">
@@ -399,7 +399,7 @@
       *:8 (xe_save_sp - 0x18) = r30;
       *:8 (xe_save_sp - 0x10) = r31;
       *:8 (xe_save_sp - 0x8) = r12;
-      LR = zext(inst_next);
+      LR = inst_next;
     ]]></body></pcode>
   </callfixup>
   <callfixup name="XenonSaveGprLr29">
@@ -409,7 +409,7 @@
       *:8 (xe_save_sp - 0x18) = r30;
       *:8 (xe_save_sp - 0x10) = r31;
       *:8 (xe_save_sp - 0x8) = r12;
-      LR = zext(inst_next);
+      LR = inst_next;
     ]]></body></pcode>
   </callfixup>
   <callfixup name="XenonSaveGprLr30">
@@ -418,7 +418,7 @@
       *:8 (xe_save_sp - 0x18) = r30;
       *:8 (xe_save_sp - 0x10) = r31;
       *:8 (xe_save_sp - 0x8) = r12;
-      LR = zext(inst_next);
+      LR = inst_next;
     ]]></body></pcode>
   </callfixup>
   <callfixup name="XenonSaveGprLr31">
@@ -426,7 +426,7 @@
       local xe_save_sp:4 = r1:4;
       *:8 (xe_save_sp - 0x10) = r31;
       *:8 (xe_save_sp - 0x8) = r12;
-      LR = zext(inst_next);
+      LR = inst_next;
     ]]></body></pcode>
   </callfixup>
 
