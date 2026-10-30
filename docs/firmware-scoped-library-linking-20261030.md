@@ -64,3 +64,21 @@ Regressions and remaining work:
 1. Rebuild `XEXLoaderWV/testing` with Ghidra 12.1.3 and import the same 1888 `dash.xex`. If it fails, use the specific `XEX import table: ...` message (including byte offsets) and the new log to determine whether that XEX family has additional header variation.
 2. After successful import, verify `xam.xex` resolves only inside the target 1888 folder and `xboxkrnl.exe` may resolve to `/System Firmware/xboxkrnl.exe`.
 3. Preserve existing imported programs and annotations. This loader fix does not retroactively rewrite earlier external links, and should not be used as grounds to reimport completed analysis databases.
+
+
+## Targeted 1888 dashboard nonlocal-jump correction (2026-10-30)
+
+A Ghidra "Bad Instruction" bookmark at `0x9242D534` (00 00 00 00) was observed after `Function_9242D500` calls `Function_92452420` at `0x9242D530`. This is **intentional post-call padding**, not evidence of corrupt XEX import, the Xenon SLEIGH decoder or source bytes.
+
+`0x92452420` is identified with high confidence as C runtime **`longjmp`**: it checks the integer value parameter `r4` and substitutes 1 when zero, restores nonvolatile FPR14-FPR31 and GPR13-GPR31 plus saved stack pointer/CR/LR before a context-transfer `blr`, and alternatively calls `xboxkrnl.exe::RtlUnwind`. Both branches transfer control to the saved continuation, not the immediate caller. XenonRecomp's published documentation independently identifies calls to `RtlUnwind` as a longjmp characteristic, and Microsoft/NT PowerPC longjmp references show the zero-to-one and RtlUnwind behavior. The caller's zero word at `0x9242D534` is not an executable PowerPC instruction.
+
+**Useful Ghidra metadata (1888 `dash.xex`, not `xboxkrnl.exe`):**
+
+- `0x92452420` -> `longjmp` (C runtime, generalized symbol); mark **No Return**.
+- Ghidra function-editor prototype: `void longjmp(undefined4 * jumpBuffer, int returnValue)` (preserves the unresolved buffer pointer type; the second argument is demonstrably 32-bit; no semicolon in function editor).
+- `0x9242D530`: calls `longjmp(jumpBuffer, 1)`. `0x9242D534–0x9242D537` contains 4 zero bytes of padding, not instructions.
+- Do not blindly impose a jump-buffer struct: multiple save/unwind modes are visible and the complete buffer layout isn't established. No changes to the linked `RtlUnwind` external or to code bytes are justified.
+
+**Script:** `ghidra_scripts/RefineXenonLongjmp1888_20261030_v1.java` validates eight exact PPC words, renames the callee unless a distinct USER_DEFINED name exists, marks No Return, refines only unresolved signature parts (void return, integer returnValue, argument names) when there are exactly two parameters with standard variable storage, and adds non-overwriting comments. It refuses to run on different binaries. A Ghidra analysis refresh of the caller may be needed to remove an old Bad Instruction bookmark.
+
+**Verification:** Disassembly evidence and Ghidra 12.1.3 Java API signatures inspected; script committed on `testing`. The script has **not yet been executed in the user's Ghidra database**; the after-call control-flow correction is pending user test. This is a targeted metadata correction independent of the successfully validated XEX import/link signature analyzer.
