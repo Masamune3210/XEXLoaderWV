@@ -42,6 +42,9 @@ public class RefineXenonLongjmp1888_20261030_v1 extends GhidraScript {
         requireWord(0x924524F8L, 0x7CA803A6); // mtlr r5
         requireWord(0x92452508L, 0x4E800020); // blr, saved continuation LR
         requireWord(0x92452520L, 0x48001EFD); // bl xboxkrnl::RtlUnwind
+        requireWord(0x9242D514L, 0x817F0140); // lwz r11,0x140(r31), optional callback
+        requireWord(0x9242D524L, 0x4E800421); // bctrl, optional callback
+        requireWord(0x9242D528L, 0x38800001); // li r4,1
         requireWord(0x9242D530L, 0x48024EF1); // bl 92452420
         requireWord(0x9242D534L, 0x00000000); // padding, not PPC
 
@@ -65,6 +68,24 @@ public class RefineXenonLongjmp1888_20261030_v1 extends GhidraScript {
             }
             if (!f.hasNoReturn()) {
                 f.setNoReturn(true);
+            }
+            // This wrapper only invokes an optional callback at +0x140 and
+            // then calls longjmp(jumpBuffer, 1). It also cannot return.
+            if (caller.getSymbol().getSource() != SourceType.USER_DEFINED ||
+                    "LongjmpAfterOptionalCallback".equals(caller.getName())) {
+                if (!"LongjmpAfterOptionalCallback".equals(caller.getName())) {
+                    caller.setName("LongjmpAfterOptionalCallback",
+                        SourceType.USER_DEFINED);
+                }
+            }
+            if (!caller.hasNoReturn()) {
+                caller.setNoReturn(true);
+            }
+            if (caller.getComment() == null || caller.getComment().isBlank()) {
+                caller.setComment("Invokes an optional function pointer at " +
+                    "jumpBuffer+0x140 (if present), then performs a " +
+                    "non-returning longjmp(jumpBuffer, 1). The following " +
+                    "zero bytes are intentional alignment padding.");
             }
             // Only refine unresolved ABI details. A pre-existing, manually
             // defined type must not be replaced.
@@ -109,6 +130,7 @@ public class RefineXenonLongjmp1888_20261030_v1 extends GhidraScript {
         }
         println("1888 dash longjmp refined at 92452420: " + f.getName() +
             ", No Return=" + f.hasNoReturn() +
+            "; wrapper 9242D500 No Return=" + caller.hasNoReturn() +
             "; call at 9242D530 no longer has a valid fallthrough.");
         println("If an old Bad Instruction bookmark remains at 9242D534, " +
             "refresh analysis of the caller; existing bookmarks may persist.");
