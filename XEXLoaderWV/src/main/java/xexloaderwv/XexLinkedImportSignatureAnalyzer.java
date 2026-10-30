@@ -40,8 +40,10 @@ import ghidra.util.task.TaskMonitor;
  * Cross-program XEX signature sync after Ghidra has associated imported modules.
  *
  * Ghidra external-program linking provides navigation, not automatic function
- * signature import. This analyzer only copies complete USER_DEFINED signatures
+ * signature import. This analyzer copies complete USER_DEFINED signatures
  * from a uniquely identified linked function into an untouched default external.
+ * It independently propagates a linked provider's positive No Return flag, even
+ * when its signature is incomplete or the importing function is already typed.
  * Missing dependencies are copied from the linked provider only if no conflicting
  * type exists, and each signature + datatype installation is transactional.
  * Also synchronizes a missing calling convention on an already typed external
@@ -55,9 +57,9 @@ import ghidra.util.task.TaskMonitor;
 public class XexLinkedImportSignatureAnalyzer extends AbstractAnalyzer {
     public XexLinkedImportSignatureAnalyzer() {
         super("XEX: Sync linked import signatures",
-            "Propagate complete user-defined signatures from uniquely resolved linked " +
-            "XEX dependencies and reconcile known calling conventions on matching " +
-            "import prototypes; do not overwrite edited signatures or infer registers.",
+            "Propagate complete user-defined signatures and positive No Return flags " +
+            "from uniquely resolved linked XEX dependencies, and reconcile known " +
+            "calling conventions without overwriting edited signatures or inferring registers.",
             AnalyzerType.BYTE_ANALYZER);
         setDefaultEnablement(true);
         setSupportsOneTimeAnalysis();
@@ -250,6 +252,7 @@ public class XexLinkedImportSignatureAnalyzer extends AbstractAnalyzer {
         ExternalManager externalManager = importing.getExternalManager();
         int applied = 0, skipped = 0, missing = 0, libraries = 0;
         int typesInstalled = 0, failed = 0, conventionsFixed = 0;
+        int noReturnApplied = 0, noReturnFailed = 0;
         for (String library : externalManager.getExternalLibraryNames()) {
             monitor.checkCancelled();
             String path = externalManager.getExternalLibraryPath(library);
@@ -277,9 +280,48 @@ public class XexLinkedImportSignatureAnalyzer extends AbstractAnalyzer {
                     ExternalLocation location = locations.next();
                     if (!location.isFunction()) continue;
                     Function imported = location.getFunction();
+                    if (imported == null) {
+                        skipped++;
+                        continue;
+                    }
+                    Function source = matchingFunction(provider, location);
+
+                    // External-program linking establishes navigation to the
+                    // provider but does not synchronize semantic function flags.
+                    // No Return is independent of signature completeness and
+                    // must reach the importer even when the provider has
+                    // unresolved parameters or the consumer is already typed.
+                    // Only propagate a positive flag from an exact, unique
+                    // linked provider. Never infer No Return from a function
+                    // name or clear a flag already present in the consumer.
+                    if (source != null && source.hasNoReturn() &&
+                            !imported.hasNoReturn()) {
+                        int transaction = importing.startTransaction(
+                            "XEX linked No Return: " + library +
+                            "::" + location.getLabel());
+                        boolean committed = false;
+                        try {
+                            imported.setNoReturn(true);
+                            if (!imported.hasNoReturn()) {
+                                throw new IllegalStateException(
+                                    "Imported external did not retain No Return");
+                            }
+                            committed = true;
+                            noReturnApplied++;
+                        }
+                        catch (Exception failure) {
+                            noReturnFailed++;
+                            log.appendMsg("XEX No Return sync refused " + library +
+                                "::" + location.getLabel() + ": " + failure.getMessage());
+                        }
+                        finally {
+                            importing.endTransaction(transaction, committed);
+                        }
+                    }
+
                     if (!untouchedExternal(imported)) {
                         if (needsCallingConvention(imported)) {
-                            Function conventionSource = matchingFunction(provider, location);
+                            Function conventionSource = source;
                             if (equivalentApartFromConvention(imported, conventionSource) &&
                                 importing.getCompilerSpec().getCallingConvention(
                                     conventionSource.getCallingConventionName()) != null) {
@@ -310,7 +352,6 @@ public class XexLinkedImportSignatureAnalyzer extends AbstractAnalyzer {
                         skipped++;
                         continue;
                     }
-                    Function source = matchingFunction(provider, location);
                     if (source == null) {
                         missing++;
                         continue;
@@ -377,9 +418,12 @@ public class XexLinkedImportSignatureAnalyzer extends AbstractAnalyzer {
         log.appendMsg("XEX linked-signature sync: linkedLibraries=" + libraries +
             " applied=" + applied + " skipped=" + skipped +
             " unmatched=" + missing + " typesInstalled=" + typesInstalled +
-            " conventionsFixed=" + conventionsFixed + " failed=" + failed +
-            " (complete USER_DEFINED signatures and equivalent ABI conventions;"
-            + " no native bytes changed)");
+            " conventionsFixed=" + conventionsFixed +
+            " noReturnApplied=" + noReturnApplied +
+            " noReturnFailed=" + noReturnFailed +
+            " failed=" + failed +
+            " (complete USER_DEFINED signatures, equivalent ABI conventions,"
+            + " and linked-provider No Return flags; no native bytes changed)");
         return true;
     }
 }
