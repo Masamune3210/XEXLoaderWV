@@ -647,6 +647,136 @@ public class XEXHeader {
 		Msg.info(this, "XEX Loader: Loaded " + (data.length / 8) + " additional function symbols and defined " + created + " functions");
 	}
 	
+
+	/**
+	 * Register native XEX2 security export-table entries. XEX import records,
+	 * the PE export directory and the executable entry point are different
+	 * sources and do not describe the native export table.
+	 *
+	 * xex2_export_table (big-endian):
+	 *   +0x20 uint32 imageBaseHigh
+	 *   +0x24 uint32 exportCount
+	 *   +0x28 uint32 baseOrdinal
+	 *   +0x2C uint32 offsets[exportCount]
+	 */
+	public void ProcessNativeExports(Program program, TaskMonitor monitor,
+		MessageLog log) throws Exception
+	{
+		if (loaderInfo.exportTable == 0) {
+			log.appendMsg("XEX native exports: no security export-table pointer");
+			return;
+		}
+		long pointer = Integer.toUnsignedLong(loaderInfo.exportTable);
+		Address table = MakeAddress(pointer);
+		if (table == null) {
+			log.appendMsg("XEX native exports: table not mapped: 0x" +
+				Long.toHexString(pointer));
+			return;
+		}
+		ghidra.program.model.mem.Memory memory = program.getMemory();
+		ghidra.program.model.listing.Listing listing = program.getListing();
+		long baseHigh, count, baseOrdinal;
+		try {
+			baseHigh = Integer.toUnsignedLong(memory.getInt(table.add(0x20)));
+			count = Integer.toUnsignedLong(memory.getInt(table.add(0x24)));
+			baseOrdinal = Integer.toUnsignedLong(memory.getInt(table.add(0x28)));
+			long last = pointer + 0x2c + count * 4 - 1;
+			if (baseHigh < 0x1000 || baseHigh > 0xffff ||
+				count == 0 || count > 0x10000 ||
+				baseOrdinal + count > 0x10000 ||
+				last > 0xffffffffL || MakeAddress(last) == null) {
+				log.appendMsg("XEX native exports: invalid table " + table +
+					" baseHigh=0x" + Long.toHexString(baseHigh) +
+					" baseOrdinal=" + baseOrdinal + " count=" + count);
+				return;
+			}
+		} catch (Exception invalidTable) {
+			log.appendMsg("XEX native exports: cannot read " + table +
+				": " + invalidTable.getMessage());
+			return;
+		}
+		String imageName = program.getName().toLowerCase(java.util.Locale.ROOT);
+		boolean isXam = imageName.equals("xam.xex") ||
+			imageName.startsWith("xam.") || imageName.startsWith("xam_");
+		long imageBase = baseHigh << 16;
+		int exported = 0, functions = 0, created = 0, renamed = 0;
+		int globals = 0, unresolved = 0, conflicts = 0;
+		for (long n = 0; n < count; n++) {
+			monitor.checkCancelled();
+			long slot = 0x2c + 4 * n;
+			long offset;
+			try {
+				offset = Integer.toUnsignedLong(memory.getInt(table.add(slot)));
+			} catch (Exception invalidEntry) {
+				unresolved++;
+				continue;
+			}
+			if (offset == 0) continue;
+			long numericAddress = imageBase + offset;
+			if (numericAddress > 0xffffffffL) {
+				unresolved++;
+				continue;
+			}
+			Address address = MakeAddress(numericAddress);
+			if (address == null || memory.getBlock(address) == null) {
+				unresolved++;
+				continue;
+			}
+			int ordinal = (int)(baseOrdinal + n);
+			String hint = isXam ? ImportRenamer.Rename("xam", ordinal) : "";
+			if (hint.startsWith("xam_ord_")) hint = "";
+			String desired = !hint.isEmpty() ? hint :
+				String.format("XexExport_%04X", ordinal);
+			ghidra.program.model.mem.MemoryBlock block = memory.getBlock(address);
+			boolean isCode = block.isExecute() && (numericAddress & 3) == 0;
+			ghidra.program.model.listing.Function function = listing.getFunctionAt(address);
+			if (function == null && isCode &&
+				listing.getFunctionContaining(address) == null &&
+				listing.getDefinedDataContaining(address) == null) {
+				if (EnsureFunction(address, program, monitor)) created++;
+				function = listing.getFunctionAt(address);
+			}
+			// Ghidra's exported-entry-point set is separate from the
+			// imports and the ordinary function manager.
+			program.getSymbolTable().addExternalEntryPoint(address);
+			exported++;
+			if (function != null) {
+				functions++;
+				String existing = function.getName();
+				if (!existing.equals(desired) &&
+					(function.getSymbol().getSource() == SourceType.DEFAULT ||
+					 existing.matches("(?i)(FUN|Function|XexExport)_[0-9a-f]+"))) {
+					try {
+						function.setName(desired, SourceType.ANALYSIS);
+						renamed++;
+					} catch (Exception conflict) {
+						conflicts++;
+					}
+				}
+			} else {
+				if (!isCode) globals++;
+				ghidra.program.model.symbol.Symbol symbol =
+					program.getSymbolTable().getPrimarySymbol(address);
+				if (symbol == null || symbol.getSource() == SourceType.DEFAULT) {
+					try {
+						program.getSymbolTable().createLabel(address,
+							desired, SourceType.ANALYSIS);
+						renamed++;
+					} catch (Exception conflict) {
+						conflicts++;
+					}
+				}
+			}
+		}
+		log.appendMsg("XEX native exports: table=" + table +
+			" baseOrdinal=" + baseOrdinal + " slots=" + count +
+			" exported=" + exported + " functions=" + functions +
+			" created=" + created + " names=" + renamed +
+			" nonCode=" + globals + " unmapped=" + unresolved +
+			" conflicts=" + conflicts +
+			(isXam ? " (XAM names are ordinal hints)" : ""));
+	}
+
 	public void ProcessPEImage(Program program, TaskMonitor monitor, MessageLog log, boolean ProcessPData) throws Exception
 	{
 		Msg.info(this, "XEX Loader: Processing PE Image");
@@ -686,6 +816,7 @@ public class XEXHeader {
 		ProcessImportLibraries(program, monitor);
 		if(pdata != null && ProcessPData)
 			ProcessPData(pdata, program, monitor);
+		ProcessNativeExports(program, monitor, log);
 		Address addr = MakeAddress(entryPointAddress & 0xFFFFFFFFL);
 		if(addr != null)
 		{
