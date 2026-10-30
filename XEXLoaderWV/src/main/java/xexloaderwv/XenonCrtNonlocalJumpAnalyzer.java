@@ -112,29 +112,37 @@ public final class XenonCrtNonlocalJumpAnalyzer extends AbstractAnalyzer {
             // Keep the current jump-buffer datatype, parameter storage and
             // existing manually edited signature. Return is never delivered
             // to the immediate caller: control resumes at saved LR instead.
-            if (function.getSignatureSource() != SourceType.USER_DEFINED &&
-                    !function.hasCustomVariableStorage()) {
-                if (function.getReturnType().getName().startsWith("undefined")) {
-                    function.setReturnType(VoidDataType.dataType, SourceType.ANALYSIS);
+            // Failure to adjust an optional prototype must not undo a verified
+            // control-flow correction.
+            try {
+                if (function.getSignatureSource() != SourceType.USER_DEFINED &&
+                        !function.hasCustomVariableStorage()) {
+                    if (function.getReturnType().getName().startsWith("undefined")) {
+                        function.setReturnType(VoidDataType.dataType, SourceType.ANALYSIS);
+                    }
+                    if (function.getParameterCount() == 2) {
+                        Parameter buffer = function.getParameter(0);
+                        Parameter value = function.getParameter(1);
+                        if (buffer.getName() != null &&
+                                buffer.getName().startsWith("param_")) {
+                            buffer.setName("jumpBuffer", SourceType.ANALYSIS);
+                        }
+                        // r4 is examined as a signed 32-bit value. Do not
+                        // arbitrarily shrink wider or custom-storage parameters.
+                        if (value.getDataType().getName().startsWith("undefined") &&
+                                value.getDataType().getLength() == 4) {
+                            value.setDataType(IntegerDataType.dataType, SourceType.ANALYSIS);
+                        }
+                        if (value.getName() != null &&
+                                value.getName().startsWith("param_")) {
+                            value.setName("returnValue", SourceType.ANALYSIS);
+                        }
+                    }
                 }
-                if (function.getParameterCount() == 2) {
-                    Parameter buffer = function.getParameter(0);
-                    Parameter value = function.getParameter(1);
-                    if (buffer.getName() != null &&
-                            buffer.getName().startsWith("param_")) {
-                        buffer.setName("jumpBuffer", SourceType.ANALYSIS);
-                    }
-                    // r4 is examined as a signed 32-bit value. Do not
-                    // arbitrarily shrink wider or custom-storage parameters.
-                    if (value.getDataType().getName().startsWith("undefined") &&
-                            value.getDataType().getLength() == 4) {
-                        value.setDataType(IntegerDataType.dataType, SourceType.ANALYSIS);
-                    }
-                    if (value.getName() != null &&
-                            value.getName().startsWith("param_")) {
-                        value.setName("returnValue", SourceType.ANALYSIS);
-                    }
-                }
+            } catch (Exception prototypeFailure) {
+                log.appendMsg("Xenon CRT nonlocal jumps",
+                    "Prototype unchanged at " + function.getEntryPoint() +
+                    ": " + prototypeFailure.getMessage());
             }
             if (function.getComment() == null || function.getComment().isBlank()) {
                 function.setComment(
