@@ -3,6 +3,8 @@ package xexloaderwv;
 import java.util.HashSet;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -181,6 +183,47 @@ public class XexLinkedImportSignatureAnalyzer extends AbstractAnalyzer {
      * isolated in a Program transaction so automatically introduced nested
      * dependencies are rolled back if equivalence cannot be established.
      */
+    private static boolean namedProviderType(DataType type) {
+        return type instanceof Composite || type instanceof TypeDef ||
+            type instanceof ghidra.program.model.data.Enum ||
+            type instanceof FunctionDefinition;
+    }
+
+    /**
+     * Preorder the provider's named datatype graph by dependencies. Cycles
+     * (including pointer-to-own-struct and mutually recursive definitions)
+     * are visited only once; Ghidra's addDataType resolver handles the
+     * deferred portions of such cycles while committing each declaration.
+     */
+    private static void addDependencyFirst(DataType type, Set<DataType> visited,
+            List<DataType> ordered) {
+        if (type == null || !visited.add(type)) return;
+        if (type instanceof Pointer) {
+            addDependencyFirst(((Pointer) type).getDataType(), visited, ordered);
+        }
+        if (type instanceof Array) {
+            addDependencyFirst(((Array) type).getDataType(), visited, ordered);
+        }
+        if (type instanceof TypeDef) {
+            addDependencyFirst(((TypeDef) type).getBaseDataType(), visited, ordered);
+        }
+        if (type instanceof Composite) {
+            for (DataTypeComponent member : ((Composite) type).getDefinedComponents()) {
+                addDependencyFirst(member.getDataType(), visited, ordered);
+            }
+        }
+        if (type instanceof FunctionDefinition) {
+            FunctionDefinition def = (FunctionDefinition) type;
+            addDependencyFirst(def.getReturnType(), visited, ordered);
+            for (ParameterDefinition argument : def.getArguments()) {
+                addDependencyFirst(argument.getDataType(), visited, ordered);
+            }
+        }
+        if (namedProviderType(type)) {
+            ordered.add(type);
+        }
+    }
+
     private static final class TypeCopyResults {
         int copied;
         int equivalent;
@@ -195,17 +238,18 @@ public class XexLinkedImportSignatureAnalyzer extends AbstractAnalyzer {
         List<DataType> candidates = new ArrayList<>();
         provider.getDataTypeManager().getAllDataTypes(candidates);
         candidates.sort(Comparator.comparing(DataType::getPathName));
+        // Dependencies precede users, including across category paths. The
+        // built-in resolver still handles cyclic/recursive type graphs.
+        List<DataType> dependencyFirst = new ArrayList<>();
+        Set<DataType> visited = Collections.newSetFromMap(new IdentityHashMap<>());
+        for (DataType candidate : candidates) {
+            addDependencyFirst(candidate, visited, dependencyFirst);
+        }
         TypeCopyResults results = new TypeCopyResults();
         int reportedProblems = 0;
 
-        for (DataType source : candidates) {
+        for (DataType source : dependencyFirst) {
             monitor.checkCancelled();
-            if (!(source instanceof Composite || source instanceof TypeDef ||
-                    source instanceof ghidra.program.model.data.Enum ||
-                    source instanceof FunctionDefinition)) {
-                continue;
-            }
-
             DataType existing = destination.getDataType(
                 source.getCategoryPath(), source.getName());
             if (existing != null) {
