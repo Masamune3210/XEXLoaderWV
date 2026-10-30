@@ -351,13 +351,14 @@ public class XEXLoaderWVLoader extends AbstractLibrarySupportLoader {
 	}
 
 	/**
-	 * Never search beyond the provided destination folder, including when an
-	 * import names a library with a relative or device-qualified path. Only
-	 * actual Ghidra Program files can satisfy a dependency.
+	 * Import-local program linking with one deliberately narrow exception:
+	 * if the current firmware-version folder has no xboxkrnl.exe, use the
+	 * shared kernel stored directly in its ancestor "System Firmware" folder.
+	 * All other XEX libraries (notably xam.xex) remain version-local.
 	 *
-	 * Exact names take precedence over the loader's name comparator. When
-	 * multiple non-exact matches exist in one folder, leave the dependency
-	 * unresolved instead of selecting the first Program arbitrarily.
+	 * Never search sibling versions, the project root, or subfolders. An
+	 * ambiguous local alias remains unresolved; it must never trigger a
+	 * fallback to a potentially unrelated program.
 	 */
 	@Override
 	protected DomainFile findLibraryInProject(String library, DomainFolder folder,
@@ -371,9 +372,8 @@ public class XEXLoaderWVLoader extends AbstractLibrarySupportLoader {
 		if (filename.isEmpty()) {
 			return null;
 		}
-		// Ghidra's comparator may treat multiple filename variations as
-		// equivalent. Check every exact match before considering those
-		// variations; DomainFolder.getFiles() has no contractual sort order.
+		// Prefer any exact local filename over aliases, irrespective of the
+		// enumeration order returned by DomainFolder.getFiles().
 		DomainFile[] files = folder.getFiles();
 		for (DomainFile candidate : files) {
 			settings.monitor().checkCancelled();
@@ -398,7 +398,35 @@ public class XEXLoaderWVLoader extends AbstractLibrarySupportLoader {
 			}
 			compatible = candidate;
 		}
-		return compatible;
+		if (compatible != null) {
+			return compatible;
+		}
+
+		// The sole cross-folder exception is the global kernel, shared by
+		// firmware versions beneath /System Firmware. Only the exact root
+		// Program name is accepted, never an arbitrary matching alias.
+		if (!"xboxkrnl.exe".equalsIgnoreCase(filename)) {
+			return null;
+		}
+		for (DomainFolder parent = folder.getParent(); parent != null;
+				parent = parent.getParent()) {
+			settings.monitor().checkCancelled();
+			if (!"System Firmware".equalsIgnoreCase(parent.getName())) {
+				continue;
+			}
+			DomainFile kernel = parent.getFile("xboxkrnl.exe");
+			if (kernel != null) {
+				Class<?> objectClass = kernel.getDomainObjectClass();
+				if (objectClass != null && Program.class.isAssignableFrom(objectClass)) {
+					settings.log().appendMsg("XEX library linking: shared kernel [" +
+						kernel.getPathname() + "] for [" + folder.getPathname() + "]");
+					return kernel;
+				}
+			}
+			// Do not keep climbing and potentially bind another project root.
+			break;
+		}
+		return null;
 	}
 
 	@Override
