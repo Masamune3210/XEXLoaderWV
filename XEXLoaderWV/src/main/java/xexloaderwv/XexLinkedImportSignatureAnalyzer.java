@@ -409,181 +409,181 @@ public class XexLinkedImportSignatureAnalyzer extends AbstractAnalyzer {
                 : "XEX signature sync: phase 2/2 propagating function metadata");
             for (String library : externalManager.getExternalLibraryNames()) {
                 monitor.checkCancelled();
-            String path = externalManager.getExternalLibraryPath(library);
-            if (path == null || path.isBlank()) continue;
-            DomainFile providerFile = projectData.getFile(path);
-            if (providerFile == null ||
-                providerFile.equals(importing.getDomainFile())) continue;
-            Program provider = null;
-            try {
-                Object opened = providerFile.getReadOnlyDomainObject(this, -1, monitor);
-                if (!(opened instanceof Program)) {
-                    if (opened != null) ((ghidra.framework.model.DomainObject) opened).release(this);
-                    continue;
-                }
-                provider = (Program) opened;
-                if (!compatible(importing, provider)) {
-                    log.appendMsg("XEX signature sync: incompatible linked library " + library);
-                    continue;
-                }
-                if (phase == 1) {
-                    libraries++;
-                    // Even opaque or custom-storage function prototypes cannot
-                    // prevent their provider's independently defined types
-                    // from being available to other linked libraries.
-                    TypeCopyResults copied = copyProviderDatatypes(
-                        importing, provider, library, log, monitor);
-                    typesCloned += copied.copied;
-                    typesInstalled += copied.copied;
-                    typesEquivalent += copied.equivalent;
-                    typesConflicted += copied.conflicts;
-                    typeCloneFailed += copied.failed;
-                    continue;
-                }
-
-                // No function-dependent action executes until the phase-1
-                // loop has completed across every linked provider.
-                ExternalLocationIterator locations =
-                    externalManager.getExternalLocations(library);
-                while (locations.hasNext()) {
-                    monitor.checkCancelled();
-                    ExternalLocation location = locations.next();
-                    if (!location.isFunction()) continue;
-                    Function imported = location.getFunction();
-                    if (imported == null) {
-                        skipped++;
+                String path = externalManager.getExternalLibraryPath(library);
+                if (path == null || path.isBlank()) continue;
+                DomainFile providerFile = projectData.getFile(path);
+                if (providerFile == null ||
+                    providerFile.equals(importing.getDomainFile())) continue;
+                Program provider = null;
+                try {
+                    Object opened = providerFile.getReadOnlyDomainObject(this, -1, monitor);
+                    if (!(opened instanceof Program)) {
+                        if (opened != null) ((ghidra.framework.model.DomainObject) opened).release(this);
                         continue;
                     }
-                    Function source = matchingFunction(provider, location);
+                    provider = (Program) opened;
+                    if (!compatible(importing, provider)) {
+                        log.appendMsg("XEX signature sync: incompatible linked library " + library);
+                        continue;
+                    }
+                    if (phase == 1) {
+                        libraries++;
+                        // Even opaque or custom-storage function prototypes cannot
+                        // prevent their provider's independently defined types
+                        // from being available to other linked libraries.
+                        TypeCopyResults copied = copyProviderDatatypes(
+                            importing, provider, library, log, monitor);
+                        typesCloned += copied.copied;
+                        typesInstalled += copied.copied;
+                        typesEquivalent += copied.equivalent;
+                        typesConflicted += copied.conflicts;
+                        typeCloneFailed += copied.failed;
+                        continue;
+                    }
 
-                    // External-program linking establishes navigation to the
-                    // provider but does not synchronize semantic function flags.
-                    // No Return is independent of signature completeness and
-                    // must reach the importer even when the provider has
-                    // unresolved parameters or the consumer is already typed.
-                    // Only propagate a positive flag from an exact, unique
-                    // linked provider. Never infer No Return from a function
-                    // name or clear a flag already present in the consumer.
-                    if (source != null && source.hasNoReturn() &&
-                            !imported.hasNoReturn()) {
+                    // No function-dependent action executes until the phase-1
+                    // loop has completed across every linked provider.
+                    ExternalLocationIterator locations =
+                        externalManager.getExternalLocations(library);
+                    while (locations.hasNext()) {
+                        monitor.checkCancelled();
+                        ExternalLocation location = locations.next();
+                        if (!location.isFunction()) continue;
+                        Function imported = location.getFunction();
+                        if (imported == null) {
+                            skipped++;
+                            continue;
+                        }
+                        Function source = matchingFunction(provider, location);
+
+                        // External-program linking establishes navigation to the
+                        // provider but does not synchronize semantic function flags.
+                        // No Return is independent of signature completeness and
+                        // must reach the importer even when the provider has
+                        // unresolved parameters or the consumer is already typed.
+                        // Only propagate a positive flag from an exact, unique
+                        // linked provider. Never infer No Return from a function
+                        // name or clear a flag already present in the consumer.
+                        if (source != null && source.hasNoReturn() &&
+                                !imported.hasNoReturn()) {
+                            int transaction = importing.startTransaction(
+                                "XEX linked No Return: " + library +
+                                "::" + location.getLabel());
+                            boolean committed = false;
+                            try {
+                                imported.setNoReturn(true);
+                                if (!imported.hasNoReturn()) {
+                                    throw new IllegalStateException(
+                                        "Imported external did not retain No Return");
+                                }
+                                committed = true;
+                                noReturnApplied++;
+                            }
+                            catch (Exception failure) {
+                                noReturnFailed++;
+                                log.appendMsg("XEX No Return sync refused " + library +
+                                    "::" + location.getLabel() + ": " + failure.getMessage());
+                            }
+                            finally {
+                                importing.endTransaction(transaction, committed);
+                            }
+                        }
+
+                        if (!untouchedExternal(imported)) {
+                            if (needsCallingConvention(imported)) {
+                                Function conventionSource = source;
+                                if (equivalentApartFromConvention(imported, conventionSource) &&
+                                    importing.getCompilerSpec().getCallingConvention(
+                                        conventionSource.getCallingConventionName()) != null) {
+                                    int transaction = importing.startTransaction(
+                                        "XEX linked calling convention: " + library +
+                                        "::" + location.getLabel());
+                                    boolean committed = false;
+                                    try {
+                                        String convention = conventionSource.getCallingConventionName();
+                                        imported.setCallingConvention(convention);
+                                        if (!sameContract(imported, conventionSource, convention))
+                                            throw new IllegalStateException(
+                                                "Calling convention changed existing parameter ABI");
+                                        committed = true;
+                                        conventionsFixed++;
+                                    }
+                                    catch (Exception failure) {
+                                        failed++;
+                                        log.appendMsg("XEX convention sync refused " + library +
+                                            "::" + location.getLabel() + ": " + failure.getMessage());
+                                    }
+                                    finally {
+                                        importing.endTransaction(transaction, committed);
+                                    }
+                                    if (committed) continue;
+                                }
+                            }
+                            skipped++;
+                            continue;
+                        }
+                        if (source == null) {
+                            missing++;
+                            continue;
+                        }
+                        Set<DataType> required = new LinkedHashSet<>();
+                        if (!complete(source, importing.getDataTypeManager(), required)) {
+                            skipped++;
+                            continue;
+                        }
+                        // The XEX image is untouched. Type dependencies and the
+                        // external signature form a single atomic metadata update:
+                        // a failed signature application must not leave orphaned
+                        // types behind in the importing Program.
                         int transaction = importing.startTransaction(
-                            "XEX linked No Return: " + library +
-                            "::" + location.getLabel());
+                            "XEX linked signature: " + library + "::" + location.getLabel());
                         boolean committed = false;
                         try {
-                            imported.setNoReturn(true);
-                            if (!imported.hasNoReturn()) {
-                                throw new IllegalStateException(
-                                    "Imported external did not retain No Return");
+                            int addedTypes = installDependencies(required,
+                                importing.getDataTypeManager());
+                            // No ordinal/name rewriting. Foreign signature types
+                            // resolve against the consumer's now-complete type set.
+                            ApplyFunctionSignatureCmd command = new ApplyFunctionSignatureCmd(
+                                imported.getEntryPoint(), source.getSignature(true),
+                                SourceType.IMPORTED, true, false,
+                                DataTypeConflictHandler.KEEP_HANDLER,
+                                FunctionRenameOption.NO_CHANGE);
+                            if (command.applyTo(importing, monitor)) {
+                                committed = true;
+                                applied++;
+                                typesInstalled += addedTypes;
                             }
-                            committed = true;
-                            noReturnApplied++;
+                            else {
+                                skipped++;
+                                failed++;
+                                log.appendMsg("XEX signature sync refused " + library +
+                                    "::" + location.getLabel() + " " + command.getStatusMsg());
+                            }
+                        }
+                        catch (CancelledException cancelled) {
+                            throw cancelled;
                         }
                         catch (Exception failure) {
-                            noReturnFailed++;
-                            log.appendMsg("XEX No Return sync refused " + library +
+                            skipped++;
+                            failed++;
+                            log.appendMsg("XEX signature sync refused " + library +
                                 "::" + location.getLabel() + ": " + failure.getMessage());
                         }
                         finally {
                             importing.endTransaction(transaction, committed);
                         }
                     }
-
-                    if (!untouchedExternal(imported)) {
-                        if (needsCallingConvention(imported)) {
-                            Function conventionSource = source;
-                            if (equivalentApartFromConvention(imported, conventionSource) &&
-                                importing.getCompilerSpec().getCallingConvention(
-                                    conventionSource.getCallingConventionName()) != null) {
-                                int transaction = importing.startTransaction(
-                                    "XEX linked calling convention: " + library +
-                                    "::" + location.getLabel());
-                                boolean committed = false;
-                                try {
-                                    String convention = conventionSource.getCallingConventionName();
-                                    imported.setCallingConvention(convention);
-                                    if (!sameContract(imported, conventionSource, convention))
-                                        throw new IllegalStateException(
-                                            "Calling convention changed existing parameter ABI");
-                                    committed = true;
-                                    conventionsFixed++;
-                                }
-                                catch (Exception failure) {
-                                    failed++;
-                                    log.appendMsg("XEX convention sync refused " + library +
-                                        "::" + location.getLabel() + ": " + failure.getMessage());
-                                }
-                                finally {
-                                    importing.endTransaction(transaction, committed);
-                                }
-                                if (committed) continue;
-                            }
-                        }
-                        skipped++;
-                        continue;
-                    }
-                    if (source == null) {
-                        missing++;
-                        continue;
-                    }
-                    Set<DataType> required = new LinkedHashSet<>();
-                    if (!complete(source, importing.getDataTypeManager(), required)) {
-                        skipped++;
-                        continue;
-                    }
-                    // The XEX image is untouched. Type dependencies and the
-                    // external signature form a single atomic metadata update:
-                    // a failed signature application must not leave orphaned
-                    // types behind in the importing Program.
-                    int transaction = importing.startTransaction(
-                        "XEX linked signature: " + library + "::" + location.getLabel());
-                    boolean committed = false;
-                    try {
-                        int addedTypes = installDependencies(required,
-                            importing.getDataTypeManager());
-                        // No ordinal/name rewriting. Foreign signature types
-                        // resolve against the consumer's now-complete type set.
-                        ApplyFunctionSignatureCmd command = new ApplyFunctionSignatureCmd(
-                            imported.getEntryPoint(), source.getSignature(true),
-                            SourceType.IMPORTED, true, false,
-                            DataTypeConflictHandler.KEEP_HANDLER,
-                            FunctionRenameOption.NO_CHANGE);
-                        if (command.applyTo(importing, monitor)) {
-                            committed = true;
-                            applied++;
-                            typesInstalled += addedTypes;
-                        }
-                        else {
-                            skipped++;
-                            failed++;
-                            log.appendMsg("XEX signature sync refused " + library +
-                                "::" + location.getLabel() + " " + command.getStatusMsg());
-                        }
-                    }
-                    catch (CancelledException cancelled) {
-                        throw cancelled;
-                    }
-                    catch (Exception failure) {
-                        skipped++;
-                        failed++;
-                        log.appendMsg("XEX signature sync refused " + library +
-                            "::" + location.getLabel() + ": " + failure.getMessage());
-                    }
-                    finally {
-                        importing.endTransaction(transaction, committed);
-                    }
                 }
-            }
-            catch (CancelledException cancelled) {
-                throw cancelled;
-            }
-            catch (Exception failure) {
-                log.appendMsg("XEX signature sync skipped " + library +
-                    ": " + failure.getMessage());
-            }
-            finally {
-                if (provider != null) provider.release(this);
-            }
+                catch (CancelledException cancelled) {
+                    throw cancelled;
+                }
+                catch (Exception failure) {
+                    log.appendMsg("XEX signature sync skipped " + library +
+                        ": " + failure.getMessage());
+                }
+                finally {
+                    if (provider != null) provider.release(this);
+                }
             }
             log.appendMsg("XEX signature sync: phase " + phase + "/2 complete");
         }
