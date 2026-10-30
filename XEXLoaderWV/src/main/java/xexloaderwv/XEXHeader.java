@@ -466,51 +466,18 @@ public class XEXHeader {
 			MakeAddress(Integer.toUnsignedLong(imp.thunk) + 15) != null;
 	}
 
-	public void ReadStringTable(byte[] data, int start, int len) throws Exception
-	{
-		stringTable = new ArrayList<String>();
-		int pos = start;
-		String s = "";
-		while(pos < start + len)
-		{
-			if(data[pos] != 0)
-				s += (char)data[pos];
-			else
-			{
-				while(data[pos + 1] == 0 && pos < start + len - 1)
-					pos++;
-				stringTable.add(s);
-				s = "";
-			}
-			pos++;
-		}
-	}
-	
+	/**
+	 * Decode XEX import metadata independently of PE encryption. The older
+	 * byte-wise string reader and guessed per-library stride misread the
+	 * aligned 1888-era table, sometimes producing name index 0xCDCD.
+	 */
 	public void ReadImportLibraries(byte[] data) throws Exception
 	{
-		importLibs = new ArrayList<ImportLibrary>();
-		BinaryReader b = new BinaryReader(new ByteArrayProvider(data), false);
-		int pos = 4;
-		int stringSize = b.readInt(pos);
-		int libCount = b.readInt(pos + 4);
-		pos += 8;
-		ReadStringTable(data, pos, stringSize);
-		pos += stringSize;
-		for(int i = 0; i < libCount; i++)
-		{
-			ImportLibrary lib = new ImportLibrary();
-			pos += 0x24;
-			int nameIdx = Short.toUnsignedInt(b.readShort(pos));
-			int count = Short.toUnsignedInt(b.readShort(pos + 2));
-			pos += 4;
-			lib.name = stringTable.get(nameIdx);
-			for(int j = 0; j < count; j++)
-				lib.records.add(b.readInt(pos + j * 4));
-			importLibs.add(lib);
-			pos += count * 4;
-		}
+		XEXImportTableParser.Result parsed = XEXImportTableParser.parse(data);
+		stringTable = parsed.names;
+		importLibs = parsed.libraries;
 	}
-	
+
 	public void ReadPEImage(byte[] data) throws Exception
 	{
 		Msg.info(this, "XEX Loader: Loading PE Image");
