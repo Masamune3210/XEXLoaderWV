@@ -154,3 +154,29 @@ The prior same-dashboard summary had `linkedLibraries=2 applied=0 skipped=359 un
 This result is direct runtime evidence that the new datatype-first path did not block function propagation. It does not independently prove the content/equivalence of each of the 137 inserted types or verify idempotence. A repeated One Shot pass should normally show `typesCloned=0 applied=0 conventionsFixed=0 noReturnApplied=0` when the same providers and consumer metadata are unchanged; do not require a repeat merely to continue the separate Xenia abort investigation.
 
 **Next:** The XEX import and metadata propagation now have useful native validation. Resume priority work on the Xenia `XThread::GetCurrentThread` abort when its instrumented native-host stack log is available, keeping unrelated profile work deferred.
+
+
+## Runtime validation: repeated 1888 dashboard analyzer pass (2026-10-30)
+
+User supplied the entire Ghidra 12.1.3 analysis block including first and second pass. **Idempotence is runtime-confirmed** for the real imported dashboard (not merely predicted). Both passes reported `linkedLibraries=2`, with explicit phase 1 (all provider datatypes) completion before phase 2 (all function metadata) began.
+
+| Metric | First | Second |
+| --- | ---: | ---: |
+| Signatures applied | 32 | 0 |
+| Skipped | 321 | 359 |
+| Unmatched | 3 | 3 |
+| Datatypes installed | 137 | 0 |
+| Named datatypes cloned | 137 | 0 |
+| Already-equivalent named datatypes | 16 | 153 |
+| Datatype conflicts | 0 | 0 |
+| Datatype copy failures | 0 | 0 |
+| Calling conventions fixed | 6 | 0 |
+| No Return propagated | 3 | 0 |
+| No Return failures | 0 | 0 |
+| Other failures | 0 | 0 |
+
+Provider-specific breakdown: first pass `xam.xex copied=18 equivalent=2`, `xboxkrnl.exe copied=119 equivalent=14`; second pass `xam.xex copied=0 equivalent=20`, `xboxkrnl.exe copied=0 equivalent=133`. All **153** named provider datatype definitions are already equivalent on the second run. The rise in skipped external functions from 321 to 359 reconciles with the prior 32 applied signatures plus six convention fixes; it does **not** indicate a regression. The three unmatched externals are persistent and not identified by this summary; only the read-only per-symbol audit can distinguish their names/causes.
+
+Other analyzers in the same log: Xenon GPR/LR Save Helpers repeatedly reports `Recognized 0 helper entries`, which is not itself an analyzer error; XEX embedded resources initially reports `utf16Typed=383 countedUtf16BERuns=87 countedUtf16BEStrings=1048`, then `utf16Typed=0 countedUtf16BERuns=0 countedUtf16BEStrings=0`, consistent with no new resources to declare on rerun. `wavesFound=0` in both. Some counted UTF-16BE runs begin at odd addresses: treat them as potential heuristic false-positive candidates if decompilation problems arise, not established corruption. The analyzers report never clearing existing data or code.
+
+**Verified:** Ghidra 12.1.3 runtime operation, datatype copying across both providers before the dependent metadata phase, 32 signatures, six conventions, three positive No Return flags, and a no-change repeat run with zero errors/conflicts. **Not verified by the summary alone:** exact structural semantics of each transferred datatype, names of three unmatched provider functions, and correctness of every heuristic UTF-16 classification. No further importer change is warranted from these counts alone. Resume Xenia host-thread abort investigation when the instrumented emulator log is provided.
