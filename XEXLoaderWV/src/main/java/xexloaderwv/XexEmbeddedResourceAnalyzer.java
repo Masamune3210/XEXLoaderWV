@@ -371,10 +371,15 @@ public final class XexEmbeddedResourceAnalyzer extends AbstractAnalyzer {
         Memory memory = program.getMemory();
         int waves = 0, typedWaves = 0, preservedWaves = 0, utf16 = 0;
         int rejectedWaveCandidates = 0;
+        int waveHeadersSeen = 0;
         for (MemoryBlock block : memory.getBlocks()) {
             monitor.checkCancelled();
             if (!block.isInitialized() || !block.isRead()) continue;
             long size = block.getSize();
+            // Resource bodies may span contiguous Ghidra memory blocks.
+            // Parse through initialized mapped memory, not through a
+            // single block's artificial section boundary.
+            long waveEndExclusive = -1;
             long offset = 0;
             while (offset < size) {
                 monitor.checkCancelled();
@@ -392,15 +397,24 @@ public final class XexEmbeddedResourceAnalyzer extends AbstractAnalyzer {
                     continue;
                 }
                 int scan = (int) Math.min(WINDOW, size - offset);
-                long advance = scan;
+                // Never skip a future RIFF candidate based on an earlier
+                // candidate's length. Record protected ranges separately
+                // so the UTF-16 pass still avoids compressed payloads.
                 for (int i = 0; i < scan; i++) {
                     long position = offset + i;
                     Address candidate = block.getStart().add(position);
                     if (magic(buffer, i, "RIFF")) {
                         try {
-                            XmaWave wave = parseWave(memory, candidate, size - position);
+                            // Check the full program's mapped address range.
+                            // Memory.getBytes will still reject holes or
+                            // unmapped/uninitialized trailing bytes.
+                            long remainingMapped = memory.getMaxAddress().getOffset() -
+                                candidate.getOffset() + 1;
+                            XmaWave wave = parseWave(memory, candidate, remainingMapped);
                             if (wave != null) {
                                 waves++;
+                                waveEndExclusive = Math.max(waveEndExclusive,
+                                    position + wave.length);
                                 int typed = markWave(program, candidate, wave, log);
                                 typedWaves += typed;
                                 preservedWaves += (typed == 0 ? 1 : 0);
@@ -409,12 +423,12 @@ public final class XexEmbeddedResourceAnalyzer extends AbstractAnalyzer {
                                     " size=0x" + Long.toHexString(wave.length) +
                                     (typed == 1 ? " typed" :
                                         " existing/overlapping data preserved"));
-                                // Skip this entire RIFF including seek chunks.
-                                advance = i + wave.length;
-                                break;
+                                // Continue scanning for additional RIFF
+                                // headers without consuming future candidates.
                             }
                             else if (i + 12 <= buffer.length &&
                                     magic(buffer, i + 8, "WAVE")) {
+                                waveHeadersSeen++;
                                 rejectedWaveCandidates++;
                                 if (rejectedWaveCandidates <= 20) {
                                     log.appendMsg("XEX WAVE candidate not validated at " +
@@ -426,7 +440,7 @@ public final class XexEmbeddedResourceAnalyzer extends AbstractAnalyzer {
                             // Invalid/truncated RIFF: leave unrelated data alone.
                         }
                     }
-                    if (!block.isExecute()) {
+                    if (!block.isExecute() && position >= waveEndExclusive) {
                         try {
                             TextMatch match = null;
                             if (prefix(buffer, i, true))
@@ -449,13 +463,14 @@ public final class XexEmbeddedResourceAnalyzer extends AbstractAnalyzer {
                         }
                     }
                 }
-                offset += advance;
+                offset += scan;
             }
         }
         log.appendMsg("XEX embedded resources: wavesFound=" + waves +
             " wavesTyped=" + typedWaves +
             " wavesPreservedOrBlocked=" + preservedWaves +
             " waveCandidatesRejected=" + rejectedWaveCandidates +
+            " rejectedHeadersSeen=" + waveHeadersSeen +
             " utf16Typed=" + utf16 +
             " (never clear existing data or code)");
         return true;
