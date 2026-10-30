@@ -19,6 +19,7 @@ import ghidra.app.util.bin.ByteProvider;
 import ghidra.app.util.importer.MessageLog;
 import ghidra.app.util.opinion.AbstractLibrarySupportLoader;
 import ghidra.app.util.opinion.LoadSpec;
+import ghidra.app.util.opinion.Loaded;
 import ghidra.app.util.opinion.Loader.ImporterSettings;
 import ghidra.framework.model.DomainFile;
 import ghidra.framework.model.DomainFolder;
