@@ -167,9 +167,10 @@ public final class XexEmbeddedResourceAnalyzer extends AbstractAnalyzer {
                 else {
                     // Generic RIFF/WAVE recognition requires recognizable
                     // WAVEFORMAT fields; don't invent a codec interpretation.
+                    // Compressed WAVs can legitimately omit an average
+                    // byte-rate estimate. Do not reject them for zero here.
                     if (tag == 0 || channels < 1 || channels > 16 ||
-                            sampleRate < 4000 || sampleRate > 384000 ||
-                            u32(fmt, 8) == 0) return null;
+                            sampleRate < 4000 || sampleRate > 384000) return null;
                     found.streams = 0;
                 }
                 found.formatTag = tag;
@@ -369,6 +370,7 @@ public final class XexEmbeddedResourceAnalyzer extends AbstractAnalyzer {
             TaskMonitor monitor, MessageLog log) throws CancelledException {
         Memory memory = program.getMemory();
         int waves = 0, typedWaves = 0, preservedWaves = 0, utf16 = 0;
+        int rejectedWaveCandidates = 0;
         for (MemoryBlock block : memory.getBlocks()) {
             monitor.checkCancelled();
             if (!block.isInitialized() || !block.isRead()) continue;
@@ -402,9 +404,22 @@ public final class XexEmbeddedResourceAnalyzer extends AbstractAnalyzer {
                                 int typed = markWave(program, candidate, wave, log);
                                 typedWaves += typed;
                                 preservedWaves += (typed == 0 ? 1 : 0);
+                                log.appendMsg("XEX WAVE recognized at " + candidate +
+                                    " format=0x" + Integer.toHexString(wave.formatTag) +
+                                    " size=0x" + Long.toHexString(wave.length) +
+                                    (typed == 1 ? " typed" :
+                                        " existing/overlapping data preserved"));
                                 // Skip this entire RIFF including seek chunks.
                                 advance = i + wave.length;
                                 break;
+                            }
+                            else if (i + 12 <= buffer.length &&
+                                    magic(buffer, i + 8, "WAVE")) {
+                                rejectedWaveCandidates++;
+                                if (rejectedWaveCandidates <= 20) {
+                                    log.appendMsg("XEX WAVE candidate not validated at " +
+                                        candidate + " (incomplete or unsupported RIFF/chunks)");
+                                }
                             }
                         }
                         catch (Exception ignored) {
@@ -420,6 +435,12 @@ public final class XexEmbeddedResourceAnalyzer extends AbstractAnalyzer {
                                 match = parseText(memory, candidate, size - position, false);
                             if (match != null && markText(program, candidate, match, log)) {
                                 utf16++;
+                                if (utf16 <= 20) {
+                                    log.appendMsg("XEX UTF-16 recognized at " + candidate +
+                                        " length=0x" + Integer.toHexString(match.bytes) +
+                                        (match.little ? " LE" : " BE") +
+                                        (match.terminated ? " terminated" : " fixed-length"));
+                                }
                                 i += match.bytes - 1;
                             }
                         }
@@ -434,6 +455,7 @@ public final class XexEmbeddedResourceAnalyzer extends AbstractAnalyzer {
         log.appendMsg("XEX embedded resources: wavesFound=" + waves +
             " wavesTyped=" + typedWaves +
             " wavesPreservedOrBlocked=" + preservedWaves +
+            " waveCandidatesRejected=" + rejectedWaveCandidates +
             " utf16Typed=" + utf16 +
             " (never clear existing data or code)");
         return true;
