@@ -355,8 +355,16 @@ public class XexLinkedImportSignatureAnalyzer extends AbstractAnalyzer {
         int typesCloned = 0, typesEquivalent = 0, typesConflicted = 0;
         int typeCloneFailed = 0;
         int noReturnApplied = 0, noReturnFailed = 0;
-        for (String library : externalManager.getExternalLibraryNames()) {
-            monitor.checkCancelled();
+        // Strict barrier across *all* linked providers:
+        // phase 1 clones every available datatype; phase 2 touches function
+        // signatures, calling conventions and No Return flags. Do not run
+        // the consumer work for library A before provider B's types exist.
+        for (int phase = 1; phase <= 2; phase++) {
+            log.appendMsg(phase == 1
+                ? "XEX signature sync: phase 1/2 cloning all linked provider datatypes"
+                : "XEX signature sync: phase 2/2 propagating function metadata");
+            for (String library : externalManager.getExternalLibraryNames()) {
+                monitor.checkCancelled();
             String path = externalManager.getExternalLibraryPath(library);
             if (path == null || path.isBlank()) continue;
             DomainFile providerFile = projectData.getFile(path);
@@ -374,18 +382,23 @@ public class XexLinkedImportSignatureAnalyzer extends AbstractAnalyzer {
                     log.appendMsg("XEX signature sync: incompatible linked library " + library);
                     continue;
                 }
-                libraries++;
-                // Datatype propagation is independent of whether any imported
-                // function has a complete signature. This runs on each One
-                // Shot pass as well as initial XEX analysis.
-                TypeCopyResults copied = copyProviderDatatypes(
-                    importing, provider, library, log, monitor);
-                typesCloned += copied.copied;
-                typesInstalled += copied.copied;
-                typesEquivalent += copied.equivalent;
-                typesConflicted += copied.conflicts;
-                typeCloneFailed += copied.failed;
+                if (phase == 1) {
+                    libraries++;
+                    // Even opaque or custom-storage function prototypes cannot
+                    // prevent their provider's independently defined types
+                    // from being available to other linked libraries.
+                    TypeCopyResults copied = copyProviderDatatypes(
+                        importing, provider, library, log, monitor);
+                    typesCloned += copied.copied;
+                    typesInstalled += copied.copied;
+                    typesEquivalent += copied.equivalent;
+                    typesConflicted += copied.conflicts;
+                    typeCloneFailed += copied.failed;
+                    continue;
+                }
 
+                // No function-dependent action executes until the phase-1
+                // loop has completed across every linked provider.
                 ExternalLocationIterator locations =
                     externalManager.getExternalLocations(library);
                 while (locations.hasNext()) {
@@ -527,6 +540,8 @@ public class XexLinkedImportSignatureAnalyzer extends AbstractAnalyzer {
             finally {
                 if (provider != null) provider.release(this);
             }
+            }
+            log.appendMsg("XEX signature sync: phase " + phase + "/2 complete");
         }
         log.appendMsg("XEX linked-signature sync: linkedLibraries=" + libraries +
             " applied=" + applied + " skipped=" + skipped +
@@ -539,7 +554,7 @@ public class XexLinkedImportSignatureAnalyzer extends AbstractAnalyzer {
             " noReturnApplied=" + noReturnApplied +
             " noReturnFailed=" + noReturnFailed +
             " failed=" + failed +
-            " (independent provider datatype copies, complete USER_DEFINED" +
+            " (all-provider datatype prepass; complete USER_DEFINED" +
             " signatures, equivalent ABI conventions and linked-provider" +
             " No Return flags; no native bytes changed)");
         return true;
