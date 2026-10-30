@@ -371,17 +371,24 @@ public class XEXLoaderWVLoader extends AbstractLibrarySupportLoader {
 		if (filename.isEmpty()) {
 			return null;
 		}
-		DomainFile compatible = null;
-		for (DomainFile candidate : folder.getFiles()) {
+		// Ghidra's comparator may treat multiple filename variations as
+		// equivalent. Check every exact match before considering those
+		// variations; DomainFolder.getFiles() has no contractual sort order.
+		DomainFile[] files = folder.getFiles();
+		for (DomainFile candidate : files) {
 			settings.monitor().checkCancelled();
 			Class<?> objectClass = candidate.getDomainObjectClass();
-			if (objectClass == null || !Program.class.isAssignableFrom(objectClass)) {
-				continue;
-			}
-			if (candidate.getName().equalsIgnoreCase(filename)) {
+			if (objectClass != null && Program.class.isAssignableFrom(objectClass) &&
+					candidate.getName().equalsIgnoreCase(filename)) {
 				return candidate;
 			}
-			if (getLibraryNameComparator().compare(candidate.getName(), filename) != 0) {
+		}
+		DomainFile compatible = null;
+		for (DomainFile candidate : files) {
+			settings.monitor().checkCancelled();
+			Class<?> objectClass = candidate.getDomainObjectClass();
+			if (objectClass == null || !Program.class.isAssignableFrom(objectClass) ||
+					getLibraryNameComparator().compare(candidate.getName(), filename) != 0) {
 				continue;
 			}
 			if (compatible != null) {
