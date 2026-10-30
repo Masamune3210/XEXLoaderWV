@@ -110,24 +110,33 @@ public class XEXLoaderWVLoader extends AbstractLibrarySupportLoader {
 		try {
 			byte[] original = provider.getInputStream(0).readAllBytes();
 			String patchPath = getStringOption(options, XEXP_PATH_OPTION, "");
-			XEXHeader header;
-			try {
-				Msg.info(this, "XEX Loader: Trying to load as retail...");
-				header = prepareXEX(original, options, patchPath, false);
-			} catch (Exception retailFailure) {
-				monitor.checkCancelled();
-				Msg.warn(this, "XEX Loader: Retail decode failed; attempting devkit decode", retailFailure);
+			XEXHeader header = null;
+			ArrayList<Exception> decodeFailures = new ArrayList<>();
+			boolean[] devkitKeys = {false, true, false, true};
+			boolean[] legacyKeys = {false, false, true, true};
+			for (int attempt = 0; attempt < devkitKeys.length; attempt++) {
+				String keyName = (legacyKeys[attempt] ? "XEX1" : "XEX2") +
+					(devkitKeys[attempt] ? " devkit" : " retail");
 				try {
-					header = prepareXEX(original, options, patchPath, true);
-				} catch (Exception devkitFailure) {
-					IOException failure = new IOException(
-						"XEX decode failed for both retail and devkit keys", devkitFailure);
-					failure.addSuppressed(retailFailure);
-					throw failure;
+					Msg.info(this, "XEX Loader: Trying " + keyName + " key");
+					header = prepareXEX(original, options, patchPath,
+						devkitKeys[attempt], legacyKeys[attempt]);
+					break;
+				} catch (Exception decodeFailure) {
+					monitor.checkCancelled();
+					decodeFailures.add(decodeFailure);
+					Msg.warn(this, "XEX Loader: " + keyName + " decode failed", decodeFailure);
 				}
 			}
+			if (header == null) {
+				IOException failure = new IOException(
+					"XEX decode failed for XEX2 and XEX1 retail/devkit master keys");
+				for (Exception decodeFailure : decodeFailures)
+					failure.addSuppressed(decodeFailure);
+				throw failure;
+			}
 
-			// Both decryption attempts are entirely in memory. From here on, errors
+			// All master-key attempts are entirely in memory. From here on, errors
 			// must fail the import; retrying with the other key would corrupt the
 			// partially mapped Program and hide the real import failure.
 			program.setImageBase(program.getAddressFactory().getDefaultAddressSpace()
@@ -151,14 +160,14 @@ public class XEXLoaderWVLoader extends AbstractLibrarySupportLoader {
 	}
 
 	private XEXHeader prepareXEX(byte[] original, List<Option> options,
-			String patchPath, boolean isDevKit) throws Exception {
+			String patchPath, boolean isDevKit, boolean useXex1MasterKey) throws Exception {
 		// XEXP may mutate its input; each decryption attempt must start from
 		// independent original bytes, and neither may touch the Ghidra Program.
 		byte[] image = original.clone();
 		if (!patchPath.isEmpty()) {
-			image = ApplyPatch(image, patchPath, options, isDevKit);
+			image = ApplyPatch(image, patchPath, options, isDevKit, useXex1MasterKey);
 		}
-		XEXHeader header = new XEXHeader(image, options, isDevKit);
+		XEXHeader header = new XEXHeader(image, options, isDevKit, useXex1MasterKey);
 		if (header.peImage == null || header.peImage.length < 0x100) {
 			throw new IOException("XEX is not a usable base image (possibly an unapplied XEXP patch)");
 		}
@@ -230,12 +239,17 @@ public class XEXLoaderWVLoader extends AbstractLibrarySupportLoader {
 
 	public byte[] ApplyPatch(byte[] buffROM, String patchPath, List<Option> options, boolean isDevKit)
 			throws Exception {
+		return ApplyPatch(buffROM, patchPath, options, isDevKit, false);
+	}
+
+	public byte[] ApplyPatch(byte[] buffROM, String patchPath, List<Option> options,
+			boolean isDevKit, boolean useXex1MasterKey) throws Exception {
 		Msg.info(this, "XEX Loader: Applying patch");
 		byte[] buffPatch = Files.readAllBytes(Path.of(patchPath));
 		Msg.info(this, "XEX Loader: ### Loading Original XEX");
-		XEXHeader orgHeader = new XEXHeader(buffROM, options, isDevKit);
+		XEXHeader orgHeader = new XEXHeader(buffROM, options, isDevKit, useXex1MasterKey);
 		Msg.info(this, "XEX Loader: ### Loading Patch XEX");
-		XEXHeader patchHeader = new XEXHeader(buffPatch, options, isDevKit);
+		XEXHeader patchHeader = new XEXHeader(buffPatch, options, isDevKit, useXex1MasterKey);
 		if (patchHeader.baseFileFormat.compression == 3) {
 			XEXPatchDescriptor desc = patchHeader.patchDescriptor;
 			byte[] sourceData = new byte[desc.delta_patch.uncompressed_len];
@@ -257,7 +271,7 @@ public class XEXLoaderWVLoader extends AbstractLibrarySupportLoader {
 				temp[i + headerSize] = orgHeader.peImage[i];
 			buffROM = temp;
 			Msg.info(this, "XEX Loader: ### Loading XEX with patched header");
-			XEXHeader newHeader = new XEXHeader(buffROM, options, isDevKit);
+			XEXHeader newHeader = new XEXHeader(buffROM, options, isDevKit, useXex1MasterKey);
 			byte[] newSessionKey = newHeader.sessionKey;
 			patchHeader.sessionKey = Helper.AESDecrypt(newSessionKey, patchHeader.loaderInfo.fileKey);
 			patchHeader.ReadPEImage(buffPatch);

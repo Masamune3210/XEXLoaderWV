@@ -2,6 +2,9 @@ package xexloaderwv;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.security.MessageDigest;
+import java.util.Arrays;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -42,6 +45,7 @@ public class XEXHeader {
 	public int imageBaseAddress;
 	public int entryPointAddress;
 	public boolean useImportAnalysisVeneers;
+	private final boolean useXex1MasterKey;
 	public ArrayList<String> stringTable;
 	public ArrayList<ImportLibrary> importLibs;
 	public ArrayList<MemoryBlock> blocks = new ArrayList<MemoryBlock>();
@@ -49,6 +53,13 @@ public class XEXHeader {
 	
 	public XEXHeader(byte[] data, List<Option> list, boolean isDevKit) throws Exception
 	{
+		this(data, list, isDevKit, false);
+	}
+
+	public XEXHeader(byte[] data, List<Option> list, boolean isDevKit,
+			boolean useXex1MasterKey) throws Exception
+	{
+		this.useXex1MasterKey = useXex1MasterKey;
 		BinaryReader b = new BinaryReader(new ByteArrayProvider(data), false);
 		magic = b.readInt(0);
 		flags = b.readInt(4);
@@ -105,11 +116,21 @@ public class XEXHeader {
 	
 	public void DecryptFileKey() throws Exception
 	{
-		byte[] key;
-		if(loaderInfo.isDevKit)
-			key = new byte[16];
+		// The earliest XEX images may still use the XEX1 key family even
+		// when the container itself has the XEX2 signature.
+		String masterKey;
+		if (useXex1MasterKey)
+			masterKey = loaderInfo.isDevKit
+				? "A8B00512EDE3638DC658B3101F9F50D1"
+				: "A26C10F71FD935E98B99922CE9321572";
 		else
-			key  = Helper.hexStringToByteArray("20B185A59D28FDC340583FBB0896BF91");
+			masterKey = loaderInfo.isDevKit
+				? "00000000000000000000000000000000"
+				: "20B185A59D28FDC340583FBB0896BF91";
+		byte[] key = Helper.hexStringToByteArray(masterKey);
+		Msg.info(this, "XEX Loader: Master key family = " +
+			(useXex1MasterKey ? "XEX1" : "XEX2") +
+			(loaderInfo.isDevKit ? " devkit" : " retail"));
 		String s = "";
 		for(byte b : loaderInfo.fileKey)
 			s += String.format("%02X ", b);
@@ -533,35 +554,52 @@ public class XEXHeader {
 				break;
 			case 2:
 				BaseFileFormat.NormalCompression nc = baseFileFormat.normal;
-				byte[] buff = new byte[nc.blockSize];
-				for(int i = 0; i < nc.blockSize; i++)
-					buff[i] = compressed[posIn + i];
-				posIn += nc.blockSize;
+				if (nc.blockSize < 24 || nc.blockSize > compressed.length)
+					throw new IOException("Invalid XEX LZX first block size " + nc.blockSize +
+						" for " + compressed.length + " bytes of payload");
+				byte[] buff = Arrays.copyOfRange(compressed, 0, nc.blockSize);
+				posIn = nc.blockSize;
 				ByteArrayOutputStream bop = new ByteArrayOutputStream();
-				BinaryReader br = new BinaryReader(new ByteArrayProvider(buff), false);
-				int nextSize;
-				do
+				byte[] expectedBlockHash = nc.blockHash;
+				int blockIndex = 0;
+				while (true)
 				{
-					nextSize = br.readInt(0);
-					for(int i = 24; i < buff.length;)
+					// Verify the authenticated block before trusting chunk lengths.
+					// Otherwise a wrong master key turns into an array bounds crash.
+					byte[] actualHash = MessageDigest.getInstance("SHA-1").digest(buff);
+					if (!MessageDigest.isEqual(expectedBlockHash, actualHash))
+						throw new IOException("XEX LZX block " + blockIndex +
+							" SHA-1 mismatch (incorrect master key or damaged XEX)");
+					BinaryReader br = new BinaryReader(new ByteArrayProvider(buff), false);
+					int nextSize = br.readInt(0);
+					byte[] nextHash = Arrays.copyOfRange(buff, 4, 24);
+					for (int i = 24; i < buff.length;)
 					{
-						len = br.readUnsignedShort(i);
-						if(len == 0)
+						if (i > buff.length - 2)
+							throw new IOException("XEX LZX block " + blockIndex +
+								" has a truncated chunk header at offset " + i);
+						int chunkSize = br.readUnsignedShort(i);
+						i += 2;
+						if (chunkSize == 0)
 							break;
-						for(int j = 0; j < len; j++)
-							bop.write(buff[i + j + 2]);
-						i += 2 + len;
+						if (chunkSize > buff.length - i)
+							throw new IOException("XEX LZX block " + blockIndex +
+								" chunk at offset " + (i - 2) + " declares " + chunkSize +
+								" bytes; only " + (buff.length - i) + " remain");
+						bop.write(buff, i, chunkSize);
+						i += chunkSize;
 					}
-					if(nextSize != 0)
-					{
-						buff = new byte[nextSize];
-						for(int i = 0; i < nextSize; i++)
-							buff[i] = compressed[posIn + i];
-						posIn += nextSize;
-						br = new BinaryReader(new ByteArrayProvider(buff), false);
-					}
+					if (nextSize == 0)
+						break;
+					if (nextSize < 24 || nextSize > compressed.length - posIn)
+						throw new IOException("Invalid next XEX LZX block size " + nextSize +
+							" after block " + blockIndex + "; " + (compressed.length - posIn) +
+							" bytes remain");
+					buff = Arrays.copyOfRange(compressed, posIn, posIn + nextSize);
+					posIn += nextSize;
+					expectedBlockHash = nextHash;
+					blockIndex++;
 				}
-				while(nextSize != 0);
 				byte[] input = bop.toByteArray();
 				// The XEX specifies the LZX dictionary size. Do not use the
 				// decompressor's legacy 32 KiB default for a larger window.
