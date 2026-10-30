@@ -55,7 +55,7 @@ public final class XexEmbeddedResourceAnalyzer extends AbstractAnalyzer {
     }
 
     private static final class XmaWave {
-        long length, dataOffset, dataLength;
+        long length, dataOffset, dataLength, available;
         int streams, sampleRate, channels, formatTag;
         boolean seek;
         final List<Chunk> chunks = new ArrayList<>();
@@ -193,6 +193,81 @@ public final class XexEmbeddedResourceAnalyzer extends AbstractAnalyzer {
         return hasFmt && hasData && at == length ? found : null;
     }
 
+
+    /**
+     * A separately diagnosed incomplete XMA1 asset. A valid RIFF header and
+     * fmt/data declarations are not enough to call a WAVE complete. Only
+     * classify this as truncated if the entire declared RIFF cannot be read.
+     */
+    private static XmaWave parseTruncatedXma1(Memory memory, Address start)
+            throws Exception {
+        byte[] riff = read(memory, start, 12);
+        if (riff == null || !magic(riff, 0, "RIFF") ||
+                !magic(riff, 8, "WAVE")) return null;
+        long total = u32(riff, 4) + 8;
+        if (total < 60 || total > MAX_RIFF) return null;
+        byte[] fmtChunk = read(memory, start.add(12), 8);
+        if (fmtChunk == null || !magic(fmtChunk, 0, "fmt ")) return null;
+        long fmtLength = u32(fmtChunk, 4);
+        if (fmtLength < 0x20 || fmtLength > 0x200 ||
+                20 + fmtLength + 8 > total) return null;
+        byte[] fmt = read(memory, start.add(20), (int) fmtLength);
+        if (fmt == null || u16(fmt, 0) != 0x0165) return null;
+        int streams = u16(fmt, 8);
+        if (streams < 1 || streams > 8 ||
+                fmtLength != 0x0c + streams * 0x14) return null;
+        int channels = 0, rate = 0;
+        for (int n = 0; n < streams; n++) {
+            int stream = 0x0c + n * 0x14;
+            long r = u32(fmt, stream + 4);
+            int c = fmt[stream + 0x11] & 0xff;
+            if (r < 8000 || r > 192000 || c < 1 || c > 6 ||
+                    (rate != 0 && rate != (int) r)) return null;
+            rate = (int) r;
+            channels += c;
+        }
+        long dataHeaderOffset = 20 + fmtLength;
+        byte[] dataHeader = read(memory, start.add(dataHeaderOffset), 8);
+        if (dataHeader == null || !magic(dataHeader, 0, "data")) return null;
+        long audioLength = u32(dataHeader, 4);
+        long audioOffset = dataHeaderOffset + 8;
+        if (audioLength == 0 || audioLength % 2048 != 0 ||
+                audioOffset + audioLength > total) return null;
+        long available = contiguousBytes(memory, start, total);
+        if (available >= total || available < audioOffset) return null;
+        XmaWave partial = new XmaWave();
+        partial.length = total;
+        partial.available = available;
+        partial.formatTag = 0x0165;
+        partial.streams = streams;
+        partial.sampleRate = rate;
+        partial.channels = channels;
+        partial.dataOffset = audioOffset;
+        partial.dataLength = audioLength;
+        return partial;
+    }
+
+    /** Count only readable bytes. Do not assume a memory-block boundary is
+     * the end of the resource; Ghidra permits reads across adjacent blocks. */
+    private static long contiguousBytes(Memory memory, Address start, long limit) {
+        long count = 0;
+        while (count < limit) {
+            int length = (int) Math.min(4096L, limit - count);
+            byte[] bytes = new byte[length];
+            int got;
+            try {
+                got = memory.getBytes(start.add(count), bytes);
+            }
+            catch (Exception unavailable) {
+                break;
+            }
+            if (got <= 0) break;
+            count += got;
+            if (got < length) break;
+        }
+        return count;
+    }
+
     // Do not clear undefined-element arrays either: they can be user-created.
     private static boolean empty(Listing listing, Address start, int length) {
         Address end = start.add(length - 1L);
@@ -239,6 +314,76 @@ public final class XexEmbeddedResourceAnalyzer extends AbstractAnalyzer {
         }
         return program.getDataTypeManager().addDataType(
             structure, DataTypeConflictHandler.KEEP_HANDLER);
+    }
+
+
+    /** Define exactly the present bytes, never the missing RIFF suffix. */
+    private static int markTruncatedXma1(Program program, Address address,
+            XmaWave partial, MessageLog log) {
+        Listing listing = program.getListing();
+        int present = (int) partial.available;
+        int tx = program.startTransaction("XEX truncated XMA1 " + address);
+        boolean commit = false;
+        try {
+            boolean free = empty(listing, address, present);
+            if (free) {
+                String name = String.format("XexTruncatedXma1Wave_%08X",
+                    address.getOffset());
+                StructureDataType structure = new StructureDataType(
+                    new CategoryPath("/XEX/EmbeddedWaves"), name, present);
+                structure.replaceAtOffset(0,
+                    new ArrayDataType(ByteDataType.dataType, 12, 1),
+                    12, "riffWaveHeader", "Declared size exceeds available memory");
+                structure.replaceAtOffset(12,
+                    new ArrayDataType(ByteDataType.dataType, 8, 1),
+                    8, "formatChunkHeader", "Little-endian RIFF chunk size");
+                int fmtLength = (int) partial.dataOffset - 28;
+                structure.replaceAtOffset(20,
+                    new ArrayDataType(ByteDataType.dataType, fmtLength, 1),
+                    fmtLength, "xma1Format", "XMA1 stream format");
+                structure.replaceAtOffset((int) partial.dataOffset - 8,
+                    new ArrayDataType(ByteDataType.dataType, 8, 1),
+                    8, "dataChunkHeader", "Declared data size is not fully present");
+                int audioPresent = present - (int) partial.dataOffset;
+                if (audioPresent > 0) {
+                    structure.replaceAtOffset((int) partial.dataOffset,
+                        new ArrayDataType(ByteDataType.dataType, audioPresent, 1),
+                        audioPresent, "incompleteEncodedAudio",
+                        "Only the bytes present in the image");
+                }
+                DataType type = program.getDataTypeManager().addDataType(
+                    structure, DataTypeConflictHandler.KEEP_HANDLER);
+                listing.createData(address, type);
+            }
+            Symbol existing = program.getSymbolTable().getPrimarySymbol(address);
+            if (existing == null || existing.getSource() == SourceType.DEFAULT) {
+                program.getSymbolTable().createLabel(address,
+                    String.format("TruncatedXma1Wave_%08X", address.getOffset()),
+                    SourceType.ANALYSIS);
+            }
+            String note = "[XEX truncated XMA1] valid RIFF/WAVE and XMA1 fmt/data " +
+                "headers; declared=0x" + Long.toHexString(partial.length) +
+                " present=0x" + Long.toHexString(partial.available) +
+                " missing=0x" + Long.toHexString(partial.length - partial.available) +
+                "; data=+0x" + Long.toHexString(partial.dataOffset) +
+                "/0x" + Long.toHexString(partial.dataLength) +
+                "; only available bytes have been described.";
+            String old = listing.getComment(CommentType.PLATE, address);
+            if (old == null || old.isEmpty())
+                listing.setComment(address, CommentType.PLATE, note);
+            else if (!old.contains("[XEX truncated XMA1]"))
+                listing.setComment(address, CommentType.PLATE, old + "\n" + note);
+            commit = true;
+            return free ? 1 : 0;
+        }
+        catch (Exception e) {
+            log.appendMsg("XEX truncated XMA1 at " + address +
+                ": annotation refused: " + e.getMessage());
+            return 0;
+        }
+        finally {
+            program.endTransaction(tx, commit);
+        }
     }
 
     private static int markWave(Program program, Address start, XmaWave wave,
@@ -373,6 +518,7 @@ public final class XexEmbeddedResourceAnalyzer extends AbstractAnalyzer {
         int waves = 0, typedWaves = 0, preservedWaves = 0, utf16 = 0;
         int rejectedWaveCandidates = 0;
         int waveHeadersSeen = 0;
+        int truncatedXma1 = 0, typedTruncatedXma1 = 0;
         AddressSet recognizedWaveRanges = new AddressSet();
         for (MemoryBlock block : memory.getBlocks()) {
             monitor.checkCancelled();
@@ -430,10 +576,28 @@ public final class XexEmbeddedResourceAnalyzer extends AbstractAnalyzer {
                             else if (i + 12 <= buffer.length &&
                                     magic(buffer, i + 8, "WAVE")) {
                                 waveHeadersSeen++;
-                                rejectedWaveCandidates++;
-                                if (rejectedWaveCandidates <= 20) {
-                                    log.appendMsg("XEX WAVE candidate not validated at " +
-                                        candidate + " (incomplete or unsupported RIFF/chunks)");
+                                XmaWave partial = parseTruncatedXma1(memory, candidate);
+                                if (partial != null) {
+                                    truncatedXma1++;
+                                    recognizedWaveRanges.add(candidate,
+                                        candidate.add(partial.available - 1));
+                                    int typed = markTruncatedXma1(
+                                        program, candidate, partial, log);
+                                    typedTruncatedXma1 += typed;
+                                    log.appendMsg("XEX truncated XMA1 at " + candidate +
+                                        " declared=0x" + Long.toHexString(partial.length) +
+                                        " present=0x" + Long.toHexString(partial.available) +
+                                        " missing=0x" +
+                                        Long.toHexString(partial.length - partial.available) +
+                                        (typed != 0 ? " partial type applied" :
+                                            " existing/overlapping data preserved"));
+                                }
+                                else {
+                                    rejectedWaveCandidates++;
+                                    if (rejectedWaveCandidates <= 20) {
+                                        log.appendMsg("XEX WAVE candidate not validated at " +
+                                            candidate + " (invalid chunks or missing data)");
+                                    }
                                 }
                             }
                         }
@@ -471,6 +635,8 @@ public final class XexEmbeddedResourceAnalyzer extends AbstractAnalyzer {
         log.appendMsg("XEX embedded resources: wavesFound=" + waves +
             " wavesTyped=" + typedWaves +
             " wavesPreservedOrBlocked=" + preservedWaves +
+            " truncatedXma1Found=" + truncatedXma1 +
+            " truncatedXma1Typed=" + typedTruncatedXma1 +
             " waveCandidatesRejected=" + rejectedWaveCandidates +
             " rejectedHeadersSeen=" + waveHeadersSeen +
             " utf16Typed=" + utf16 +
