@@ -16,6 +16,7 @@ import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeConflictHandler;
 import ghidra.program.model.data.StructureDataType;
 import ghidra.program.model.data.UnicodeDataType;
+import ghidra.program.model.data.UnsignedShortDataType;
 import ghidra.program.model.data.ByteDataType;
 import ghidra.program.model.data.EndianSettingsDefinition;
 import ghidra.program.model.data.TerminatedUnicodeDataType;
@@ -64,6 +65,11 @@ public final class XexEmbeddedResourceAnalyzer extends AbstractAnalyzer {
     private static final class TextMatch {
         int bytes;
         boolean little, terminated;
+    }
+
+    private static final class CountedRun {
+        final List<Integer> lengths = new ArrayList<>();
+        int bytes;
     }
 
     public XexEmbeddedResourceAnalyzer() {
@@ -281,6 +287,101 @@ public final class XexEmbeddedResourceAnalyzer extends AbstractAnalyzer {
     }
 
 
+
+    /*
+     * Blades XAM UI resource records contain a BE uint16 code-unit count
+     * followed by exactly that many UTF-16BE code units (no terminator).
+     * Require three consecutive records to avoid matching arbitrary data.
+     */
+    private static int countedRecordLength(Memory memory, Address at, long room)
+            throws Exception {
+        if (room < 6) return 0;
+        byte[] header = read(memory, at, 2);
+        if (header == null) return 0;
+        int length = ((header[0] & 255) << 8) | (header[1] & 255);
+        if (length < 2 || length > MAX_TEXT || room < 2L + length * 2L) return 0;
+        byte[] bytes = read(memory, at.add(2), length * 2);
+        if (bytes == null) return 0;
+        int letters = 0, readable = 0, newline = 0;
+        for (int i = 0; i < length; i++) {
+            char ch = (char) (((bytes[2 * i] & 255) << 8) |
+                (bytes[2 * i + 1] & 255));
+            if (ch == 0 || Character.isSurrogate(ch)) return 0;
+            if (ch == '\r' || ch == '\n' || ch == '\t') {
+                newline++;
+                continue;
+            }
+            if (Character.isISOControl(ch) || !Character.isDefined(ch)) return 0;
+            readable++;
+            if (Character.isLetter(ch)) letters++;
+        }
+        if (readable * 5 < length * 4 || letters == 0 ||
+                newline * 5 > length) return 0;
+        return 2 + 2 * length;
+    }
+
+    private static boolean likelyCountedRecord(byte[] bytes, int at) {
+        if (at + 8 > bytes.length) return false;
+        int length = ((bytes[at] & 255) << 8) | (bytes[at + 1] & 255);
+        if (length < 2 || length > MAX_TEXT) return false;
+        char first = (char) (((bytes[at + 2] & 255) << 8) |
+            (bytes[at + 3] & 255));
+        return first >= 0x20 && Character.isDefined(first) &&
+            !Character.isISOControl(first) && !Character.isSurrogate(first);
+    }
+
+    private static CountedRun parseCountedRun(Memory memory, Address start, long room)
+            throws Exception {
+        CountedRun run = new CountedRun();
+        int totalChars = 0;
+        while (run.lengths.size() < 256 && run.bytes < room) {
+            int length = countedRecordLength(memory, start.add(run.bytes),
+                room - run.bytes);
+            if (length == 0) break;
+            int chars = (length - 2) / 2;
+            run.lengths.add(chars);
+            run.bytes += length;
+            totalChars += chars;
+        }
+        return run.lengths.size() >= 3 && totalChars >= 20 ? run : null;
+    }
+
+    private static boolean markCountedRun(Program program, Address start,
+            CountedRun run, MessageLog log) {
+        Listing listing = program.getListing();
+        // Never replace a preexisting Unicode array, including the earlier
+        // analyzer's incorrect merged record.
+        if (!empty(listing, start, run.bytes)) return false;
+        int tx = program.startTransaction("XEX counted UTF-16BE " + start);
+        boolean commit = false;
+        try {
+            Address at = start;
+            for (int chars : run.lengths) {
+                listing.createData(at, UnsignedShortDataType.dataType);
+                Data string = listing.createData(at.add(2),
+                    UnicodeDataType.dataType, chars * 2);
+                EndianSettingsDefinition.DEF.setBigEndian(string, true);
+                Symbol symbol = program.getSymbolTable().getPrimarySymbol(at);
+                if (symbol == null || symbol.getSource() == SourceType.DEFAULT) {
+                    program.getSymbolTable().createLabel(at,
+                        String.format("CountedUtf16BE_%08X", at.getOffset()),
+                        SourceType.ANALYSIS);
+                }
+                at = at.add(2L + chars * 2L);
+            }
+            commit = true;
+            return true;
+        }
+        catch (Exception error) {
+            log.appendMsg("XEX counted UTF-16BE " + start +
+                ": not typed: " + error.getMessage());
+            return false;
+        }
+        finally {
+            program.endTransaction(tx, commit);
+        }
+    }
+
     private static boolean printable(int b) {
         return b >= 0x20 && b <= 0x7e;
     }
@@ -329,12 +430,12 @@ public final class XexEmbeddedResourceAnalyzer extends AbstractAnalyzer {
             }
             else controls++;
         }
-        // Require a strong text-like run before defining an unterminated
-        // (fixed-size) UTF-16 string. Control bytes are retained in place.
+        // A nonterminated span may be a counted-string table. Never merge
+        // many records into a single giant Unicode data item.
         if (chars < MIN_TEXT || letters < 4 || unique < 3 ||
                 visible * 4 < chars * 3 || controls * 6 > chars)
             return null;
-        if (!terminated && chars < 14) return null;
+        if (!terminated) return null;
         TextMatch result = new TextMatch();
         result.bytes = chars * 2 + (terminated ? 2 : 0);
         result.terminated = terminated;
@@ -371,6 +472,7 @@ public final class XexEmbeddedResourceAnalyzer extends AbstractAnalyzer {
             TaskMonitor monitor, MessageLog log) throws CancelledException {
         Memory memory = program.getMemory();
         int waves = 0, typedWaves = 0, preservedWaves = 0, utf16 = 0;
+        int countedRuns = 0, countedStrings = 0;
         int rejectedWaveCandidates = 0;
         int waveHeadersSeen = 0;
         AddressSet recognizedWaveRanges = new AddressSet();
@@ -444,6 +546,25 @@ public final class XexEmbeddedResourceAnalyzer extends AbstractAnalyzer {
                     if (!block.isExecute() &&
                             !recognizedWaveRanges.contains(candidate)) {
                         try {
+                            if (likelyCountedRecord(buffer, i)) {
+                                CountedRun run = parseCountedRun(memory, candidate,
+                                    size - position);
+                                if (run != null &&
+                                        markCountedRun(program, candidate, run, log)) {
+                                    countedRuns++;
+                                    countedStrings += run.lengths.size();
+                                    log.appendMsg("XEX counted UTF-16BE at " +
+                                        candidate + ": records=" + run.lengths.size() +
+                                        " bytes=0x" + Integer.toHexString(run.bytes));
+                                    i += Math.min(run.bytes, scan - i) - 1;
+                                    continue;
+                                }
+                            }
+                        }
+                        catch (Exception ignored) {
+                            // False positive or unavailable counted records.
+                        }
+                        try {
                             TextMatch match = null;
                             if (prefix(buffer, i, true))
                                 match = parseText(memory, candidate, size - position, true);
@@ -474,6 +595,8 @@ public final class XexEmbeddedResourceAnalyzer extends AbstractAnalyzer {
             " waveCandidatesRejected=" + rejectedWaveCandidates +
             " rejectedHeadersSeen=" + waveHeadersSeen +
             " utf16Typed=" + utf16 +
+            " countedUtf16BERuns=" + countedRuns +
+            " countedUtf16BEStrings=" + countedStrings +
             " (never clear existing data or code)");
         return true;
     }
