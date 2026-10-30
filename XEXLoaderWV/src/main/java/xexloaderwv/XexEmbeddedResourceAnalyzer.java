@@ -8,6 +8,7 @@ import ghidra.app.services.AnalysisPriority;
 import ghidra.app.services.AnalyzerType;
 import ghidra.app.util.importer.MessageLog;
 import ghidra.program.model.address.Address;
+import ghidra.program.model.address.AddressSet;
 import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.data.ArrayDataType;
 import ghidra.program.model.data.CategoryPath;
@@ -372,14 +373,14 @@ public final class XexEmbeddedResourceAnalyzer extends AbstractAnalyzer {
         int waves = 0, typedWaves = 0, preservedWaves = 0, utf16 = 0;
         int rejectedWaveCandidates = 0;
         int waveHeadersSeen = 0;
+        AddressSet recognizedWaveRanges = new AddressSet();
         for (MemoryBlock block : memory.getBlocks()) {
             monitor.checkCancelled();
             if (!block.isInitialized() || !block.isRead()) continue;
             long size = block.getSize();
             // Resource bodies may span contiguous Ghidra memory blocks.
-            // Parse through initialized mapped memory, not through a
-            // single block's artificial section boundary.
-            long waveEndExclusive = -1;
+            // Record their full ranges across all blocks, not just in the
+            // block where the RIFF header was found.
             long offset = 0;
             while (offset < size) {
                 monitor.checkCancelled();
@@ -413,8 +414,8 @@ public final class XexEmbeddedResourceAnalyzer extends AbstractAnalyzer {
                             XmaWave wave = parseWave(memory, candidate, remainingMapped);
                             if (wave != null) {
                                 waves++;
-                                waveEndExclusive = Math.max(waveEndExclusive,
-                                    position + wave.length);
+                                recognizedWaveRanges.add(candidate,
+                                    candidate.add(wave.length - 1));
                                 int typed = markWave(program, candidate, wave, log);
                                 typedWaves += typed;
                                 preservedWaves += (typed == 0 ? 1 : 0);
@@ -440,7 +441,8 @@ public final class XexEmbeddedResourceAnalyzer extends AbstractAnalyzer {
                             // Invalid/truncated RIFF: leave unrelated data alone.
                         }
                     }
-                    if (!block.isExecute() && position >= waveEndExclusive) {
+                    if (!block.isExecute() &&
+                            !recognizedWaveRanges.contains(candidate)) {
                         try {
                             TextMatch match = null;
                             if (prefix(buffer, i, true))
