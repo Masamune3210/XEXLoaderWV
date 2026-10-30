@@ -112,3 +112,28 @@ Implemented on `testing`, in `XEXLoaderWV/src/main/java/xexloaderwv/XexLinkedImp
 **Motivating live result:** after importing a Blades-era dashboard, the analyzer reported `linkedLibraries=2 applied=0 skipped=359 unmatched=3 typesInstalled=0 conventionsFixed=0 noReturnApplied=0 failed=0`. Two links succeeded, but this summary alone does not identify why individual signatures were skipped. Datatype propagation is now independent of that question. The separately committed read-only script `ghidra_scripts/AuditXex1888LinkedSignatureSync_20261030_v1.java` remains available if the skip reasons matter later.
 
 **Verification:** The code was checked against the **Ghidra 12.1.3** source for `DataTypeManager.getAllDataTypes(List<DataType>)`, `addDataType` and `DataTypeConflictHandler.KEEP_HANDLER`; source-based guards and preservation checks passed. The extension has **not** been built or run against the user's database with this change in the current session. After rebuilding, run `Analyze > One Shot > XEX: Sync linked import signatures` on the existing saved dashboard and inspect the new `XEX datatype sync: ...` lines. A second One Shot run should report `typesCloned=0` for already copied, equivalent definitions; preserve genuine reported conflicts for manual investigation. Do not reimport or clear the dashboard merely to invoke this analyzer.
+
+
+## Strict dependency-first synchronization barrier (2026-10-30)
+
+The first independent datatype-clone implementation copied types from a provider immediately before processing **that provider's** imports. This had an inter-library ordering gap: the consumer of library A could be examined before relevant types from library B were installed.
+
+**Fixed on `testing`** by a global, two-phase pass over the linked libraries:
+
+1. **Phase 1/2, all providers:** only open ABI-compatible linked provider Programs and copy named datatypes. No `ExternalLocationIterator`, `ApplyFunctionSignatureCmd`, calling-convention changes, or No Return changes run during this phase.
+2. **Phase 2/2, after phase 1 completes:** reopen the providers for external-function matching, complete-signature propagation, ABI-equivalent convention reconciliation, and positive No Return propagation. Function-specific datatype checks and transactional dependency installation remain in place as final safeguards.
+
+Additionally, the datatype cloning order inside each provider is explicitly **dependency-first**, traversing referenced composite members, typedef bases, pointer/array referents, and function-definition return/parameter datatypes. A visited set guards self-referential and mutually recursive datatypes; Ghidra's `addDataType` resolver continues to complete cyclic definitions. Type conflicts are never silently replaced. The new ordering does not weaken strict complete-`USER_DEFINED` signature requirements.
+
+Observable progress markers:
+```text
+XEX signature sync: phase 1/2 cloning all linked provider datatypes
+XEX datatype sync: <library> copied=... equivalent=... conflicting=... failed=...
+XEX signature sync: phase 1/2 complete
+XEX signature sync: phase 2/2 propagating function metadata
+XEX signature sync: phase 2/2 complete
+XEX linked-signature sync: linkedLibraries=... applied=... typesCloned=...
+```
+This ordering applies to each analyzer run, including One Shot. It does **not** imply that Ghidra itself refrains from every other automatic analyzer until this analyzer finishes.
+
+**Validation status:** Source structure and datatype API checked against Ghidra **12.1.3**, including `DataTypeManagerDB.addDataType` delegating to the datatype resolver. The full extension has **not** been compiled or run on the user's 1888 dashboard since the latest change. Next verify build and rerun `Analyze > One Shot > XEX: Sync linked import signatures`; inspect phase markers and conflict/failure counts. No reimport is necessary.
