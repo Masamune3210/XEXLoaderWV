@@ -137,3 +137,20 @@ XEX linked-signature sync: linkedLibraries=... applied=... typesCloned=...
 This ordering applies to each analyzer run, including One Shot. It does **not** imply that Ghidra itself refrains from every other automatic analyzer until this analyzer finishes.
 
 **Validation status:** Source structure and datatype API checked against Ghidra **12.1.3**, including `DataTypeManagerDB.addDataType` delegating to the datatype resolver. The full extension has **not** been compiled or run on the user's 1888 dashboard since the latest change. Next verify build and rerun `Analyze > One Shot > XEX: Sync linked import signatures`; inspect phase markers and conflict/failure counts. No reimport is necessary.
+
+
+## Live Ghidra 12.1.3 verification: two-phase linked datatype sync (2026-10-30)
+
+**USER-REPORTED RUNTIME RESULT: PASS** after rebuilding the extension and invoking the linked-signature synchronization on the imported 1888 dashboard:
+
+```text
+XEX linked-signature sync: linkedLibraries=2 applied=32 skipped=321 unmatched=3 typesInstalled=137 typesCloned=137 typesEquivalent=16 typesConflicted=0 typeCloneFailed=0 conventionsFixed=6 noReturnApplied=3 noReturnFailed=0 failed=0 (all-provider datatype prepass; complete USER_DEFINED signatures, equivalent ABI conventions and linked-provider No Return flags; no native bytes changed)
+```
+
+This verifies the new build loads in Ghidra, and the analyzer's independent datatype cloning and function metadata propagation actually execute against the real linked dashboard. Both providers were linked; **137 named datatype copy operations** succeeded, **16 existing types** were equivalent, **0 conflicts**, **0 datatype copy failures**, **32 complete signatures** applied, **6 calling conventions** corrected, **3 No Return flags** propagated, and **0 reported failures**. The three unmatched functions remain unresolved.
+
+The prior same-dashboard summary had `linkedLibraries=2 applied=0 skipped=359 unmatched=3 typesInstalled=0 conventionsFixed=0 noReturnApplied=0 failed=0`. The drop in skips **359 -> 321** reconciles with **32 signature applications plus 6 convention-only improvements**. The analyzer's own `skipped` count excludes successful convention fixes. The total `typesInstalled=137` matches `typesCloned=137` on this run, so no additional types were counted by signature-specific dependency installation, although recursive Ghidra datatype dependencies may have been installed implicitly and aren't enumerated by these counters.
+
+This result is direct runtime evidence that the new datatype-first path did not block function propagation. It does not independently prove the content/equivalence of each of the 137 inserted types or verify idempotence. A repeated One Shot pass should normally show `typesCloned=0 applied=0 conventionsFixed=0 noReturnApplied=0` when the same providers and consumer metadata are unchanged; do not require a repeat merely to continue the separate Xenia abort investigation.
+
+**Next:** The XEX import and metadata propagation now have useful native validation. Resume priority work on the Xenia `XThread::GetCurrentThread` abort when its instrumented native-host stack log is available, keeping unrelated profile work deferred.
