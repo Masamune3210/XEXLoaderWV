@@ -696,7 +696,7 @@ public class XEXHeader {
 			return;
 		}
 		String imageName = program.getName().toLowerCase(java.util.Locale.ROOT);
-		boolean isXam = imageName.equals("xam.xex") ||
+		boolean isXam = imageName.endsWith("xam.xex") ||
 			imageName.startsWith("xam.") || imageName.startsWith("xam_");
 		long imageBase = baseHigh << 16;
 		int exported = 0, functions = 0, created = 0, renamed = 0;
@@ -712,11 +712,9 @@ public class XEXHeader {
 				continue;
 			}
 			if (offset == 0) continue;
-			long numericAddress = imageBase + offset;
-			if (numericAddress > 0xffffffffL) {
-				unresolved++;
-				continue;
-			}
+			// Xenia adds a 32-bit unsigned export offset to the shifted
+			// image base, intentionally wrapping on negative relative offsets.
+			long numericAddress = (imageBase + offset) & 0xffffffffL;
 			Address address = MakeAddress(numericAddress);
 			if (address == null || memory.getBlock(address) == null) {
 				unresolved++;
