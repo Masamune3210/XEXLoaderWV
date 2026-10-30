@@ -128,7 +128,8 @@ public class XEXLoaderWVLoader extends AbstractLibrarySupportLoader {
 			}
 			if (header == null) {
 				IOException failure = new IOException(
-					"XEX decode failed for XEX2 and XEX1 retail/devkit master keys");
+					"XEX load failed after XEX2/XEX1 retail/devkit attempts; first failure: " +
+					(decodeFailures.isEmpty() ? "unknown" : decodeFailures.get(0).getMessage()));
 				for (Exception decodeFailure : decodeFailures)
 					failure.addSuppressed(decodeFailure);
 				throw failure;
