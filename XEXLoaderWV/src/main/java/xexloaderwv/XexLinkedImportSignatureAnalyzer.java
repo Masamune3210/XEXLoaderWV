@@ -1,6 +1,9 @@
 package xexloaderwv;
 
 import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
@@ -20,6 +23,7 @@ import ghidra.program.model.data.DataTypeComponent;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeConflictHandler;
 import ghidra.program.model.data.DataTypeManager;
+import ghidra.program.model.data.FunctionDefinition;
 import ghidra.program.model.data.ParameterDefinition;
 import ghidra.program.model.data.Pointer;
 import ghidra.program.model.data.TypeDef;
@@ -44,8 +48,10 @@ import ghidra.util.task.TaskMonitor;
  * from a uniquely identified linked function into an untouched default external.
  * It independently propagates a linked provider's positive No Return flag, even
  * when its signature is incomplete or the importing function is already typed.
- * Missing dependencies are copied from the linked provider only if no conflicting
- * type exists, and each signature + datatype installation is transactional.
+ * All named provider structs/unions, enums, typedefs and function definitions
+ * are copied independently of signature eligibility. Existing destination types
+ * are never overwritten; incompatible names are reported and left alone.
+ * Missing signature-specific dependencies retain their transactional installation.
  * Also synchronizes a missing calling convention on an already typed external
  * when its source's return/parameter types, varargs, and parameter storage
  * exactly match; the linked provider may have an IMPORTED prototype.
@@ -57,9 +63,9 @@ import ghidra.util.task.TaskMonitor;
 public class XexLinkedImportSignatureAnalyzer extends AbstractAnalyzer {
     public XexLinkedImportSignatureAnalyzer() {
         super("XEX: Sync linked import signatures",
-            "Propagate complete user-defined signatures and positive No Return flags " +
-            "from uniquely resolved linked XEX dependencies, and reconcile known " +
-            "calling conventions without overwriting edited signatures or inferring registers.",
+            "Copy linked provider-defined datatypes, propagate complete user-defined " +
+            "signatures and positive No Return flags, and reconcile known calling " +
+            "conventions without overwriting existing metadata or guessing registers.",
             AnalyzerType.BYTE_ANALYZER);
         setDefaultEnablement(true);
         setSupportsOneTimeAnalysis();
@@ -160,6 +166,100 @@ public class XexLinkedImportSignatureAnalyzer extends AbstractAnalyzer {
         return installed;
     }
 
+    /**
+     * Copy all named definitions from the linked provider, not only types
+     * referenced by functions eligible for signature propagation. In
+     * particular, native XAM and the dashboard often still have opaque
+     * function parameters even when their structure definitions are useful.
+     *
+     * Basic/pointer/array types are reconstructed as dependencies by Ghidra;
+     * the named declarations worth preserving independently are composites,
+     * typedefs, enums and function-definition datatypes.
+     *
+     * A single failing or incompatible declaration must not abort the other
+     * copies or alter existing destination types. Each attempted addition is
+     * isolated in a Program transaction so automatically introduced nested
+     * dependencies are rolled back if equivalence cannot be established.
+     */
+    private static final class TypeCopyResults {
+        int copied;
+        int equivalent;
+        int conflicts;
+        int failed;
+    }
+
+    private static TypeCopyResults copyProviderDatatypes(Program consumer,
+            Program provider, String library, MessageLog log,
+            TaskMonitor monitor) throws CancelledException {
+        DataTypeManager destination = consumer.getDataTypeManager();
+        List<DataType> candidates = new ArrayList<>();
+        provider.getDataTypeManager().getAllDataTypes(candidates);
+        candidates.sort(Comparator.comparing(DataType::getPathName));
+        TypeCopyResults results = new TypeCopyResults();
+        int reportedProblems = 0;
+
+        for (DataType source : candidates) {
+            monitor.checkCancelled();
+            if (!(source instanceof Composite || source instanceof TypeDef ||
+                    source instanceof ghidra.program.model.data.Enum ||
+                    source instanceof FunctionDefinition)) {
+                continue;
+            }
+
+            DataType existing = destination.getDataType(
+                source.getCategoryPath(), source.getName());
+            if (existing != null) {
+                if (existing.isEquivalent(source)) {
+                    results.equivalent++;
+                } else {
+                    results.conflicts++;
+                    if (reportedProblems++ < 20) {
+                        log.appendMsg("XEX datatype sync: conflicting existing " +
+                            source.getPathName() + " from " + library +
+                            "; keeping destination declaration");
+                    }
+                }
+                continue;
+            }
+
+            int transaction = consumer.startTransaction(
+                "XEX linked datatype: " + library + "::" + source.getPathName());
+            boolean committed = false;
+            try {
+                DataType copy = destination.addDataType(source,
+                    DataTypeConflictHandler.KEEP_HANDLER);
+                if (copy == null ||
+                        !copy.getPathName().equals(source.getPathName()) ||
+                        !copy.isEquivalent(source)) {
+                    throw new IllegalStateException(
+                        "cloned definition or dependencies differ from provider");
+                }
+                committed = true;
+                results.copied++;
+            } catch (Exception failure) {
+                results.failed++;
+                if (reportedProblems++ < 20) {
+                    log.appendMsg("XEX datatype sync: refused " +
+                        source.getPathName() + " from " + library +
+                        ": " + failure.getMessage());
+                }
+            } finally {
+                consumer.endTransaction(transaction, committed);
+            }
+        }
+        log.appendMsg("XEX datatype sync: " + library + " copied=" +
+            results.copied + " equivalent=" + results.equivalent +
+            " conflicting=" + results.conflicts + " failed=" + results.failed +
+            " (all named provider definitions, including unused ones; " +
+            "existing types preserved)");
+        if (reportedProblems > 20) {
+            log.appendMsg("XEX datatype sync: " + library + " has " +
+                (reportedProblems - 20) + " additional conflicts/failures " +
+                "not shown individually");
+        }
+        return results;
+    }
+
     private static boolean untouchedExternal(Function f) {
         return f != null && f.getParameterCount() == 0 &&
             !f.hasCustomVariableStorage() &&
@@ -252,6 +352,8 @@ public class XexLinkedImportSignatureAnalyzer extends AbstractAnalyzer {
         ExternalManager externalManager = importing.getExternalManager();
         int applied = 0, skipped = 0, missing = 0, libraries = 0;
         int typesInstalled = 0, failed = 0, conventionsFixed = 0;
+        int typesCloned = 0, typesEquivalent = 0, typesConflicted = 0;
+        int typeCloneFailed = 0;
         int noReturnApplied = 0, noReturnFailed = 0;
         for (String library : externalManager.getExternalLibraryNames()) {
             monitor.checkCancelled();
@@ -273,6 +375,17 @@ public class XexLinkedImportSignatureAnalyzer extends AbstractAnalyzer {
                     continue;
                 }
                 libraries++;
+                // Datatype propagation is independent of whether any imported
+                // function has a complete signature. This runs on each One
+                // Shot pass as well as initial XEX analysis.
+                TypeCopyResults copied = copyProviderDatatypes(
+                    importing, provider, library, log, monitor);
+                typesCloned += copied.copied;
+                typesInstalled += copied.copied;
+                typesEquivalent += copied.equivalent;
+                typesConflicted += copied.conflicts;
+                typeCloneFailed += copied.failed;
+
                 ExternalLocationIterator locations =
                     externalManager.getExternalLocations(library);
                 while (locations.hasNext()) {
@@ -418,12 +531,17 @@ public class XexLinkedImportSignatureAnalyzer extends AbstractAnalyzer {
         log.appendMsg("XEX linked-signature sync: linkedLibraries=" + libraries +
             " applied=" + applied + " skipped=" + skipped +
             " unmatched=" + missing + " typesInstalled=" + typesInstalled +
+            " typesCloned=" + typesCloned +
+            " typesEquivalent=" + typesEquivalent +
+            " typesConflicted=" + typesConflicted +
+            " typeCloneFailed=" + typeCloneFailed +
             " conventionsFixed=" + conventionsFixed +
             " noReturnApplied=" + noReturnApplied +
             " noReturnFailed=" + noReturnFailed +
             " failed=" + failed +
-            " (complete USER_DEFINED signatures, equivalent ABI conventions,"
-            + " and linked-provider No Return flags; no native bytes changed)");
+            " (independent provider datatype copies, complete USER_DEFINED" +
+            " signatures, equivalent ABI conventions and linked-provider" +
+            " No Return flags; no native bytes changed)");
         return true;
     }
 }
