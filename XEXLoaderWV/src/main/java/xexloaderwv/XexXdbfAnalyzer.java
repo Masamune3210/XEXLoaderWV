@@ -92,10 +92,10 @@ public final class XexXdbfAnalyzer extends AbstractAnalyzer {
                 catch (Exception unavailable) {
                     continue;
                 }
-                for (int i = 0; i + 4 <= count; i++) {
-                    if (chunk[i] != 'X' || chunk[i + 1] != 'D' ||
-                            chunk[i + 2] != 'B' || chunk[i + 3] != 'F')
-                        continue;
+                for (int i = 0; i < count; i++) {
+                    if (chunk[i] != 'X') continue;
+                    // headerAt reads the whole header from Program memory:
+                    // it also handles signatures crossing a scan-window edge.
                     Address candidate = chunkStart.add(i);
                     if (headerAt(memory, candidate)) {
                         starts.add(candidate);
