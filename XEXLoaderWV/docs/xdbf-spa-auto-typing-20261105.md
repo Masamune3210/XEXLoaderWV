@@ -90,8 +90,10 @@ one-shot Ghidra analyzer** now handles existing imported programs too:
   `/Xbox360/XDBF` datatypes rather than introducing duplicates.
 - If the original XEX still exists at the imported program's executable
   path, decodes it using existing loader key choices, verifies the image
-  base and the already mapped XDBF header bytes, then restores only
-  missing resource-gap bytes and performs the full array/record typing.
+  base and **every byte of the already mapped XDBF resource spans**,
+  then restores only missing resource-gap bytes and performs the full
+  array/record typing. A same-title but different-build source is rejected
+  if its mapped resource bytes do not match.
   Never overwrites previously mapped PE bytes.
 - If the source file cannot be recovered, applies header and capacity-sized
   table arrays **only where their entire ranges are already mapped and
