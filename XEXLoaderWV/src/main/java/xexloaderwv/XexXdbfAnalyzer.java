@@ -10,6 +10,7 @@ import ghidra.app.services.AbstractAnalyzer;
 import ghidra.app.services.AnalysisPriority;
 import ghidra.app.services.AnalyzerType;
 import ghidra.app.util.importer.MessageLog;
+import ghidra.framework.options.Options;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.listing.Program;
@@ -32,6 +33,8 @@ public final class XexXdbfAnalyzer extends AbstractAnalyzer {
     private static final int WINDOW = 0x10000;
     private static final int MAX_CANDIDATES = 128;
     private static final long MAX_SOURCE_BYTES = 256L * 1024L * 1024L;
+    private static final String SOURCE_OPTION = "Original XEX file (optional)";
+    private String sourceXexPath = "";
 
     public XexXdbfAnalyzer() {
         super("XEX: Type XDBF / SPA databases",
@@ -42,6 +45,19 @@ public final class XexXdbfAnalyzer extends AbstractAnalyzer {
         setDefaultEnablement(true);
         setSupportsOneTimeAnalysis(); // Appears under Analysis > One Shot.
         setPriority(AnalysisPriority.DATA_ANALYSIS.after());
+    }
+
+    @Override
+    public void registerOptions(Options options, Program program) {
+        options.registerOption(SOURCE_OPTION, "", null,
+            "Optional path to the original encrypted/compressed .xex " +
+            "used to recover missing XDBF bytes in already imported " +
+            "programs. Leave blank to try the program's Executable Path.");
+    }
+
+    @Override
+    public void optionsChanged(Options options, Program program) {
+        sourceXexPath = options.getString(SOURCE_OPTION, "");
     }
 
     @Override
@@ -166,21 +182,47 @@ public final class XexXdbfAnalyzer extends AbstractAnalyzer {
      * Original on-disk file is optional. Do not use it unless both image base
      * and mapped XDBF header bytes match the currently imported program.
      */
-    private static boolean recoverFromSource(Program program, List<Address> found,
+    private boolean recoverFromSource(Program program, List<Address> found,
             TaskMonitor monitor, MessageLog log) throws CancelledException {
+        List<String> paths = new ArrayList<>();
+        if (sourceXexPath != null && !sourceXexPath.isBlank())
+            paths.add(sourceXexPath.strip());
         String executable = program.getExecutablePath();
-        if (executable == null || executable.isBlank()) return false;
-        Path path;
-        try {
-            path = Path.of(executable);
-            if (!Files.isRegularFile(path)) return false;
-            long length = Files.size(path);
-            if (length < 24 || length > MAX_SOURCE_BYTES) return false;
+        if (executable != null && !executable.isBlank() &&
+                !paths.contains(executable))
+            paths.add(executable);
+        for (String candidate : paths) {
+            Path path;
+            try {
+                path = Path.of(candidate);
+                if (!Files.isRegularFile(path)) continue;
+                long length = Files.size(path);
+                if (length < 24 || length > MAX_SOURCE_BYTES) continue;
+            }
+            catch (Exception invalidPath) {
+                continue;
+            }
+            try {
+                if (tryRecoverFile(program, found, path, monitor, log))
+                    return true;
+            }
+            catch (CancelledException cancellation) {
+                throw cancellation;
+            }
+            catch (Exception sourceUnavailable) {
+                log.appendMsg("XEX XDBF: source path " + path +
+                    " unavailable: " + sourceUnavailable.getMessage());
+            }
         }
-        catch (Exception invalidPath) {
-            return false;
-        }
-        try {
+        log.appendMsg("XEX XDBF: original XEX not recovered. Set '" +
+            SOURCE_OPTION + "' under Analysis Options for this analyzer " +
+            "to populate the missing resource blocks.");
+        return false;
+    }
+
+    private boolean tryRecoverFile(Program program, List<Address> found,
+            Path path, TaskMonitor monitor, MessageLog log)
+            throws Exception {
             byte[] raw = Files.readAllBytes(path);
             if (raw[0] != 'X' || raw[1] != 'E' || raw[2] != 'X' || raw[3] != '2')
                 return false;
@@ -204,13 +246,6 @@ public final class XexXdbfAnalyzer extends AbstractAnalyzer {
                     // Try the remaining retail/devkit and XEX1/XEX2 keys.
                 }
             }
-        }
-        catch (CancelledException cancellation) {
-            throw cancellation;
-        }
-        catch (Exception sourceUnavailable) {
-            log.appendMsg("XEX XDBF: source XEX not usable: " +
-                sourceUnavailable.getMessage());
         }
         return false;
     }
