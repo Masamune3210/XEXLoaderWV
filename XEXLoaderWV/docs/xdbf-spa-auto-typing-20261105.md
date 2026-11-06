@@ -117,3 +117,70 @@ invoke the One Shot analyzer. Check the analysis log for resource-gap
 mapping, and verify the typed header and capacity-sized arrays. If Ghidra
 reports a Java compilation error or import failure, capture the exact
 error and correct the analyzer without changing existing manual analysis.
+
+## 2026-11-05 correction: Kameo existing import left most SPA bytes untyped
+
+User supplied a 52,024-line Ghidra listing from the existing Kameo
+program (`Pasted text(20261106-031030).txt`). This confirms the analyzer
+recognized the header but applied **only** `XdbfHeader` and
+`XdbfEntry[44]`; no payload records or complete free-space array were
+defined.
+
+**Verified layout from Ghidra listing and XDBF header:**
+```
+Title XDBF resource       0x82B90000..0x82BEC1B9 (length 0x5C1BA)
+Header                    0x82B90000..0x82B90017 (24 bytes)
+Entry table               0x82B90018..0x82B9032F (44 x 0x12)
+Free-space table          0x82B90330..0x82B903E7 (23 x 0x08)
+Payload relative base     0x82B903E8
+
+Existing PE blocks:
+.idata                    0x82B90000..0x82B903C5
+.XBLD                     0x82BA0000..0x82BA00CF
+.reloc                    0x82BA0200..0x82BEFFFF
+
+Unmapped resource gaps:
+                          0x82B903C6..0x82B9FFFF (0xFC3A)
+                          0x82BA00D0..0x82BA01FF (0x130)
+Total missing bytes:      0xFD6A (17.2% of declared resource)
+Already mapped:           0x4C450 (82.8% of declared resource)
+```
+
+**Root causes identified:**
+1. `typeMappedLayout` never iterated entry descriptors, so it did
+   **not** type even the 82.8% of resource bytes already mapped.
+2. It required the *entire* free-space table to be mapped to type any
+   of it. The first **18 of 23** free-space entries are actually fully
+   present within the original `.idata` block.
+3. The source-XEX fallback could not fill the remaining gaps when
+   `Program.getExecutablePath()` did not resolve to a usable matching
+   original file, and previously gave insufficient actionable diagnostics.
+
+**Fix now on testing:**
+- Both importer and existing-program analyzer type nonempty active
+  record payload spans as actual `byte[]` arrays, split per mapped
+  memory block and preserving any existing user definitions.
+- Mapped-only analyzer walks each of 44 entries to find the payload
+  addresses (relative to `0x82B903E8`), label records, annotate
+  namespace/ID/length and type available initialized data.
+- Partial free-space table fallback types each fully available entry,
+  with the missing remainder left untouched until source recovery.
+- A new **Original XEX file (optional)** Ghidra analyzer option accepts
+  an explicit source file path when the existing program's saved
+  executable path is absent/stale. Source-backed recovery first
+  verifies the image base and all already mapped XDBF resource bytes.
+- No blind mapping, no modifying original PE bytes, and no guessing
+  the last meaningful record from padding.
+
+**Validation:** Layout math independently checked against the
+52,024-line listing and previous Kameo descriptor. Previous 15/15
+pure-Java parser checks still stand. New Ghidra-dependent analyzer
+edits need a real extension build and One Shot execution to verify.
+
+**How to retry:** Build/install the new `testing` extension, open the
+existing Kameo program, configure the analyzer's optional source XEX
+path under Analysis Options when needed, and run
+`Analysis > One Shot > XEX: Type XDBF / SPA databases`. Compare
+the log's `sourceRecovered` and typed payload totals. Missing
+`0xFD6A` bytes cannot be reconstructed from the original Ghidra
+memory blocks alone; supply the original XEX to recover them.
