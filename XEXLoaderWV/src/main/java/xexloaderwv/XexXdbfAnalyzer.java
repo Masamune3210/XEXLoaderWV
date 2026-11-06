@@ -246,7 +246,6 @@ public final class XexXdbfAnalyzer extends AbstractAnalyzer {
                     // Try the remaining retail/devkit and XEX1/XEX2 keys.
                 }
             }
-        }
         return false;
     }
 
