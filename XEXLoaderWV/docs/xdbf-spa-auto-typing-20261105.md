@@ -74,3 +74,44 @@ Kameo, and verify header / entry arrays / free-table arrays exist under
 Confirm individual record labels are placed at the payload-relative
 addresses and that the padding after the final referenced record is
 still available for manual analysis.
+
+## 2026-11-05 follow-up: run on already imported XEX programs
+
+User noticed XDBF typing was initially hardwired only into
+`XEXHeader.ProcessPEImage` on fresh import. A separate **default-enabled,
+one-shot Ghidra analyzer** now handles existing imported programs too:
+
+- `XexXdbfAnalyzer.java` appears as
+  **Analysis > One Shot > XEX: Type XDBF / SPA databases**.
+- Restricts itself to programs imported with
+  `XEX Loader by Warranty Voider` using big-endian PowerPC.
+- Scans initialized mapped sections for a valid XDBF header, including
+  signatures crossing scan-window boundaries. Reuses the existing
+  `/Xbox360/XDBF` datatypes rather than introducing duplicates.
+- If the original XEX still exists at the imported program's executable
+  path, decodes it using existing loader key choices, verifies the image
+  base and the already mapped XDBF header bytes, then restores only
+  missing resource-gap bytes and performs the full array/record typing.
+  Never overwrites previously mapped PE bytes.
+- If the source file cannot be recovered, applies header and capacity-sized
+  table arrays **only where their entire ranges are already mapped and
+  readable**. An unmapped table is explicitly reported rather than
+  silently fabricated or partially typed.
+- Existing equivalent XDBF datatypes are accepted idempotently; existing
+  conflicting Ghidra user data/code remains untouched. Unreferenced
+  payload bytes and final padding are not typed.
+- Preexisting imports may have partially unmapped XDBF resource data,
+  so recovery of complete arrays requires the original XEX to remain
+  available. Re-running analysis does not require re-importing the program.
+
+Verification status:
+- Existing dependency-free Java parser fixture: **15/15 checks PASS**.
+- New Ghidra analyzer code reviewed against existing analyzer conventions.
+- **Full Ghidra compile and manual One Shot invocation not verified yet**
+  in the tool environment; validate with the user's installed SDK.
+
+Next: rebuild/install extension, open the **existing** Kameo program, and
+invoke the One Shot analyzer. Check the analysis log for resource-gap
+mapping, and verify the typed header and capacity-sized arrays. If Ghidra
+reports a Java compilation error or import failure, capture the exact
+error and correct the analyzer without changing existing manual analysis.
