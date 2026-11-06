@@ -59,7 +59,10 @@ logical end should be retained.
 
 ## Verification
 - Source and hook reviewed on branch `testing`.
-- Synthetic Java regression test **added**; runtime execution still pending.
+- Standalone Java parser and test compiled with OpenJDK 21 and **15 checks PASS**.
+  Local source bytes were checked against the exact GitHub blob SHA for
+  each file (`e0c4deb039847289151d094dc890b72d981d1306` and
+  `741082bf3be4b7d49da73da066c732448bd43a0e`).
 - Full extension compile/package **not run**: no matching Ghidra installation
   available in the validation container.
 - Actual retail Kameo import in Ghidra **pending**.
