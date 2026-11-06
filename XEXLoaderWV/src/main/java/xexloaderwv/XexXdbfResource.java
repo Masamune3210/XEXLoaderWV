@@ -15,16 +15,31 @@ final class XexXdbfResource {
     static final int ENTRY_SIZE = 0x12;
     static final int FREE_ENTRY_SIZE = 8;
 
+    static final class Record {
+        final int namespace;
+        final long id, offset, length;
+
+        Record(int namespace, long id, long offset, long length) {
+            this.namespace = namespace;
+            this.id = id;
+            this.offset = offset;
+            this.length = length;
+        }
+    }
+
     static final class Resource {
         final String name;
         final long address;
         final int rva, length;
         final int version, entryCapacity, entryCount, freeCapacity, freeCount;
         final int freeOffset, dataOffset, dataLength;
+        final long highestReferencedPayloadEnd;
+        final List<Record> records;
 
         Resource(String name, long address, int rva, int length,
                 int version, int entryCapacity, int entryCount,
-                int freeCapacity, int freeCount, int freeOffset, int dataOffset) {
+                int freeCapacity, int freeCount, int freeOffset, int dataOffset,
+                long highestReferencedPayloadEnd, List<Record> records) {
             this.name = name;
             this.address = address;
             this.rva = rva;
@@ -37,6 +52,8 @@ final class XexXdbfResource {
             this.freeOffset = freeOffset;
             this.dataOffset = dataOffset;
             this.dataLength = length - dataOffset;
+            this.highestReferencedPayloadEnd = highestReferencedPayloadEnd;
+            this.records = Collections.unmodifiableList(new ArrayList<>(records));
         }
     }
 
@@ -65,7 +82,12 @@ final class XexXdbfResource {
         long unsignedBase = Integer.toUnsignedLong(imageBase);
         for (int p = 4; p + 16 <= size; p += 16) {
             String name = new String(resourceInfo, p, 8, StandardCharsets.US_ASCII);
-            if (!name.matches("[A-Za-z0-9_]{8}")) continue;
+            boolean readableName = true;
+            for (int c = 0; c < 8; c++) {
+                int ch = resourceInfo[p + c] & 255;
+                if (ch < 0x20 || ch > 0x7e) readableName = false;
+            }
+            if (!readableName) continue;
             long address = be32(resourceInfo, p + 8);
             long length = be32(resourceInfo, p + 12);
             long rva = address - unsignedBase;
@@ -91,21 +113,29 @@ final class XexXdbfResource {
             // Validate the active entries; unused capacity slots need not
             // contain meaningful values. All offsets are payload-relative.
             boolean valid = true;
+            long highestEnd = 0;
+            List<Record> records = new ArrayList<>();
             for (int n = 0; n < entryCount; n++) {
                 int entry = offset + HEADER_SIZE + n * ENTRY_SIZE;
+                int namespace = ((image[entry] & 255) << 8) |
+                        (image[entry + 1] & 255);
+                long id = (be32(image, entry + 2) << 32) |
+                        be32(image, entry + 6);
                 long relative = be32(image, entry + 10);
                 long bytes = be32(image, entry + 14);
-                if (bytes != 0 && (relative > payloadLength ||
-                        bytes > payloadLength - relative)) {
+                if (relative > payloadLength ||
+                        bytes > payloadLength - relative) {
                     valid = false;
                     break;
                 }
+                highestEnd = Math.max(highestEnd, relative + bytes);
+                records.add(new Record(namespace, id, relative, bytes));
             }
             if (!valid) continue;
             found.add(new Resource(name, address, offset, (int) length,
                     (int) version, (int) entries, (int) entryCount,
                     (int) frees, (int) freeCount, (int) freeOffset,
-                    (int) dataOffset));
+                    (int) dataOffset, highestEnd, records));
         }
         return found;
     }
