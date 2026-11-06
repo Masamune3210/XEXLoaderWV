@@ -208,6 +208,92 @@ final class XexXdbfGhidra {
         return true;
     }
 
+    // Read the tables from mapped memory, not from an inferred resource end.
+    // This works for a previously imported title even if the original XEX
+    // file was moved and part of its resource is no longer mapped.
+    private static int u16(byte[] bytes, int at) {
+        return ((bytes[at] & 255) << 8) | (bytes[at + 1] & 255);
+    }
+
+    private static long u64(byte[] bytes, int at) {
+        return (XexXdbfResource.be32(bytes, at) << 32) |
+            XexXdbfResource.be32(bytes, at + 4);
+    }
+
+    private static void typeTable(Program program, Address at,
+            int capacity, DataType element, String name, MessageLog log)
+            throws Exception {
+        if (capacity == 0) return;
+        Memory memory = program.getMemory();
+        Listing listing = program.getListing();
+        int stride = element.getLength();
+        long length = (long) capacity * stride;
+        if (rangeMapped(memory, at, length)) {
+            typeIfEmpty(listing, at, new ArrayDataType(element, capacity, stride),
+                log, name);
+            return;
+        }
+
+        // When a PE section cuts through a table, define the fully backed
+        // elements without changing the bytes in the unmapped remainder.
+        int included = 0;
+        for (int i = 0; i < capacity; i++) {
+            Address item = at.add((long) i * stride);
+            if (!rangeMapped(memory, item, stride)) continue;
+            if (typeIfEmpty(listing, item, element, log, name + "[" + i + "]"))
+                included++;
+        }
+        log.appendMsg("XEX XDBF: " + name + " partially mapped; typed " +
+            included + "/" + capacity + " elements. Original XEX required " +
+            "to recover the missing table bytes.");
+    }
+
+    /**
+     * Apply arrays only to bytes that already exist in readable initialized
+     * memory. Individual records can cross PE block boundaries or unmapped
+     * gaps: never create a Ghidra array across either boundary.
+     */
+    private static long typeRecordBytes(Program program, Address start,
+            long size, String name, MessageLog log) throws Exception {
+        if (size <= 0 || size > Integer.MAX_VALUE) return 0;
+        Memory memory = program.getMemory();
+        Listing listing = program.getListing();
+        long cursor = start.getOffset();
+        long end = cursor + size;
+        if (end <= cursor || end > start.getAddressSpace().getMaxAddress().getOffset() + 1)
+            return 0;
+        long typed = 0;
+        int segments = 0;
+        while (cursor < end) {
+            Address at = start.getAddressSpace().getAddress(cursor);
+            MemoryBlock block = memory.getBlock(at);
+            if (block == null || !block.isInitialized() || !block.isRead()) {
+                long next = end;
+                for (MemoryBlock candidate : memory.getBlocks()) {
+                    long begin = candidate.getStart().getOffset();
+                    if (begin > cursor && begin < next) next = begin;
+                }
+                if (next <= cursor) break;
+                cursor = next;
+                continue;
+            }
+            int count = (int) Math.min(end - cursor,
+                block.getEnd().getOffset() + 1 - cursor);
+            if (count <= 0) break;
+            String suffix = segments == 0 ? name : name + "_part" + segments;
+            if (typeIfEmpty(listing, at,
+                new ArrayDataType(ByteDataType.dataType, count, 1),
+                log, suffix)) {
+                typed += count;
+                // Preserve an existing symbol at the start of a record.
+                label(program, at, suffix);
+            }
+            segments++;
+            cursor += count;
+        }
+        return typed;
+    }
+
     static void typeMappedLayout(Program program, Address base,
             MessageLog log) throws Exception {
         Memory memory = program.getMemory();
@@ -232,44 +318,68 @@ final class XexXdbfGhidra {
 
         DataType[] types = defineDatatypes(program);
         Listing listing = program.getListing();
-        String addressSuffix = String.format("%08X", base.getOffset());
+        String suffix = String.format("%08X", base.getOffset());
         if (typeIfEmpty(listing, base, types[0], log, "XDBF header"))
-            label(program, base, "Xdbf_" + addressSuffix);
+            label(program, base, "Xdbf_" + suffix);
         Address entriesAt = base.add(XexXdbfResource.HEADER_SIZE);
-        if (capacity > 0) {
-            if (rangeMapped(memory, entriesAt, entriesLength)) {
-                typeIfEmpty(listing, entriesAt,
-                    new ArrayDataType(types[1], (int) capacity,
-                        types[1].getLength()),
-                    log, "XDBF entry table");
-            }
-            else log.appendMsg("XEX XDBF " + base +
-                ": entry table crosses uninitialized/unmapped bytes; " +
-                "source XEX required for complete datatype");
-        }
+        typeTable(program, entriesAt, (int) capacity, types[1],
+            "XDBF entry table", log);
 
         Address freeAt = base.add(XexXdbfResource.HEADER_SIZE + entriesLength);
-        if (freeCapacity > 0) {
-            if (rangeMapped(memory, freeAt, freeLength)) {
-                typeIfEmpty(listing, freeAt,
-                    new ArrayDataType(types[2], (int) freeCapacity,
-                        types[2].getLength()),
-                    log, "XDBF free-space table");
+        typeTable(program, freeAt, (int) freeCapacity, types[2],
+            "XDBF free-space table", log);
+
+        Address payload = base.add(tablesEnd);
+        if (rangeMapped(memory, payload, 1))
+            label(program, payload, "XdbfPayload_" + suffix);
+
+        int labeled = 0;
+        long bytesTyped = 0;
+        // Entry records themselves are available in this Kameo import
+        // despite the free-space table straddling an unmapped PE gap.
+        // Never require the unrelated free-space bytes just to read entries.
+        for (int i = 0; i < used; i++) {
+            Address entryAt = entriesAt.add((long) i * XexXdbfResource.ENTRY_SIZE);
+            if (!rangeMapped(memory, entryAt, XexXdbfResource.ENTRY_SIZE))
+                continue;
+            byte[] entry = new byte[XexXdbfResource.ENTRY_SIZE];
+            if (memory.getBytes(entryAt, entry) != entry.length) continue;
+            int namespace = u16(entry, 0);
+            long id = u64(entry, 2);
+            long offset = XexXdbfResource.be32(entry, 10);
+            long length = XexXdbfResource.be32(entry, 14);
+            long startOffset = payload.getOffset() + offset;
+            if (startOffset < payload.getOffset() ||
+                    startOffset > payload.getAddressSpace().getMaxAddress().getOffset() ||
+                    length == 0 || length > Integer.MAX_VALUE)
+                continue;
+            Address recordAt = payload.getAddressSpace().getAddress(startOffset);
+            String name = String.format("Xdbf_%s_NS%04X_ID%016X",
+                suffix, namespace, id);
+            if (memory.getBlock(recordAt) != null) {
+                label(program, recordAt, name);
+                labeled++;
+                if (listing.getComment(CommentType.PLATE, recordAt) == null)
+                    listing.setComment(recordAt, CommentType.PLATE, MARKER +
+                        " namespace=" + namespace + " ID=0x" +
+                        String.format("%016X", id) +
+                        " recordLength=0x" + Long.toHexString(length) +
+                        " payload-relative offset=0x" + Long.toHexString(offset));
             }
-            else log.appendMsg("XEX XDBF " + base +
-                ": free table crosses uninitialized/unmapped bytes; " +
-                "source XEX required for complete datatype");
+            bytesTyped += typeRecordBytes(program, recordAt, length, name, log);
         }
-        if (rangeMapped(memory, base.add(tablesEnd), 1)) {
-            label(program, base.add(tablesEnd), "XdbfPayload_" + addressSuffix);
-        }
+
         if (listing.getComment(CommentType.PLATE, base) == null) {
             listing.setComment(base, CommentType.PLATE, MARKER +
                 " Recovered from mapped data. Entry capacity=" + capacity +
                 ", active=" + used + ", free capacity=" + freeCapacity +
-                ", active=" + freeUsed + ". Only currently mapped " +
-                "XDBF tables were typed; no image padding was inferred.");
+                ", active=" + freeUsed + ". Active records processed; " +
+                "unmapped bytes left unmodified.");
         }
+        log.appendMsg("XEX XDBF at " + base +
+            ": processed " + used + " entries, labeled=" + labeled +
+            " payload array bytes=" + bytesTyped +
+            " (no source needed for already mapped records)");
     }
 
     private static void typeResource(Program program,
@@ -308,6 +418,7 @@ final class XexXdbfGhidra {
             String name = String.format("Xdbf_%s_NS%04X_ID%016X",
                     safeName(resource.name), record.namespace, record.id);
             try {
+                typeRecordBytes(program, at, record.length, name, log);
                 label(program, at, name);
                 if (listing.getComment(CommentType.PLATE, at) == null) {
                     listing.setComment(at, CommentType.PLATE, MARKER +
