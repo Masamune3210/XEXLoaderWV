@@ -752,27 +752,46 @@ public class XEXHeader {
 		{
 			int address = sec.VirtualAddress;
 			address += imageBaseAddress;
-			int size = sec.PhysicalAddressOrVirtualSize;
-			if (size == 0) {
+			int virtualSize = sec.PhysicalAddressOrVirtualSize;
+			if (virtualSize == 0) {
 				Msg.info(this, "XEX Loader: Skipping empty section " + sec.Name);
 				continue;
 			}
-			Msg.info(this, "XEX Loader: Loading section " + sec.Name + " at 0x" + String.format("%08X", address) + " size = 0x" + String.format("%08X", size));			
-			if (sec.VirtualAddress < 0 || size <= 0 ||
-				(long) sec.VirtualAddress + size > peImage.length) {
-				throw new java.io.IOException("Invalid XEX PE section extent: " + sec.Name +
-					" RVA=" + Integer.toHexString(sec.VirtualAddress) +
-					" length=" + Integer.toHexString(size) +
-					" imageLength=" + Integer.toHexString(peImage.length));
+
+			// XEX decompression produces an image indexed by *virtual RVA*.
+			// Its XEX security imageSize is authoritative for backed bytes;
+			// early retail PE headers may declare a larger virtual tail.
+			// Do not use PointerToRawData or Arrays.copyOfRange's implicit
+			// zero padding to invent bytes outside the decoded XEX image.
+			int backedSize = XexPeSectionExtent.backedSize(
+				sec.Name, sec.VirtualAddress, virtualSize, peImage.length);
+			String sectionDescription = sec.Name;
+			if (backedSize != virtualSize) {
+				String warning = "XEX Loader: PE section " + sec.Name +
+					" RVA=0x" + Integer.toHexString(sec.VirtualAddress) +
+					" declares VirtualSize=0x" + Integer.toHexString(virtualSize) +
+					" but only 0x" + Integer.toHexString(backedSize) +
+					" bytes are backed by the decoded XEX image (0x" +
+					Integer.toHexString(peImage.length) + "); clipping import";
+				Msg.warn(this, warning);
+				log.appendMsg(warning);
+				// Retain the original PE-declared size in the memory block
+				// description while importing only bytes actually present.
+				sectionDescription = sec.Name + " (PE VirtualSize=0x" +
+					Integer.toHexString(virtualSize) + ", backed=0x" +
+					Integer.toHexString(backedSize) + ")";
 			}
-			byte[] data = java.util.Arrays.copyOfRange(peImage,
-				sec.VirtualAddress, sec.VirtualAddress + size);
-			InputStream ds = new ByteArrayInputStream(data);		
+			Msg.info(this, "XEX Loader: Loading section " + sec.Name +
+				" at 0x" + String.format("%08X", address) +
+				" mapped size = 0x" + String.format("%08X", backedSize));
+			byte[] data = Arrays.copyOfRange(
+				peImage, sec.VirtualAddress, sec.VirtualAddress + backedSize);
+			InputStream ds = new ByteArrayInputStream(data);
 			String perm = ""; 
 			perm += ((sec.Characteristics & 0x40000000) != 0) ? "1" : "0";
 			perm += ((sec.Characteristics & 0x80000000) != 0) ? "1" : "0";
 			perm += ((sec.Characteristics & 0x20000000) != 0) ? "1" : "0";
-			MakeBlock(program, sec.Name, sec.Name, address & 0xFFFFFFFFL, ds, data.length, perm, null, log, monitor);
+			MakeBlock(program, sec.Name, sectionDescription, address & 0xFFFFFFFFL, ds, data.length, perm, null, log, monitor);
 			ds.close();	
 			if(sec.Name.equals(".pdata"))
 				pdata = data;
