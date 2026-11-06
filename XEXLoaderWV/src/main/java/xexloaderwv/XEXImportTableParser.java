@@ -63,7 +63,7 @@ public final class XEXImportTableParser {
 		int pos = HEADER_SIZE;
 
 		// XEX names are individually NUL-terminated and DWORD-aligned.
-		// 0xCD is widely used for alignment padding, not a filename character.
+		// Alignment bytes have no guaranteed fill value.
 		// The number of library names is explicitly specified by the header.
 		for (long i = 0; i < libraryCount; i++) {
 			if (pos >= namesEnd) {
@@ -91,22 +91,11 @@ public final class XEXImportTableParser {
 				throw new IOException("XEX import table: name " + i +
 					" alignment exceeds table at 0x" + Integer.toHexString(pos));
 			}
-			for (pos = afterTerminator; pos < aligned; pos++) {
-				int c = bytes[pos] & 0xFF;
-				if (c != 0 && c != 0xCD) {
-					throw new IOException("XEX import table: invalid alignment byte 0x" +
-						Integer.toHexString(c) + " at 0x" + Integer.toHexString(pos));
-				}
-			}
+			// Padding contents are unspecified; only the alignment boundary matters.
+			pos = aligned;
 		}
-		// The reserved bytes at the end of the table are padding too.
-		for (; pos < namesEnd; pos++) {
-			int c = bytes[pos] & 0xFF;
-			if (c != 0 && c != 0xCD) {
-				throw new IOException("XEX import table: unexpected trailing name byte 0x" +
-					Integer.toHexString(c) + " at 0x" + Integer.toHexString(pos));
-			}
-		}
+		// Unconsumed bytes before namesEnd are reserved/padding.
+		// Their values are not specified by XEX; the declared extent is authoritative.
 
 		long next = libraryStart;
 		for (long i = 0; i < libraryCount; i++) {
@@ -149,14 +138,7 @@ public final class XEXImportTableParser {
 			// otherwise be parsed from 0xCD-filled padding.
 			next += recordSize;
 		}
-		for (int posTail = (int) next; posTail < size; posTail++) {
-			int c = bytes[posTail] & 0xFF;
-			if (c != 0 && c != 0xCD) {
-				throw new IOException("XEX import table: unexpected trailing byte 0x" +
-					Integer.toHexString(c) + " at 0x" +
-					Integer.toHexString(posTail));
-			}
-		}
+		// Bytes beyond the last declared record are padding, not another record.
 		return result;
 	}
 }
