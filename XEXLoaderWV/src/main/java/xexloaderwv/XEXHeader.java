@@ -796,6 +796,10 @@ public class XEXHeader {
 			if(sec.Name.equals(".pdata"))
 				pdata = data;
 		}
+		// Title SPA/XDBF resources may span gaps between PE sections.
+		// Map their real decoded bytes and type their database headers/tables
+		// before ordinary import/function analysis begins.
+		XexXdbfGhidra.apply(this, program, log, monitor);
 		// Imports must be typed/linked before .pdata-driven code discovery.
 		ProcessImportLibraries(program, monitor);
 		if(pdata != null && ProcessPData)
