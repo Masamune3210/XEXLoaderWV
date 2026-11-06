@@ -219,7 +219,7 @@ final class XexXdbfGhidra {
             try {
                 label(program, at, name);
                 if (listing.getComment(CommentType.PLATE, at) == null) {
-                    listing.setComment(CommentType.PLATE, at, MARKER +
+                    listing.setComment(at, CommentType.PLATE, MARKER +
                             " resource=" + resource.name +
                             " namespace=" + record.namespace +
                             " id=0x" + String.format("%016X", record.id) +
@@ -234,7 +234,7 @@ final class XexXdbfGhidra {
             }
         }
         if (listing.getComment(CommentType.PLATE, base) == null) {
-            listing.setComment(CommentType.PLATE, base, MARKER +
+            listing.setComment(base, CommentType.PLATE, MARKER +
                     " " + resource.name + " XEX resource size=0x" +
                     Integer.toHexString(resource.length) +
                     " entries=" + resource.entryCount + "/" +
