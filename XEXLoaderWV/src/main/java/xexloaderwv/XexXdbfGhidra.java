@@ -24,6 +24,7 @@ import ghidra.program.model.mem.MemoryBlock;
 import ghidra.program.model.symbol.SourceType;
 import ghidra.program.model.symbol.Symbol;
 import ghidra.util.task.TaskMonitor;
+import ghidra.util.exception.CancelledException;
 
 /**
  * Map and type verified title XDBF/SPA resources during a normal XEX import.
@@ -53,6 +54,9 @@ final class XexXdbfGhidra {
                     // leave existing PE blocks and their permissions alone.
                     mapMissingResourceBytes(header, program, resource, log, monitor);
                     typeResource(program, resource, log, monitor);
+                }
+                catch (CancelledException cancelled) {
+                    throw cancelled;
                 }
                 catch (Exception e) {
                     log.appendMsg("XEX XDBF resource " + resource.name +
@@ -210,8 +214,8 @@ final class XexXdbfGhidra {
             monitor.checkCancelled();
             if (record.length == 0) continue;
             Address at = dataStart.add(record.offset);
-            String name = String.format("Xdbf_NS%04X_ID%016X",
-                    record.namespace, record.id);
+            String name = String.format("Xdbf_%s_NS%04X_ID%016X",
+                    safeName(resource.name), record.namespace, record.id);
             try {
                 label(program, at, name);
                 if (listing.getComment(CommentType.PLATE, at) == null) {
