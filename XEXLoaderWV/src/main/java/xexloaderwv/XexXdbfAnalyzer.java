@@ -113,6 +113,7 @@ public final class XexXdbfAnalyzer extends AbstractAnalyzer {
                 program.getImageBase().getOffset() ||
                 header.peImage == null) return false;
         boolean candidateMatched = false;
+        Memory memory = program.getMemory();
         for (XEXOptionalHeader opt : header.optHeaders) {
             if (opt.id != 0x000002ff || opt.data == null) continue;
             for (XexXdbfResource.Resource resource : XexXdbfResource.parse(
@@ -121,12 +122,36 @@ public final class XexXdbfAnalyzer extends AbstractAnalyzer {
                     Address start = program.getAddressFactory()
                         .getDefaultAddressSpace().getAddress(resource.address);
                     if (!found.contains(start)) continue;
-                    byte[] mapped = new byte[0x18];
-                    if (program.getMemory().getBytes(start, mapped) != mapped.length)
-                        continue;
-                    for (int i = 0; i < mapped.length; i++)
-                        if (mapped[i] != header.peImage[resource.rva + i])
-                            return false;
+
+                    // An XDBF header alone may match between different
+                    // revisions of the same title. Compare *every* byte
+                    // already mapped inside the resource before reconstructing
+                    // any missing resource gaps from the source file.
+                    long end = resource.address + resource.length;
+                    long verified = 0;
+                    for (MemoryBlock block : memory.getBlocks()) {
+                        if (!block.isInitialized() || !block.isRead()) continue;
+                        long from = Math.max(resource.address,
+                            block.getStart().getOffset());
+                        long to = Math.min(end,
+                            block.getEnd().getOffset() + 1);
+                        for (long cursor = from; cursor < to;) {
+                            int count = (int) Math.min(0x10000L, to - cursor);
+                            byte[] mapped = new byte[count];
+                            Address at = start.getAddressSpace().getAddress(cursor);
+                            if (memory.getBytes(at, mapped) != count)
+                                return false;
+                            int offset = resource.rva +
+                                (int) (cursor - resource.address);
+                            for (int i = 0; i < count; i++) {
+                                if (mapped[i] != header.peImage[offset + i])
+                                    return false;
+                            }
+                            verified += count;
+                            cursor += count;
+                        }
+                    }
+                    if (verified < 24) return false;
                     candidateMatched = true;
                 }
                 catch (Exception invalid) {
