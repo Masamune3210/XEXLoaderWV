@@ -165,6 +165,9 @@ final class XexXdbfGhidra {
 
     private static boolean typeIfEmpty(Listing listing, Address at,
             DataType type, MessageLog log, String label) throws Exception {
+        Data old = listing.getDefinedDataAt(at);
+        if (old != null && old.getLength() == type.getLength() &&
+                old.getDataType().isEquivalent(type)) return true;
         if (!clear(listing, at, type.getLength())) {
             log.appendMsg("XEX XDBF: preserving preexisting data/code at " +
                     at + " for " + label);
@@ -179,6 +182,94 @@ final class XexXdbfGhidra {
         Symbol symbol = program.getSymbolTable().getPrimarySymbol(at);
         if (symbol == null || symbol.getSource() == SourceType.DEFAULT)
             program.getSymbolTable().createLabel(at, name, SourceType.ANALYSIS);
+    }
+
+    /**
+     * Fallback for already imported programs when the original XEX is no
+     * longer accessible. Restrict annotations to initialized and readable
+     * mapped bytes: never synthesize data or assume a missing resource size.
+     */
+    private static boolean rangeMapped(Memory memory, Address start, long size) {
+        if (size <= 0) return false;
+        long cursor = start.getOffset();
+        long end = cursor + size;
+        if (end <= cursor) return false;
+        while (cursor < end) {
+            try {
+                MemoryBlock block = memory.getBlock(start.getAddressSpace().getAddress(cursor));
+                if (block == null || !block.isInitialized() || !block.isRead())
+                    return false;
+                cursor = Math.min(end, block.getEnd().getOffset() + 1);
+            }
+            catch (Exception invalid) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    static void typeMappedLayout(Program program, Address base,
+            MessageLog log) throws Exception {
+        Memory memory = program.getMemory();
+        if (!rangeMapped(memory, base, XexXdbfResource.HEADER_SIZE))
+            return;
+        byte[] header = new byte[XexXdbfResource.HEADER_SIZE];
+        if (memory.getBytes(base, header) != header.length ||
+                header[0] != 'X' || header[1] != 'D' ||
+                header[2] != 'B' || header[3] != 'F' ||
+                XexXdbfResource.be32(header, 4) != 0x10000) return;
+
+        long capacity = XexXdbfResource.be32(header, 8);
+        long used = XexXdbfResource.be32(header, 12);
+        long freeCapacity = XexXdbfResource.be32(header, 16);
+        long freeUsed = XexXdbfResource.be32(header, 20);
+        if (capacity > 0x10000 || freeCapacity > 0x10000 ||
+                used > capacity || freeUsed > freeCapacity) return;
+        long entriesLength = capacity * XexXdbfResource.ENTRY_SIZE;
+        long freeLength = freeCapacity * XexXdbfResource.FREE_ENTRY_SIZE;
+        long tablesEnd = XexXdbfResource.HEADER_SIZE + entriesLength + freeLength;
+        if (tablesEnd > 0x2000000) return;
+
+        DataType[] types = defineDatatypes(program);
+        Listing listing = program.getListing();
+        String addressSuffix = String.format("%08X", base.getOffset());
+        if (typeIfEmpty(listing, base, types[0], log, "XDBF header"))
+            label(program, base, "Xdbf_" + addressSuffix);
+        Address entriesAt = base.add(XexXdbfResource.HEADER_SIZE);
+        if (capacity > 0) {
+            if (rangeMapped(memory, entriesAt, entriesLength)) {
+                typeIfEmpty(listing, entriesAt,
+                    new ArrayDataType(types[1], (int) capacity,
+                        types[1].getLength()),
+                    log, "XDBF entry table");
+            }
+            else log.appendMsg("XEX XDBF " + base +
+                ": entry table crosses uninitialized/unmapped bytes; " +
+                "source XEX required for complete datatype");
+        }
+
+        Address freeAt = base.add(XexXdbfResource.HEADER_SIZE + entriesLength);
+        if (freeCapacity > 0) {
+            if (rangeMapped(memory, freeAt, freeLength)) {
+                typeIfEmpty(listing, freeAt,
+                    new ArrayDataType(types[2], (int) freeCapacity,
+                        types[2].getLength()),
+                    log, "XDBF free-space table");
+            }
+            else log.appendMsg("XEX XDBF " + base +
+                ": free table crosses uninitialized/unmapped bytes; " +
+                "source XEX required for complete datatype");
+        }
+        if (rangeMapped(memory, base.add(tablesEnd), 1)) {
+            label(program, base.add(tablesEnd), "XdbfPayload_" + addressSuffix);
+        }
+        if (listing.getComment(CommentType.PLATE, base) == null) {
+            listing.setComment(base, CommentType.PLATE, MARKER +
+                " Recovered from mapped data. Entry capacity=" + capacity +
+                ", active=" + used + ", free capacity=" + freeCapacity +
+                ", active=" + freeUsed + ". Only currently mapped " +
+                "XDBF tables were typed; no image padding was inferred.");
+        }
     }
 
     private static void typeResource(Program program,
