@@ -1,5 +1,6 @@
 package xexloaderwv;
 
+import java.io.IOException;
 import java.util.ArrayList;
 
 import ghidra.app.util.bin.BinaryReader;
@@ -32,6 +33,9 @@ public class BaseFileFormat {
 		switch(compression)
 		{
 			case 1:
+				if (data.length < 16 || data.length % 8 != 0) {
+					throw new IOException("Invalid XEX basic compression descriptor size");
+				}
 				basic = new ArrayList<BaseFileFormat.BasicCompression>();
 				int count = (data.length / 8) - 1;
 				for(int i = 0; i < count; i++)

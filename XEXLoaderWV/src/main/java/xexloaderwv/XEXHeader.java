@@ -68,6 +68,9 @@ public class XEXHeader {
 		this.useXex1MasterKey = useXex1MasterKey;
 		BinaryReader b = new BinaryReader(new ByteArrayProvider(data), false);
 		magic = b.readInt(0);
+		if (magic != 0x58455832) {
+			throw new IOException("Invalid XEX2 magic");
+		}
 		flags = b.readInt(4);
 		String[] flagNames = {"Title Module","Exports To Title","System Debugger","DLL Module","Module Patch","Patch Full","Patch Delta","User Mode"};
 		ArrayList<String> flagList = new ArrayList<String>();
@@ -80,6 +83,11 @@ public class XEXHeader {
 		reserved = b.readInt(12);
 		offsetSecuInfo = b.readInt(16);
 		nOptHeader = b.readInt(20);
+		long optionsEnd = 24L + nOptHeader * 8L;
+		if (offsetPE > data.length || nOptHeader < 0 || optionsEnd > offsetPE ||
+				offsetSecuInfo < optionsEnd || offsetSecuInfo > offsetPE - 0x184) {
+			throw new IOException("Invalid XEX2 header or security info extent");
+		}
 		Msg.info(this, "XEX Loader: Loading optional headers");
 		int pos = 24;
 		for(int i = 0; i < nOptHeader; i++)
@@ -91,18 +99,20 @@ public class XEXHeader {
 		{
 			XEXOptionalHeader oh = optHeaders.get(i);
 			int test = oh.id & 0xFF;
-			if(test == 0xFF)
-			{
-				int len = b.readInt(oh.value);
-				oh.data = b.readByteArray(oh.value, len);
-			}
-			else if (test < 2)
+			if (test < 2) {
 				oh.data = b.readByteArray(24 + i * 8 + 4, 4);
-			else
-			{
-				int len = test * 4;
-				oh.data = b.readByteArray(oh.value, len);	
+				continue;
 			}
+			if (oh.value < optionsEnd || oh.value > offsetPE - 4) {
+				throw new IOException("XEX optional header offset is outside the header: 0x" +
+					Integer.toHexString(oh.id));
+			}
+			int len = test == 0xFF ? b.readInt(oh.value) : test * 4;
+			if (len < 4 || len > offsetPE - oh.value) {
+				throw new IOException("XEX optional header size is outside the header: 0x" +
+					Integer.toHexString(oh.id));
+			}
+			oh.data = b.readByteArray(oh.value, len);
 		}
 		// Import-library count is stored in the security metadata, not in
 		// the import optional header's name count. Load it before parsing imports.
@@ -110,12 +120,18 @@ public class XEXHeader {
 		loaderInfo = new XEXLoaderInfo(data, offsetSecuInfo);
 		loaderInfo.isDevKit = isDevKit;
 		ProcessOptionalHeaders();
+		if (baseFileFormat == null) {
+			throw new IOException("XEX lacks a file format descriptor");
+		}
 		// Preserve raw imported bytes unless the analysis-time veneer option is enabled.
 		useImportAnalysisVeneers = XEXLoaderWVLoader.getBooleanOption(
 			list, XEXLoaderWVLoader.THUNK_VENEERS_OPTION, false);
 		DecryptFileKey();
 		Msg.info(this, "XEX Loader: Loading section info");
 		int sectionCount = b.readInt(offsetSecuInfo + 0x180);
+		if (sectionCount < 0 || sectionCount > (offsetPE - offsetSecuInfo - 0x184) / 24) {
+			throw new IOException("XEX2 page descriptors exceed the header");
+		}
 		for(int i=0; i < sectionCount; i++)
 			sections.add(new XEXSection(data, offsetSecuInfo + (i * 24) + 0x184));
 		if(decodeImage && baseFileFormat.compression != 3)
@@ -490,11 +506,7 @@ public class XEXHeader {
 	public void ReadPEImage(byte[] data) throws Exception
 	{
 		Msg.info(this, "XEX Loader: Loading PE Image");
-		int len = data.length - offsetPE;
-		byte[] compressed;
-		compressed = new byte[len];
-		for(int i = 0; i < len; i ++)
-			compressed[i] = data[offsetPE + i];
+		byte[] compressed = Arrays.copyOfRange(data, offsetPE, data.length);
 		Msg.info(this, "XEX Loader: Encryption type = " + baseFileFormat.encryption);
 		Msg.info(this, "XEX Loader: Compression type = " + baseFileFormat.compression);		
 		switch(baseFileFormat.encryption)
@@ -511,15 +523,18 @@ public class XEXHeader {
 			default:
 				throw new Exception("Encryption type " + baseFileFormat.encryption + " not supported");
 		}
-		peImage = new byte[loaderInfo.imageSize];
 		int posIn = 0, posOut = 0;
 		switch(baseFileFormat.compression)
 		{
 			case 1:
-				for(BaseFileFormat.BasicCompression bc : baseFileFormat.basic)
-				{
-					for(int i = 0; i < bc.dataSize && posIn + i < compressed.length; i++)
-						peImage[i + posOut] = compressed[posIn + i];
+				peImage = new byte[loaderInfo.imageSize];
+				for (BaseFileFormat.BasicCompression bc : baseFileFormat.basic) {
+					if (bc.dataSize < 0 || bc.zeroSize < 0 ||
+							bc.dataSize > compressed.length - posIn ||
+							(long) bc.dataSize + bc.zeroSize > peImage.length - posOut) {
+						throw new IOException("XEX basic compression block exceeds input or decoded image");
+					}
+					System.arraycopy(compressed, posIn, peImage, posOut, bc.dataSize);
 					posOut += bc.dataSize + bc.zeroSize;
 					posIn += bc.dataSize;
 				}
@@ -586,13 +601,8 @@ public class XEXHeader {
 							+ Integer.toHexString(windowSize));
 				}
 				int windowBits = Integer.numberOfTrailingZeros(windowSize);
-				byte[] output = new LzxDecompression().DecompressLZX(
+				peImage = new LzxDecompression().DecompressLZX(
 						input, null, loaderInfo.imageSize, windowBits);
-				if (output.length != peImage.length) {
-					throw new Exception("XEX decompressed image size mismatch: "
-							+ output.length + " != " + peImage.length);
-				}
-				System.arraycopy(output, 0, peImage, 0, output.length);
 				break;
 			default:
 				throw new Exception("Compression type " + baseFileFormat.compression + " not supported");

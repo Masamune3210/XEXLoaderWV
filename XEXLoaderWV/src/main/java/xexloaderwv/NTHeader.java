@@ -1,5 +1,6 @@
 package xexloaderwv;
 
+import java.io.IOException;
 import java.util.ArrayList;
 
 import ghidra.app.util.bin.BinaryReader;
@@ -15,8 +16,9 @@ public class NTHeader {
 		BinaryReader b = new BinaryReader(new ByteArrayProvider(data), true);
 		magic = b.readInt(pos);
 		imgHeader = new ImageFileHeader(data, pos + 4);
-		optHeader = new ImageOptionalHeader(data, pos + 24);
-		int secPos = pos + imgHeader.sizeOfOptionalHeader + 24;
+		optHeader = new ImageOptionalHeader(data, pos + 24,
+			Short.toUnsignedInt(imgHeader.sizeOfOptionalHeader));
+		int secPos = pos + Short.toUnsignedInt(imgHeader.sizeOfOptionalHeader) + 24;
 		for(int i = 0; i < imgHeader.numberOfSections; i++)
 		{
 			secHeaders.add(new SectionHeader(data, secPos));
@@ -125,10 +127,16 @@ public class NTHeader {
 		public int		LoaderFlags;
 		public int		NumberOfRvaAndSizes;
 		public ArrayList<ImageDataDirectory> dataDirectories = new ArrayList<ImageDataDirectory>();
-		public ImageOptionalHeader(byte[] data, int pos) throws Exception
+		public ImageOptionalHeader(byte[] data, int pos, int size) throws Exception
 		{
 			BinaryReader b = new BinaryReader(new ByteArrayProvider(data), true);
+			if (size < 96 || pos > data.length - size) {
+				throw new IOException("Truncated PE optional header");
+			}
 			Magic = b.readShort(pos);
+			if (Magic != 0x10B) {
+				throw new IOException("Decoded XEX optional header is not PE32");
+			}
 			MajorLinkerVersion = data[pos + 2];
 			MinorLinkerVersion = data[pos + 3];
 			SizeOfCode = b.readInt(pos + 4);
@@ -158,6 +166,9 @@ public class NTHeader {
 			SizeOfHeapCommit = b.readInt(pos + 84);
 			LoaderFlags = b.readInt(pos + 88);
 			NumberOfRvaAndSizes = b.readInt(pos + 92);
+			if (NumberOfRvaAndSizes < 0 || NumberOfRvaAndSizes > (size - 96) / 8) {
+				throw new IOException("PE data directories exceed the optional header");
+			}
 			for(int i = 0; i < NumberOfRvaAndSizes; i++)
 				dataDirectories.add(new ImageDataDirectory(data, pos + i * 8 + 96));
 		}

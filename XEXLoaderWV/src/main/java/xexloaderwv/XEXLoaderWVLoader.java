@@ -71,7 +71,7 @@ public class XEXLoaderWVLoader extends AbstractLibrarySupportLoader {
 		List<LoadSpec> loadSpecs = new ArrayList<>();
 		Msg.info(this, "XEX Loader: Checking Signature");
 		BinaryReader br = new BinaryReader(provider, false);
-		if (br.readInt(0) != 0x58455832)
+		if (provider.length() < 4 || br.readInt(0) != 0x58455832)
 			return loadSpecs;
 
 		// All Xbox 360 XEX binaries can contain Xenon VMX128 instructions,
