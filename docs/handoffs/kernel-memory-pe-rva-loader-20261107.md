@@ -31,3 +31,21 @@ Commits: `5299a3f0` detection helper, `26013b6e` importer, `c7202a97` Java compa
 
 ## Next step
 Build/install extension on user's machine. Import `xboxkrnl.exe` from 6717, selecting **Xbox 360 Reconstructed Kernel (RVA Memory Image)** if it is not automatically preferred. Confirm .text begins at VA 0x80060C00 with bytes `38 00 00 0D 44 00 00 02 4E 80 00 20`; confirm no false branch at VA 0x80119C00; run auto-analysis, verify kernel export ordinals and XAM import linking. Then test other reconstructed kernel versions. Merge to `testing` only after verification.
+
+## False-positive hardening, 2026-11-07
+
+The initial classifier used only image-base/length and an eight-instruction PPC plausibility heuristic; those heuristics alone **could** misidentify a specially laid-out, padded conventional PE or could reject valid reconstructed kernels. This is addressed conservatively in commit `3509e99f` plus `6550f6cf`:
+
+- Require `.pdata`, `.edata`, executable `.text` sections with valid bounds and role-consistent permissions.
+- Independently validate a native PE32 export table at the export-directory RVA, base ordinal 1, 128–4096 exports, complete function-RVA table inside `.edata`, and at least 12/16 initially nonempty, in-image export entries.
+- Validate 16 big-endian absolute `.pdata` function addresses: strictly increasing, word-aligned, all inside the real executable `.text` virtual extent. Require at least 14/16 valid PPC opcodes at the corresponding **RVA-mapped function entry words**, and at least 4 positions where the raw-file-pointer interpretation is invalid but the RVA interpretation is valid.
+- If metadata is missing, conflicting, or raw and RVA interpretations are equally plausible, detection returns null. It does **not** claim the file; the ordinary PE loader remains available.
+- Synthetic regression negatives include corrupted `.pdata`, fake exports, conventional disk layout, ambiguous raw+RVA opcode evidence, wrong image base, wrong CPU, truncated sections and invalid NT headers (`afb437ac`).
+- The dependency-free test accepts optional `memory <path> disk <path>` fixture pairs (`acea2906`); genuine binaries are not checked in.
+- An exact-equivalent independent Python verification against uploaded binaries returns **memory-image = true** for 6717 reconstructed `xboxkrnl(3).exe` (16/16 PPC function entries valid at virtual RVA, 16/16 uniquely virtual) and original 1888 CE's kernel PE (16/16 valid at RVA, 5/16 uniquely virtual), and **false** for the conventional 1888 Flash `xboxkrnl(1).exe` (no section/raw mismatch). The actual committed Java test suite and Ghidra extension are **not yet compiled/executed** in this environment.
+- This is not a cryptographic authentication mechanism, and no purely file-content heuristic can guarantee zero false positives for arbitrary adversarial input. It is designed to fail closed for ambiguous content. It may false-negative on other legitimate kernel versions with substantially different metadata, in which case the detector should be extended using confirmed examples rather than weakening checks.
+
+Manual check command (each on one line), from extension root:
+`javac -d build/kernel-rva-test src/main/java/xexloaderwv/XboxKernelMemoryPe.java src/test/java/xexloaderwv/XboxKernelMemoryPeTest.java`
+`java -cp build/kernel-rva-test xexloaderwv.XboxKernelMemoryPeTest memory G:\\somewhere\\6717\\xboxkrnl.exe disk G:\\somewhere\\1888\\flash\\xboxkrnl.exe`
+
