@@ -246,9 +246,9 @@ public class XboxKernelMemoryPeLoader extends AbstractLibrarySupportLoader {
         int created = 0;
         for (int pos = 0; pos < pdata.length; pos += 8) {
             if ((pos & 0xfff) == 0) monitor.checkCancelled();
-            long va = (Byte.toUnsignedInt(pdata[pos]) << 24) |
-                    (Byte.toUnsignedInt(pdata[pos + 1]) << 16) |
-                    (Byte.toUnsignedInt(pdata[pos + 2]) << 8) |
+            long va = ((long) Byte.toUnsignedInt(pdata[pos]) << 24) |
+                    ((long) Byte.toUnsignedInt(pdata[pos + 1]) << 16) |
+                    ((long) Byte.toUnsignedInt(pdata[pos + 2]) << 8) |
                     Byte.toUnsignedInt(pdata[pos + 3]);
             Address target = address(program, va);
             MemoryBlock block = program.getMemory().getBlock(target);
