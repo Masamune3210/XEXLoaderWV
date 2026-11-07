@@ -49,3 +49,10 @@ Manual check command (each on one line), from extension root:
 `javac -d build/kernel-rva-test src/main/java/xexloaderwv/XboxKernelMemoryPe.java src/test/java/xexloaderwv/XboxKernelMemoryPeTest.java`
 `java -cp build/kernel-rva-test xexloaderwv.XboxKernelMemoryPeTest memory G:\\somewhere\\6717\\xboxkrnl.exe disk G:\\somewhere\\1888\\flash\\xboxkrnl.exe`
 
+
+## Promotion to testing (2026-11-07)
+
+- User confirmed the reconstructed-kernel Ghidra loader **works correctly in their local setup** ("works like a charm") and requested promotion to `testing`.
+- The branch is a fast-forward descendant of `testing`; the functional implementation, regression test, and concise handoff are included together.
+- User-reported Ghidra validation: **PASS**. Independent CI/build and the dependency-free Java tests were not run by the assistant; do not describe those as executed.
+- Follow-up: monitor future reconstructed retail kernel versions for layout-detection false negatives, expanding the detector only when supported by a concrete binary example.
