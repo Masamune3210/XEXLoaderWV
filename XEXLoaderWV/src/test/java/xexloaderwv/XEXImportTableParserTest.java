@@ -34,7 +34,7 @@ public final class XEXImportTableParserTest {
     private static void rejects(byte[] table, String description) {
         checks++;
         try {
-            XEXImportTableParser.parse(table);
+            XEXImportTableParser.parse(table, 2);
             throw new AssertionError(description + ": malformed table accepted");
         } catch (IOException expected) {
             // Correct rejection.
@@ -83,9 +83,41 @@ public final class XEXImportTableParserTest {
         return table;
     }
 
+    // dash.xex genuinely has four strings but FIVE library records.
+    // The security loaderInfo.importTableCount must govern record iteration.
+    private static byte[] fiveLibrariesFourNames() {
+        String[] names = {
+            "xam.xex", "xboxkrnl.exe", "xboxkrnl.exe", "xam.xex"
+        };
+        int nameBytes = 0x30;
+        int recordSize = 0x2C;
+        byte[] table = new byte[0x0C + nameBytes + 5 * recordSize];
+        put32(table, 0, table.length);
+        put32(table, 4, nameBytes);
+        put32(table, 8, names.length);
+        int pos = 0x0C;
+        for (String name : names) {
+            byte[] ascii = name.getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+            System.arraycopy(ascii, 0, table, pos, ascii.length);
+            pos += (ascii.length + 1 + 3) & ~3;
+        }
+        if (pos != 0x0C + nameBytes) {
+            throw new AssertionError("Synthetic dash name-table size mismatch");
+        }
+        int[] indexes = {0, 0, 1, 2, 3};
+        for (int i = 0; i < indexes.length; i++) {
+            int base = 0x0C + nameBytes + i * recordSize;
+            put32(table, base, recordSize);
+            put16(table, base + 0x24, indexes[i]);
+            put16(table, base + 0x26, 1);
+            put32(table, base + 0x28, 0x92739000 + i * 0x10);
+        }
+        return table;
+    }
+
     public static void main(String[] args) throws Exception {
         byte[] exactExtents = descriptor(0, 0, 0);
-        XEXImportTableParser.Result parsed = XEXImportTableParser.parse(exactExtents);
+        XEXImportTableParser.Result parsed = XEXImportTableParser.parse(exactExtents, 2);
         expect(parsed.names.size() == 2, "name count");
         expect("xam.xex".equals(parsed.names.get(0)), "first library name");
         expect("xboxkrnl.exe".equals(parsed.names.get(1)), "second library name");
@@ -97,10 +129,26 @@ public final class XEXImportTableParserTest {
 
         // Unspecified padding must be skipped at every defined extent:
         // per-name alignment, name-table tail, library-record tail, descriptor tail.
-        parsed = XEXImportTableParser.parse(descriptor(4, 4, 3));
+        parsed = XEXImportTableParser.parse(descriptor(4, 4, 3), 2);
         expect(parsed.libraries.size() == 2, "arbitrary padding preserves records");
         expect("xboxkrnl.exe".equals(parsed.libraries.get(1).name),
                 "library name index preserved");
+
+        byte[] dashLike = fiveLibrariesFourNames();
+        parsed = XEXImportTableParser.parse(dashLike, 5);
+        expect(parsed.names.size() == 4, "dash name count");
+        expect(parsed.libraries.size() == 5, "dash import-library count");
+        expect("xam.xex".equals(parsed.libraries.get(4).name),
+                "fifth record references the fourth name");
+        expect(parsed.libraries.get(4).records.get(0) == 0x92739040,
+                "fifth library's import record preserved");
+        checks++;
+        try {
+            XEXImportTableParser.parse(dashLike, 6);
+            throw new AssertionError("Excess security library count accepted");
+        } catch (IOException expected) {
+            // No room for a sixth declared library record.
+        }
 
         byte[] badIndex = exactExtents.clone();
         put16(badIndex, 0x24 + 0x24, 3);
