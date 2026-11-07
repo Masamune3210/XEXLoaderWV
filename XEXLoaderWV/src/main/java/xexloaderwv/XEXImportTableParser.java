@@ -40,22 +40,31 @@ public final class XEXImportTableParser {
 		return ((bytes[offset] & 0xFF) << 8) | (bytes[offset + 1] & 0xFF);
 	}
 
-	public static Result parse(byte[] bytes) throws IOException {
+	/**
+	 * @param libraryCount number of import-library records from XEX security
+	 *                     metadata, distinct from the name count at descriptor +8
+	 */
+	public static Result parse(byte[] bytes, int libraryCount) throws IOException {
 		if (bytes == null || bytes.length < HEADER_SIZE) {
 			throw new IOException("XEX import table: descriptor shorter than 12 bytes");
 		}
 		long size = readU32(bytes, 0);
 		long nameBytes = readU32(bytes, 4);
-		long libraryCount = readU32(bytes, 8);
+		long nameCount = readU32(bytes, 8);
 		if (size < HEADER_SIZE || size > bytes.length ||
 				nameBytes > size - HEADER_SIZE) {
 			throw new IOException("XEX import table: invalid descriptor size=" + size +
 				" nameBytes=" + nameBytes + " bufferLength=" + bytes.length);
 		}
 		long libraryStart = HEADER_SIZE + nameBytes;
-		if (libraryCount > (size - libraryStart) / LIBRARY_HEADER_SIZE) {
+		if (libraryCount < 0 ||
+				(long) libraryCount > (size - libraryStart) / LIBRARY_HEADER_SIZE) {
 			throw new IOException("XEX import table: " + libraryCount +
 				" library headers cannot fit inside " + size + " bytes");
+		}
+		if (nameCount > nameBytes / 2) {
+			throw new IOException("XEX import table: " + nameCount +
+				" names cannot fit inside " + nameBytes + " bytes");
 		}
 
 		Result result = new Result();
@@ -65,7 +74,7 @@ public final class XEXImportTableParser {
 		// XEX names are individually NUL-terminated and DWORD-aligned.
 		// Alignment bytes have no guaranteed fill value.
 		// The number of library names is explicitly specified by the header.
-		for (long i = 0; i < libraryCount; i++) {
+		for (long i = 0; i < nameCount; i++) {
 			if (pos >= namesEnd) {
 				throw new IOException("XEX import table: missing name " + i +
 					" before string table end 0x" + Integer.toHexString(namesEnd));
@@ -138,7 +147,8 @@ public final class XEXImportTableParser {
 			// otherwise be parsed from 0xCD-filled padding.
 			next += recordSize;
 		}
-		// Bytes beyond the last declared record are padding, not another record.
+		// Any remaining bytes are reserved padding, regardless of their value.
+		// The authoritative library count comes from XEX security metadata.
 		return result;
 	}
 }
