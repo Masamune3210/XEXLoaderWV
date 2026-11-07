@@ -1,6 +1,8 @@
 package xexloaderwv;
 
 import java.util.Arrays;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 /**
  * Dependency-free tests for identifying a CF/CG reconstructed Xbox 360
@@ -99,7 +101,7 @@ public final class XboxKernelMemoryPeTest {
         return bytes;
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         byte[] source = kernelImage();
         XboxKernelMemoryPe.Image image = XboxKernelMemoryPe.detect(source);
         expect(image != null, "detect reconstructed 6717-like kernel");
@@ -172,6 +174,24 @@ public final class XboxKernelMemoryPeTest {
 
         expect(XboxKernelMemoryPe.detect(new byte[64]) == null,
                 "reject non-PE input");
+        // Optional fixture assertions on independently reconstructed
+        // kernels. No copyrighted kernel files are checked into this repo.
+        // Example:
+        // java -cp build/kernel-rva-test xexloaderwv.XboxKernelMemoryPeTest memory path/to/6717/xboxkrnl.exe disk path/to/1888/flash/xboxkrnl.exe
+        if ((args.length & 1) != 0) {
+            throw new IllegalArgumentException(
+                    "Expected pairs: memory|disk <path-to-kernel-PE>");
+        }
+        for (int i = 0; i < args.length; i += 2) {
+            if (!args[i].equals("memory") && !args[i].equals("disk")) {
+                throw new IllegalArgumentException(
+                        "Expected memory or disk: " + args[i]);
+            }
+            boolean actual = XboxKernelMemoryPe.detect(
+                    Files.readAllBytes(Path.of(args[i + 1]))) != null;
+            expect(actual == args[i].equals("memory"),
+                    args[i] + " layout for " + args[i + 1]);
+        }
         System.out.println("PASS: " + checks +
                 " Xbox 360 reconstructed kernel PE detection checks");
     }
