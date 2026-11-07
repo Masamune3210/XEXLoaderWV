@@ -758,6 +758,23 @@ public class XEXHeader {
 				continue;
 			}
 
+			// XEX page/decoded-image metadata, not PE PointerToRawData, tells
+			// us which RVAs actually exist. Some retail modules retain PE
+			// section headers for sections beyond the final decoded XEX page.
+			// There are no source bytes for them, so do not create fake blocks.
+			if (XexPeSectionExtent.completelyUnbacked(sec.Name,
+					sec.VirtualAddress, virtualSize, peImage.length,
+					nt.optHeader.SizeOfImage)) {
+				String warning = "XEX Loader: Skipping unbacked PE section " + sec.Name +
+					" RVA=0x" + Integer.toHexString(sec.VirtualAddress) +
+					" VirtualSize=0x" + Integer.toHexString(virtualSize) +
+					" (decoded image ends at RVA 0x" +
+					Integer.toHexString(peImage.length) + ")";
+				Msg.warn(this, warning);
+				log.appendMsg(warning);
+				continue;
+			}
+
 			// XEX decompression produces an image indexed by *virtual RVA*.
 			// Its XEX security imageSize is authoritative for backed bytes;
 			// early retail PE headers may declare a larger virtual tail.
