@@ -68,6 +68,79 @@ final class XboxKernelMemoryPe {
         return score;
     }
 
+    private static boolean hasConsistentKernelMetadata(byte[] bytes,
+            long imageBase, int exportRva, List<Section> sections) {
+        Section pdata = null, edata = null, text = null;
+        for (Section section : sections) {
+            if (".pdata".equals(section.name())) pdata = section;
+            if (".edata".equals(section.name())) edata = section;
+            if (".text".equals(section.name())) text = section;
+        }
+        if (pdata == null || edata == null || text == null ||
+                pdata.executable() || edata.executable() || !text.executable() ||
+                pdata.virtualSize() < 16 * 8 ||
+                (pdata.virtualSize() & 7) != 0 ||
+                !range(bytes.length, pdata.virtualAddress(), pdata.virtualSize()) ||
+                exportRva < edata.virtualAddress() ||
+                !range((long) edata.virtualAddress() + edata.virtualSize(),
+                        exportRva, 40)) {
+            return false;
+        }
+
+        // A genuine retail kernel exposes hundreds of exports. Validate its
+        // little-endian PE export table, independent of the executable bytes.
+        int ordinalBase = u32(bytes, exportRva + 16);
+        int functionCount = u32(bytes, exportRva + 20);
+        int functionsRva = u32(bytes, exportRva + 28);
+        if (ordinalBase != 1 || functionCount < 128 ||
+                functionCount > 4096 ||
+                !range(bytes.length, functionsRva, (long) functionCount * 4) ||
+                functionsRva < edata.virtualAddress() ||
+                (long) functionsRva + (long) functionCount * 4 >
+                    (long) edata.virtualAddress() + edata.virtualSize()) {
+            return false;
+        }
+        int validExports = 0;
+        for (int i = 0; i < 16; ++i) {
+            int target = u32(bytes, functionsRva + i * 4);
+            if (target > 0 && target < bytes.length) ++validExports;
+        }
+        if (validExports < 12) return false;
+
+        // Kernel .pdata is big-endian and holds absolute function addresses.
+        // Require the first sixteen entries to point in ascending order into
+        // the executable section. This checks a separate metadata source,
+        // not just an arbitrary eight-word PPC opcode sample.
+        int plausibleAtRva = 0;
+        int evidenceAgainstRaw = 0;
+        long lastAddress = 0;
+        for (int i = 0; i < 16; ++i) {
+            long va = ((long) Byte.toUnsignedInt(bytes[pdata.virtualAddress() + 8 * i]) << 24) |
+                    ((long) Byte.toUnsignedInt(bytes[pdata.virtualAddress() + 8 * i + 1]) << 16) |
+                    ((long) Byte.toUnsignedInt(bytes[pdata.virtualAddress() + 8 * i + 2]) << 8) |
+                    Byte.toUnsignedInt(bytes[pdata.virtualAddress() + 8 * i + 3]);
+            long rva = va - imageBase;
+            if (va <= lastAddress || (va & 3) != 0 ||
+                    rva < text.virtualAddress() ||
+                    rva >= (long) text.virtualAddress() + text.virtualSize()) {
+                return false;
+            }
+            lastAddress = va;
+            // Compare the same .pdata-designated function at its virtual RVA
+            // and at the address that ordinary PE raw mapping would use.
+            int virtualOffset = (int) rva;
+            int rawOffset = (int) (rva - text.virtualAddress() +
+                    (long) text.pointerToRawData());
+            boolean virtualCode = ppcScore(bytes, virtualOffset) > 0;
+            boolean diskCode = ppcScore(bytes, rawOffset) > 0;
+            if (virtualCode) ++plausibleAtRva;
+            if (virtualCode && !diskCode) ++evidenceAgainstRaw;
+        }
+        // Fail closed on ambiguous images, even if the PE base/size and the
+        // start of .text resemble the reconstructed kernel.
+        return plausibleAtRva >= 14 && evidenceAgainstRaw >= 4;
+    }
+
     static Image detect(byte[] bytes) {
         if (bytes.length < 0x400 || bytes.length > 64 * 1024 * 1024 ||
                 bytes[0] != 'M' || bytes[1] != 'Z') return null;
@@ -131,7 +204,8 @@ final class XboxKernelMemoryPe {
                 memoryLayoutEvidence = virtualScore >= 3 && virtualScore > rawScore;
             }
         }
-        return memoryLayoutEvidence
+        return memoryLayoutEvidence &&
+                hasConsistentKernelMetadata(bytes, imageBase, exportRva, sections)
                 ? new Image(imageBase, sizeOfImage, sizeOfHeaders, entryPointRva,
                         exportRva, exportSize, List.copyOf(sections))
                 : null;
