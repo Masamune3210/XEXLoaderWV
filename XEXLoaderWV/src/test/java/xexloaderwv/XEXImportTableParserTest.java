@@ -150,6 +150,17 @@ public final class XEXImportTableParserTest {
             // No room for a sixth declared library record.
         }
 
+        // A shared name can describe multiple records even with a padded name table.
+        byte[] sharedName = exactExtents.clone();
+        put32(sharedName, 8, 1);
+        put16(sharedName, 0x24 + 0x70 + 0x24, 0);
+        parsed = XEXImportTableParser.parse(sharedName, 2);
+        expect(parsed.names.size() == 1 && parsed.libraries.size() == 2,
+                "record count is independent of string-table name count");
+        expect("xam.xex".equals(parsed.libraries.get(1).name) &&
+                parsed.libraries.get(1).records.get(13) == 0x9200000D,
+                "second record can reuse the first library name");
+
         byte[] badIndex = exactExtents.clone();
         put16(badIndex, 0x24 + 0x24, 3);
         rejects(badIndex, "out-of-range name index");
