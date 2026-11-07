@@ -144,11 +144,16 @@ public class XEXLoaderWVLoader extends AbstractLibrarySupportLoader {
 			program.setImageBase(program.getAddressFactory().getDefaultAddressSpace()
 				.getAddress(Integer.toUnsignedLong(header.imageBaseAddress)), true);
 			boolean processPData = getBooleanOption(options, PROCESS_PDATA_OPTION, true);
-			header.ProcessPEImage(program, monitor, log, processPData);
+			List<XEXHeader.ResourceRange> resources = header.getResourceOnlyRanges();
+			if (resources.isEmpty()) {
+				header.ProcessPEImage(program, monitor, log, processPData);
+			} else {
+				header.processResourceOnlyImage(resources, program, monitor, log);
+			}
 			if (header.blocks.isEmpty()) {
 				throw new IOException("XEX image imported without any memory blocks");
 			}
-			if (getBooleanOption(options, LOAD_PDB_OPTION, false)) {
+			if (resources.isEmpty() && getBooleanOption(options, LOAD_PDB_OPTION, false)) {
 				LoadPDB(program, monitor,
 					getBooleanOption(options, EXPERIMENTAL_PDB_OPTION, false), header);
 			}
@@ -169,7 +174,7 @@ public class XEXLoaderWVLoader extends AbstractLibrarySupportLoader {
 			image = ApplyPatch(image, patchPath, options, isDevKit, useXex1MasterKey);
 		}
 		XEXHeader header = new XEXHeader(image, options, isDevKit, useXex1MasterKey);
-		if (header.peImage == null || header.peImage.length < 0x100) {
+		if (header.peImage == null || header.peImage.length < 4) {
 			throw new IOException("XEX is not a usable base image (possibly an unapplied XEXP patch)");
 		}
 		// A wrong retail/devkit key can produce a nonempty image buffer full of
@@ -177,7 +182,13 @@ public class XEXLoaderWVLoader extends AbstractLibrarySupportLoader {
 		// so the alternative key is tried BEFORE any memory blocks are created.
 		byte[] pe = header.peImage;
 		if (pe[0] != 'M' || pe[1] != 'Z') {
-			throw new IOException("Decoded XEX image lacks an MZ header");
+			if (!header.getResourceOnlyRanges().isEmpty()) {
+				return header;
+			}
+			throw new IOException("Decoded XEX image lacks an MZ header or valid XUIZ resources");
+		}
+		if (pe.length < 0x40) {
+			throw new IOException("Truncated DOS header in decoded XEX");
 		}
 		long ntOffset = ((long) (pe[0x3C] & 0xFF)) |
 			((long) (pe[0x3D] & 0xFF) << 8) |

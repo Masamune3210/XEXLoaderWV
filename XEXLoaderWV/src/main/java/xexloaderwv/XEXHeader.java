@@ -3,6 +3,7 @@ package xexloaderwv;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.Arrays;
 import java.io.InputStream;
@@ -118,6 +119,7 @@ public class XEXHeader {
 		// the import optional header's name count. Load it before parsing imports.
 		Msg.info(this, "XEX Loader: Loading loader info");
 		loaderInfo = new XEXLoaderInfo(data, offsetSecuInfo);
+		imageBaseAddress = loaderInfo.loadAddress;
 		loaderInfo.isDevKit = isDevKit;
 		ProcessOptionalHeaders();
 		if (baseFileFormat == null) {
@@ -761,6 +763,56 @@ public class XEXHeader {
 			(isXam ? " (XAM names are ordinal hints)" : ""));
 	}
 
+	record ResourceRange(String name, long address, int offset, int length) {}
+
+	List<ResourceRange> getResourceOnlyRanges() throws IOException {
+		if ((flags & 1) != 0 || entryPointAddress != 0 || importLibs != null ||
+				imageBaseAddress == 0 || peImage.length < 4 ||
+				peImage[0] != 'X' || peImage[1] != 'U' || peImage[2] != 'I' || peImage[3] != 'Z' ||
+				(baseFileFormat.encryption != 0 && baseFileFormat.compression != 2)) {
+			return List.of();
+		}
+
+		ArrayList<ResourceRange> ranges = new ArrayList<>();
+		long base = Integer.toUnsignedLong(imageBaseAddress);
+		for (XEXOptionalHeader option : optHeaders) {
+			if (option.id != 0x2FF) {
+				continue;
+			}
+			if (!ranges.isEmpty() || option.data.length < 20 || (option.data.length - 4) % 16 != 0) {
+				throw new IOException("Invalid XUIZ XEX resource table");
+			}
+			BinaryReader reader = new BinaryReader(new ByteArrayProvider(option.data), false);
+			for (int pos = 4; pos < option.data.length; pos += 16) {
+				int nameLength = 0;
+				while (nameLength < 8 && option.data[pos + nameLength] != 0) {
+					nameLength++;
+				}
+				String name = new String(option.data, pos, nameLength, StandardCharsets.US_ASCII);
+				long address = reader.readUnsignedInt(pos + 8);
+				long offset = address - base;
+				int length = reader.readInt(pos + 12);
+				if (length <= 0 || offset < 0 || offset + length > peImage.length ||
+						address + length > 0x100000000L) {
+					throw new IOException("XUIZ XEX resource is outside the decoded image: " + name);
+				}
+				ranges.add(new ResourceRange(name, address, (int) offset, length));
+			}
+		}
+		return ranges;
+	}
+
+	void processResourceOnlyImage(List<ResourceRange> ranges, Program program,
+			TaskMonitor monitor, MessageLog log) throws Exception {
+		for (ResourceRange resource : ranges) {
+			monitor.checkCancelled();
+			ByteArrayInputStream input = new ByteArrayInputStream(
+				peImage, resource.offset(), resource.length());
+			MakeBlock(program, "XUIZ_" + resource.name(), "XEX resource",
+				resource.address(), input, resource.length(), "100", null, log, monitor);
+		}
+	}
+
 	public void ProcessPEImage(Program program, TaskMonitor monitor, MessageLog log, boolean ProcessPData) throws Exception
 	{
 		Msg.info(this, "XEX Loader: Processing PE Image");
@@ -857,7 +909,7 @@ public class XEXHeader {
 		MemoryBlock block = MemoryBlockUtils.createInitializedBlock(program, false, name,
 			addr, s, size, desc, null, bf[0] == '1', bf[1] == '1', bf[2] == '1', log, monitor);
 		if (block == null) {
-			throw new java.io.IOException("Failed to map XEX PE section " + name + " at " + addr);
+			throw new java.io.IOException("Failed to map XEX block " + name + " at " + addr);
 		}
 		blocks.add(block);
 		if(struc != null)
