@@ -211,7 +211,13 @@ public class XboxKernelMemoryPeLoader extends AbstractLibrarySupportLoader {
             if (targetRva == 0 || !mapped(program, image, targetRva, 1)) continue;
             Address target = address(program, image.address(targetRva));
             int ordinal = ordinalBase + i;
-            String symbol = String.format("XexExport_%04X", ordinal);
+            // Match the names that this extension gives XAM's imported
+            // xboxkrnl ordinals, so native library linking can resolve them.
+            String symbol = ImportRenamer.Rename("xboxkrnl", ordinal);
+            if (symbol.startsWith("xboxkrnl_ord_")) {
+                // Unknown exports must still match unknown import names.
+                symbol = "xboxkrnl_ord_" + ordinal;
+            }
             MemoryBlock memory = program.getMemory().getBlock(target);
             if (memory.isExecute() && (targetRva & 3) == 0) {
                 ensureFunction(program, target, monitor);
