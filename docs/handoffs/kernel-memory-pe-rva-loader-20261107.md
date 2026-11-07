@@ -19,7 +19,7 @@ Evidence from supplied genuine 6717 `xboxkrnl(3).exe`: PE base `0x80040000`, ima
 - `XEXLoaderWV/src/main/java/xexloaderwv/XboxKernelMemoryPeLoader.java`: new dedicated auto-discovered Ghidra loader; preferred over generic PE importer on positive detection. Imports section data at **file offset = VirtualAddress**, keeps PE headers intact, maps section permissions and actual image length, exposes ordinal exports using the same `ImportRenamer.Rename("xboxkrnl", ordinal)` names XAM uses, creates .pdata functions, establishes entrypoint. Requires no modification to firmware files or Xenia.
 - `XEXLoaderWV/src/test/java/xexloaderwv/XboxKernelMemoryPeTest.java`: dependency-free Java 21 synthetic regression for 6717-like RVA/raw mismatch, negative ordinary disk PE, kernel base/machine checks and malformed header bounds. The generated test image is synthetic; no proprietary binaries are committed.
 
-Commits: `5299a3f0` detection helper, `26013b6e` importer, `c7202a97` Java compatibility and export-bounds fix, `91b5fe63` tests, `0e379509` exports named for the fork's ordinal renamer.
+Commits: `5299a3f0` detection helper, `26013b6e` importer, `c7202a97` Java compatibility and export-bounds fix, `91b5fe63` tests, `0e379509` exports named for the fork's ordinal renamer, `2454a762` preserve unsigned 32-bit .pdata addresses.
 
 ## Verification
 
