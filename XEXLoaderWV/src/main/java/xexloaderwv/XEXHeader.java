@@ -98,10 +98,12 @@ public class XEXHeader {
 				oh.data = b.readByteArray(oh.value, len);	
 			}
 		}
-		ProcessOptionalHeaders();
+		// Import-library count is stored in the security metadata, not in
+		// the import optional header's name count. Load it before parsing imports.
 		Msg.info(this, "XEX Loader: Loading loader info");
 		loaderInfo = new XEXLoaderInfo(data, offsetSecuInfo);
 		loaderInfo.isDevKit = isDevKit;
+		ProcessOptionalHeaders();
 		// Preserve raw imported bytes unless the analysis-time veneer option is enabled.
 		useImportAnalysisVeneers = XEXLoaderWVLoader.getBooleanOption(
 			list, XEXLoaderWVLoader.THUNK_VENEERS_OPTION, false);
@@ -473,7 +475,8 @@ public class XEXHeader {
 	 */
 	public void ReadImportLibraries(byte[] data) throws Exception
 	{
-		XEXImportTableParser.Result parsed = XEXImportTableParser.parse(data);
+		XEXImportTableParser.Result parsed = XEXImportTableParser.parse(
+			data, loaderInfo.importTableCount);
 		stringTable = parsed.names;
 		importLibs = parsed.libraries;
 	}
