@@ -68,6 +68,22 @@ final class XboxKernelMemoryPe {
         return score;
     }
 
+    private static boolean hasPpcInstruction(byte[] bytes, int offset) {
+        if (!range(bytes.length, offset, 4)) return false;
+        int word = (Byte.toUnsignedInt(bytes[offset]) << 24) |
+                (Byte.toUnsignedInt(bytes[offset + 1]) << 16) |
+                (Byte.toUnsignedInt(bytes[offset + 2]) << 8) |
+                Byte.toUnsignedInt(bytes[offset + 3]);
+        int opcode = word >>> 26;
+        return word != 0 && (opcode == 4 || opcode == 14 ||
+                opcode == 15 || opcode == 16 || opcode == 17 ||
+                opcode == 18 || opcode == 19 || opcode == 21 ||
+                opcode == 24 || opcode == 31 || opcode == 32 ||
+                opcode == 33 || opcode == 34 || opcode == 35 ||
+                opcode == 36 || opcode == 37 || opcode == 40 ||
+                opcode == 41 || opcode == 58 || opcode == 62);
+    }
+
     private static boolean hasConsistentKernelMetadata(byte[] bytes,
             long imageBase, int exportRva, List<Section> sections) {
         Section pdata = null, edata = null, text = null;
@@ -82,8 +98,9 @@ final class XboxKernelMemoryPe {
                 (pdata.virtualSize() & 7) != 0 ||
                 !range(bytes.length, pdata.virtualAddress(), pdata.virtualSize()) ||
                 exportRva < edata.virtualAddress() ||
-                !range((long) edata.virtualAddress() + edata.virtualSize(),
-                        exportRva, 40)) {
+                !range(bytes.length, exportRva, 40) ||
+                (long) exportRva + 40 >
+                    (long) edata.virtualAddress() + edata.virtualSize()) {
             return false;
         }
 
@@ -131,8 +148,8 @@ final class XboxKernelMemoryPe {
             int virtualOffset = (int) rva;
             int rawOffset = (int) (rva - text.virtualAddress() +
                     (long) text.pointerToRawData());
-            boolean virtualCode = ppcScore(bytes, virtualOffset) > 0;
-            boolean diskCode = ppcScore(bytes, rawOffset) > 0;
+            boolean virtualCode = hasPpcInstruction(bytes, virtualOffset);
+            boolean diskCode = hasPpcInstruction(bytes, rawOffset);
             if (virtualCode) ++plausibleAtRva;
             if (virtualCode && !diskCode) ++evidenceAgainstRaw;
         }
