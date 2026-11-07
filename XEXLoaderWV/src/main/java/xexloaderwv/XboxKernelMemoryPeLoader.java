@@ -201,8 +201,7 @@ public class XboxKernelMemoryPeLoader extends AbstractLibrarySupportLoader {
         int functionsRva = XboxKernelMemoryPe.u32(bytes, exportRva + 28);
         if (ordinalBase < 0 || count < 0 || count > 0x10000 ||
                 (long) ordinalBase + count > 0x10000 ||
-                !mapped(program, image, functionsRva, (long) count * 4 > Integer.MAX_VALUE
-                        ? 0 : count * 4) || count == 0) {
+                count == 0 || !mapped(program, image, functionsRva, count * 4)) {
             throw new IOException("Invalid kernel PE export directory");
         }
         int functions = 0, globals = 0;
@@ -241,10 +240,10 @@ public class XboxKernelMemoryPeLoader extends AbstractLibrarySupportLoader {
         int created = 0;
         for (int pos = 0; pos < pdata.length; pos += 8) {
             if ((pos & 0xfff) == 0) monitor.checkCancelled();
-            long va = (Byte.toUnsignedLong(pdata[pos]) << 24) |
-                    (Byte.toUnsignedLong(pdata[pos + 1]) << 16) |
-                    (Byte.toUnsignedLong(pdata[pos + 2]) << 8) |
-                    Byte.toUnsignedLong(pdata[pos + 3]);
+            long va = (Byte.toUnsignedInt(pdata[pos]) << 24) |
+                    (Byte.toUnsignedInt(pdata[pos + 1]) << 16) |
+                    (Byte.toUnsignedInt(pdata[pos + 2]) << 8) |
+                    Byte.toUnsignedInt(pdata[pos + 3]);
             Address target = address(program, va);
             MemoryBlock block = program.getMemory().getBlock(target);
             if (block == null || !block.isExecute() ||
