@@ -628,10 +628,11 @@ public class XEXHeader {
 			Address addr = MakeAddress(address & 0xFFFFFFFFL);
 			if(addr != null)
 			{
-				// Preserve import thunk names already established from XEX descriptors.
+				// .pdata supplies function entrypoints, not function names.
+				// Leave names alone so Ghidra assigns its normal FUN_ defaults,
+				// or keeps an existing import/export/PDB/user-defined symbol.
 				if (program.getFunctionManager().getFunctionAt(addr) != null)
 					continue;
-				SymbolUtilities.createPreferredLabelOrFunctionSymbol(program, addr, null, "Function_" + String.format("%08X", address), SourceType.ANALYSIS);
 				if(EnsureFunction(addr, program, monitor))
 					created++;
 			}
