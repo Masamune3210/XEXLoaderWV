@@ -225,13 +225,6 @@ public class XEXHeader {
 		{
 			DOSHeader dos = new DOSHeader(peImage);
 			NTHeader nt = new NTHeader(peImage, dos.e_lfanew);
-			int address = imageBaseAddress;
-			for(NTHeader.SectionHeader sec : nt.secHeaders)
-				if(sec.Name.equals(".text"))
-				{
-					address += sec.VirtualAddress;
-					break;
-				}
 			int count = 0;
 			monitor.setProgress(0);
 			monitor.setMaximum(pdb.symbols.size());
@@ -242,9 +235,20 @@ public class XEXHeader {
 					return;
 				monitor.setProgress(i);
 				SymbolRecord sym = pdb.symbols.get(i);
-				if(sym.pubsymflags == 2 && sym.rectyp == 0x110e)
-				{
-					Address addr = MakeAddress((address + sym.off) & 0xFFFFFFFFL);
+				if ((sym.pubsymflags & 2) != 0 && sym.rectyp == 0x110e) {
+					int segment = Short.toUnsignedInt(sym.seg);
+					if (segment == 0 || segment > nt.secHeaders.size()) {
+						continue;
+					}
+					NTHeader.SectionHeader section = nt.secHeaders.get(segment - 1);
+					long offset = Integer.toUnsignedLong(sym.off);
+					if ((section.Characteristics & 0x20000000) == 0 ||
+							offset >= Integer.toUnsignedLong(section.PhysicalAddressOrVirtualSize)) {
+						continue;
+					}
+					long address = Integer.toUnsignedLong(imageBaseAddress) +
+						Integer.toUnsignedLong(section.VirtualAddress) + offset;
+					Address addr = address <= 0xFFFFFFFFL ? MakeAddress(address) : null;
 					if(addr != null)
 					{
 						int len = sym.name.length();
