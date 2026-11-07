@@ -2,9 +2,12 @@ package xexloaderwv;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
@@ -160,9 +163,8 @@ public class XEXLoaderWVLoader extends AbstractLibrarySupportLoader {
 
 	private XEXHeader prepareXEX(byte[] original, List<Option> options,
 			String patchPath, boolean isDevKit, boolean useXex1MasterKey) throws Exception {
-		// XEXP may mutate its input; each decryption attempt must start from
-		// independent original bytes, and neither may touch the Ghidra Program.
-		byte[] image = original.clone();
+		// Decoding and delta application work on private buffers.
+		byte[] image = original;
 		if (!patchPath.isEmpty()) {
 			image = ApplyPatch(image, patchPath, options, isDevKit, useXex1MasterKey);
 		}
@@ -220,108 +222,82 @@ public class XEXLoaderWVLoader extends AbstractLibrarySupportLoader {
 			h.ProcessAdditionalPDB(new PDBFile(pdbFile.getPath(), monitor, program), program, monitor, true, true);
 	}
 
-	public byte[] ChangeBaseFileFormat(byte[] image) throws Exception {
+	public byte[] ChangeBaseFileFormat(byte[] image) throws IOException {
 		BinaryReader b = new BinaryReader(new ByteArrayProvider(image), false);
-		int offsetBFF = -1;
+		int headerSize = b.readInt(8);
 		int nOptHeader = b.readInt(20);
-		int pos = 24;
 		for (int i = 0; i < nOptHeader; i++) {
-			int id = b.readInt(pos);
-			if (id >> 8 == 3)
-				offsetBFF = b.readInt(pos + 4);
-			pos += 8;
-		}
-		image[offsetBFF + 5] = 0;
-		image[offsetBFF + 7] = 0;
-		return image;
-	}
-
-	public byte[] ApplyPatch(byte[] buffROM, String patchPath, List<Option> options, boolean isDevKit)
-			throws Exception {
-		return ApplyPatch(buffROM, patchPath, options, isDevKit, false);
-	}
-
-	public byte[] ApplyPatch(byte[] buffROM, String patchPath, List<Option> options,
-			boolean isDevKit, boolean useXex1MasterKey) throws Exception {
-		Msg.info(this, "XEX Loader: Applying patch");
-		byte[] buffPatch = Files.readAllBytes(Path.of(patchPath));
-		Msg.info(this, "XEX Loader: ### Loading Original XEX");
-		XEXHeader orgHeader = new XEXHeader(buffROM, options, isDevKit, useXex1MasterKey);
-		Msg.info(this, "XEX Loader: ### Loading Patch XEX");
-		XEXHeader patchHeader = new XEXHeader(buffPatch, options, isDevKit, useXex1MasterKey);
-		if (patchHeader.baseFileFormat.compression == 3) {
-			XEXPatchDescriptor desc = patchHeader.patchDescriptor;
-			byte[] sourceData = new byte[desc.delta_patch.uncompressed_len];
-			for (int i = 0; i < desc.delta_patch.uncompressed_len; i++)
-				sourceData[i] = buffROM[i + desc.delta_patch.old_addr];
-			byte[] patchResult = new LzxDecompression().DecompressLZX(desc.delta_patch.patch_data, sourceData,
-					desc.delta_patch.uncompressed_len);
-			for (int i = 0; i < desc.delta_patch.uncompressed_len; i++)
-				buffROM[i + desc.delta_patch.new_addr] = patchResult[i];
-			int oldSize = orgHeader.peImage.length + orgHeader.offsetPE;
-			int totalSize = orgHeader.offsetPE + patchHeader.loaderInfo.imageSize;
-			if (oldSize > totalSize)
-				totalSize = oldSize;
-			byte[] temp = new byte[totalSize];
-			int headerSize = orgHeader.offsetPE;
-			for (int i = 0; i < headerSize; i++)
-				temp[i] = buffROM[i];
-			for (int i = 0; i < orgHeader.peImage.length; i++)
-				temp[i + headerSize] = orgHeader.peImage[i];
-			buffROM = temp;
-			Msg.info(this, "XEX Loader: ### Loading XEX with patched header");
-			XEXHeader newHeader = new XEXHeader(buffROM, options, isDevKit, useXex1MasterKey);
-			byte[] newSessionKey = newHeader.sessionKey;
-			patchHeader.sessionKey = Helper.AESDecrypt(newSessionKey, patchHeader.loaderInfo.fileKey);
-			patchHeader.ReadPEImage(buffPatch);
-			BinaryReader b = new BinaryReader(new ByteArrayProvider(patchHeader.peImage), false);
-			int nextBlockSize = patchHeader.baseFileFormat.normal.blockSize;
-			int pos = 0;
-			while (nextBlockSize != 0) {
-				int currentBlockSize = nextBlockSize;
-				nextBlockSize = b.readInt(pos);
-				int start = pos;
-				pos += 24;
-				while (pos < start + currentBlockSize) {
-					XEXDeltaPatch delta_patch = new XEXDeltaPatch(patchHeader.peImage, pos);
-					if (delta_patch.old_addr == 0 && delta_patch.new_addr == 0 && delta_patch.compressed_len == 0
-							&& delta_patch.uncompressed_len == 0)
-						break;
-					switch (delta_patch.compressed_len) {
-					case 0:
-						for (int i = 0; i < delta_patch.uncompressed_len; i++)
-							buffROM[headerSize + delta_patch.new_addr + i] = 0;
-						pos += 12;
-						break;
-					case 1:
-						for (int i = 0; i < delta_patch.uncompressed_len; i++)
-							buffROM[headerSize + delta_patch.new_addr + i] = buffROM[headerSize + delta_patch.old_addr
-									+ i];
-						pos += 12;
-						break;
-					default:
-						byte[] patchData = new byte[delta_patch.compressed_len];
-						for (int i = 0; i < delta_patch.compressed_len; i++)
-							patchData[i] = patchHeader.peImage[pos + i + 12];
-						byte[] baseData = new byte[delta_patch.uncompressed_len];
-						for (int i = 0; i < delta_patch.uncompressed_len; i++)
-							baseData[i] = buffROM[i + delta_patch.old_addr + headerSize];
-						patchResult = new LzxDecompression().DecompressLZX(patchData, baseData,
-								delta_patch.uncompressed_len);
-						for (int i = 0; i < delta_patch.uncompressed_len; i++)
-							buffROM[i + delta_patch.new_addr + headerSize] = patchResult[i];
-						pos += 12 + delta_patch.compressed_len;
-						break;
-					}
+			int pos = 24 + i * 8;
+			if (b.readInt(pos) == 0x3FF) {
+				int format = b.readInt(pos + 4);
+				if (format < 24L + nOptHeader * 8L || format > headerSize - 8 ||
+						headerSize > image.length) {
+					throw new IOException("Invalid patched XEX file format descriptor offset");
 				}
-				pos = start + currentBlockSize;
+				ByteBuffer.wrap(image, format, 8).putInt(8).putInt(0);
+				return image;
 			}
 		}
-		return ChangeBaseFileFormat(buffROM);
+		throw new IOException("Patched XEX lacks a file format descriptor");
 	}
 
+	public byte[] ApplyPatch(byte[] original, String patchPath, List<Option> options, boolean isDevKit)
+			throws Exception {
+		return ApplyPatch(original, patchPath, options, isDevKit, false);
+	}
 
+	public byte[] ApplyPatch(byte[] original, String patchPath, List<Option> options,
+			boolean isDevKit, boolean useXex1MasterKey) throws Exception {
+		byte[] patch = Files.readAllBytes(Path.of(patchPath));
+		XEXHeader patchHeader = new XEXHeader(patch, options, isDevKit, useXex1MasterKey, false);
+		XEXPatchDescriptor descriptor = patchHeader.patchDescriptor;
+		if (patchHeader.magic != 0x58455832 || patchHeader.baseFileFormat.compression != 3 ||
+				descriptor == null) {
+			throw new IOException("Selected patch is not an XEX2 delta");
+		}
+		XEXHeader source = new XEXHeader(original, options, isDevKit, useXex1MasterKey);
+		if (source.peImage == null || !MessageDigest.isEqual(descriptor.digest_source,
+				MessageDigest.getInstance("SHA-1").digest(source.loaderInfo.rsaSignature))) {
+			throw new IOException("XEXP source signature digest does not match the base XEX");
+		}
 
+		BaseFileFormat.NormalCompression format = patchHeader.baseFileFormat.normal;
+		int windowBits = Integer.numberOfTrailingZeros(format.windowSize);
+		if (Integer.bitCount(format.windowSize) != 1 || windowBits < 15 || windowBits > 21) {
+			throw new IOException("Invalid XEXP LZX window size: " + format.windowSize);
+		}
+		int targetHeaderSize = descriptor.size_of_target_headers;
+		if (targetHeaderSize == 0) {
+			targetHeaderSize = Math.addExact(descriptor.delta_headers_target_offset,
+				descriptor.delta_headers_source_size);
+		}
+		byte[] header = XEXDeltaPatch.prepareTarget(Arrays.copyOf(original, source.offsetPE),
+			targetHeaderSize, descriptor.delta_headers_source_offset, descriptor.delta_headers_source_size,
+			descriptor.delta_headers_target_offset, false);
+		XEXDeltaPatch.applyRecords(descriptor.records, 0, descriptor.records.length, header, windowBits);
+		header = Arrays.copyOf(header, targetHeaderSize);
+		XEXHeader target = new XEXHeader(header, options, isDevKit, useXex1MasterKey, false);
+		int targetImageSize = patchHeader.loaderInfo.imageSize;
+		if (target.offsetPE != targetHeaderSize || target.loaderInfo.imageSize != targetImageSize) {
+			throw new IOException("XEXP target sizes disagree with the patched XEX header");
+		}
+
+		if (!MessageDigest.isEqual(source.sessionKey,
+				Helper.AESDecrypt(target.sessionKey, descriptor.image_key_source))) {
+			throw new IOException("XEXP source image key does not match the base XEX");
+		}
+		patchHeader.sessionKey = Helper.AESDecrypt(target.sessionKey, patchHeader.loaderInfo.fileKey);
+		patchHeader.ReadPEImage(patch);
+		byte[] image = XEXDeltaPatch.prepareTarget(source.peImage, targetImageSize,
+			descriptor.delta_image_source_offset, descriptor.delta_image_source_size,
+			descriptor.delta_image_target_offset, true);
+		XEXDeltaPatch.applyBlocks(patchHeader.peImage, format.blockSize, format.blockHash,
+			image, windowBits);
+
+		byte[] result = Arrays.copyOf(header, Math.addExact(targetHeaderSize, targetImageSize));
+		System.arraycopy(image, 0, result, targetHeaderSize, targetImageSize);
+		return ChangeBaseFileFormat(result);
+	}
 	/**
 	 * Link existing imported libraries only from the folder into which Ghidra
 	 * will save the newly imported Program. Using Loaded.getProjectFolderPath()

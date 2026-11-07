@@ -59,6 +59,12 @@ public class XEXHeader {
 	public XEXHeader(byte[] data, List<Option> list, boolean isDevKit,
 			boolean useXex1MasterKey) throws Exception
 	{
+		this(data, list, isDevKit, useXex1MasterKey, true);
+	}
+
+	XEXHeader(byte[] data, List<Option> list, boolean isDevKit,
+			boolean useXex1MasterKey, boolean decodeImage) throws Exception
+	{
 		this.useXex1MasterKey = useXex1MasterKey;
 		BinaryReader b = new BinaryReader(new ByteArrayProvider(data), false);
 		magic = b.readInt(0);
@@ -112,7 +118,7 @@ public class XEXHeader {
 		int sectionCount = b.readInt(offsetSecuInfo + 0x180);
 		for(int i=0; i < sectionCount; i++)
 			sections.add(new XEXSection(data, offsetSecuInfo + (i * 24) + 0x184));
-		if(baseFileFormat.compression != 3)
+		if(decodeImage && baseFileFormat.compression != 3)
 			ReadPEImage(data);
 	}
 	
@@ -164,7 +170,7 @@ public class XEXHeader {
 					baseFileFormat = new BaseFileFormat(sec.data);				
 					break;
 				case 0x5:
-					patchDescriptor = new XEXPatchDescriptor(sec.data, 0);
+					patchDescriptor = new XEXPatchDescriptor(sec.data);
 					break;
 				case 0x80:
 					for(int i = 4; i < sec.data.length; i++)
