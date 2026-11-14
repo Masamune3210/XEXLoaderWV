@@ -430,11 +430,11 @@ public class XEXLoaderWVLoader extends AbstractLibrarySupportLoader {
 		// Preserve Ghidra's standard options for linking already imported libraries.
 		List<Option> list = new ArrayList<>(super.getDefaultOptions(
 			provider, loadSpec, domainObject, loadIntoProgram, mirrorFsLayout));
-		list.add(new Option(PROCESS_PDATA_OPTION, true));
-		list.add(new Option(LOAD_PDB_OPTION, false));
-		list.add(new Option(EXPERIMENTAL_PDB_OPTION, false));
-		list.add(new Option(XEXP_PATH_OPTION, ""));
-		list.add(new Option(THUNK_VENEERS_OPTION, false));
+		list.add(Option.newBoolean(PROCESS_PDATA_OPTION).value(true).build());
+		list.add(Option.newBoolean(LOAD_PDB_OPTION).value(false).build());
+		list.add(Option.newBoolean(EXPERIMENTAL_PDB_OPTION).value(false).build());
+		list.add(Option.newString(XEXP_PATH_OPTION).value("").build());
+		list.add(Option.newBoolean(THUNK_VENEERS_OPTION).value(false).build());
 		return list;
 	}
 }
