@@ -92,7 +92,7 @@ public class XboxKernelMemoryPeLoader extends AbstractLibrarySupportLoader {
             boolean mirrorFsLayout) {
         List<Option> options = new ArrayList<>(super.getDefaultOptions(
                 provider, loadSpec, domainObject, loadIntoProgram, mirrorFsLayout));
-        options.add(new Option(PROCESS_PDATA_OPTION, true));
+        options.add(Option.newBoolean(PROCESS_PDATA_OPTION).value(true).build());
         return options;
     }
 
