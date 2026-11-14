@@ -33,3 +33,10 @@ A separate narrowly gated Ghidra script can revert *only* legacy `Function_XXXXX
 ## Next step
 
 Build/import the modified extension and inspect newly imported or reanalyzed `.pdata` functions. They should retain the genuine `FUN_...` default until a meaningful name is identified. For old databases, run `RestoreDefaultPDataFunctionNames.java` first in preview mode; explicitly enable apply only after reviewing candidates, then rerun the Function ID Analyzer if desired. Promote to `testing` after user verification.
+
+## Promotion to testing (2026-11-13)
+
+- Integrated into `testing` through PR #1, merge commit `9d2491733c32a8b4dfe620b3bfb1fadb624ca314`, preserving the feature branch commits.
+- The related `fix/kernel-memory-pe-rva-loader-20261107` branch was already an ancestor of `testing` (zero commits ahead); its loader behavior is retained.
+- Ghidra 12.2 CI for the merged `.pdata` changes: https://github.com/Masamune3210/XEXLoaderWV/actions/runs/43546326371. Check the run conclusion before claiming a pass.
+- Functional behavior remains to be verified on a fresh `.pdata` import; the optional migration script is preview-only by default and should not be applied without reviewing names.
