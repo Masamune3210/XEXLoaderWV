@@ -349,7 +349,14 @@ public class XEXLoaderWVLoader extends AbstractLibrarySupportLoader {
 	 * ambiguous local alias remains unresolved; it must never trigger a
 	 * fallback to a potentially unrelated program.
 	 */
-	@Override
+	// Ghidra 12.2 added matchLoadSpec to this hook. Keep both overloads:
+	// the four-argument form remains active when compiled against Ghidra 12.1.
+	protected DomainFile findLibraryInProject(String library, DomainFolder folder,
+			List<LibrarySearchPath> searchPaths, boolean matchLoadSpec,
+			ImporterSettings settings) throws CancelledException {
+		return findLibraryInProject(library, folder, searchPaths, settings);
+	}
+
 	protected DomainFile findLibraryInProject(String library, DomainFolder folder,
 			List<LibrarySearchPath> searchPaths, ImporterSettings settings)
 			throws CancelledException {

@@ -152,7 +152,12 @@ public class Xbox360RetailKernelMemoryPeLoader extends PeLoader {
         AddressSpace space = program.getAddressFactory().getDefaultAddressSpace();
         OptionalHeader optional = pe.getNTHeader().getOptionalHeader();
         FileHeader fileHeader = pe.getNTHeader().getFileHeader();
-        SectionHeader[] sections = fileHeader.getSectionHeaders();
+        // Ghidra 12.1 returns an array; Ghidra 12.2 returns a List.
+        // Normalize either representation without changing the mapping logic.
+        Object rawSections = fileHeader.getSectionHeaders();
+        SectionHeader[] sections = rawSections instanceof List<?> list
+            ? list.toArray(SectionHeader[]::new)
+            : (SectionHeader[]) rawSections;
         Map<SectionHeader, Address> result = new HashMap<>();
 
         long imageBase = optional.getImageBase();
