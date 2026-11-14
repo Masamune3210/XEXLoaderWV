@@ -254,11 +254,10 @@ public class XboxKernelMemoryPeLoader extends AbstractLibrarySupportLoader {
             MemoryBlock block = program.getMemory().getBlock(target);
             if (block == null || !block.isExecute() ||
                     program.getFunctionManager().getFunctionAt(target) != null) continue;
+            // Do not promote .pdata-only addresses to ANALYSIS-sourced
+            // Function_ names. Ghidra generates FUN_ for unnamed functions
+            // and preserves already established semantic symbols.
             if (ensureFunction(program, target, monitor)) {
-                Function function = program.getFunctionManager().getFunctionAt(target);
-                if (function != null && function.getSymbol().getSource() == SourceType.DEFAULT) {
-                    function.setName(String.format("Function_%08X", va), SourceType.ANALYSIS);
-                }
                 ++created;
             }
         }
