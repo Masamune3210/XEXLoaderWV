@@ -1,0 +1,40 @@
+name: Ghidra 12.2 compatibility
+on:
+  push:
+    branches: ["testing"]
+  pull_request:
+    branches: ["testing", "master"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build_extension:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: XEXLoaderWV
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Set up Java 25
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Set up Gradle 9.1
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '9.1.0'
+      - name: Set up Ghidra 12.2
+        uses: antoniovazquezblanco/setup-ghidra@029b00367e561cef07baacedb6de5e007a1ebc9a
+        with:
+          auth_token: ${{ secrets.GITHUB_TOKEN }}
+          version: '12.2'
+      - name: Compile loader, run Xenon regressions and package extension
+        run: gradle -PGHIDRA_INSTALL_DIR="${{ env.GHIDRA_INSTALL_DIR }}" buildExtension

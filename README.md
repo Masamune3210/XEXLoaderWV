@@ -39,7 +39,12 @@ This extension is built using the Gradle support files that ship with Ghidra. Th
 
 Do not edit those values in Ghidra just to build this project. Instead, use a JDK and Gradle version that satisfy your installed Ghidra release.
 
-For Ghidra `12.0.4`, the current minimums are:
+For Ghidra **12.2**, use **JDK 25 or newer** and **Gradle 9.1 or newer**.
+The `testing` branch runs a dedicated 12.2 build that includes the Xenon SLEIGH
+compiler and offline Python regression checks. Successful CI packaging still
+requires runtime verification with imported XEX files.
+
+For the older Ghidra `12.0.4`, the minimums were:
 
 ```text
 application.java.min=21
